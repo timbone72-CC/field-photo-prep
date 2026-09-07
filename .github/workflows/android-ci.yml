@@ -23,6 +23,30 @@ jobs:
         run: gradle test
       - name: Debug build
         run: gradle assembleDebug
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch smoke test
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell am force-stop com.inandout.fieldphotoprep
+            adb shell am start -W -n com.inandout.fieldphotoprep/.MainActivity
+            sleep 3
+            PID=$(adb shell pidof com.inandout.fieldphotoprep | tr -d '\r')
+            if [ -z "$PID" ]; then
+              echo "Field Photo Prep did not remain running after launch"
+              adb logcat -d -t 300
+              exit 1
+            fi
+            echo "Field Photo Prep launch smoke test passed with PID $PID"
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
