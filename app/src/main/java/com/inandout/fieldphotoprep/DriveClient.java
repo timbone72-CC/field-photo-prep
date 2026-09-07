@@ -17,9 +17,32 @@ public final class DriveClient {
             DocumentsContract.Document.COLUMN_MIME_TYPE
     };
 
-    private static final String[] CHILD_ID_PROJECTION = {
-            DocumentsContract.Document.COLUMN_DOCUMENT_ID
+    private static final String[] CHILD_PROJECTION = {
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_MIME_TYPE
     };
+
+    public static final class ChildSnapshot {
+        private final List<String> documentIds;
+        private final int folderCount;
+
+        ChildSnapshot(List<String> documentIds, int folderCount) {
+            this.documentIds = Collections.unmodifiableList(new ArrayList<>(documentIds));
+            this.folderCount = folderCount;
+        }
+
+        public List<String> documentIds() {
+            return documentIds;
+        }
+
+        public int count() {
+            return documentIds.size();
+        }
+
+        public int folderCount() {
+            return folderCount;
+        }
+    }
 
     public DriveFolder getTreeFolder(ContentResolver resolver, Uri treeUri) throws IOException {
         String documentId = DocumentsContract.getTreeDocumentId(treeUri);
@@ -68,17 +91,37 @@ public final class DriveClient {
         return folders;
     }
 
-    public boolean isFolderEmpty(
+    public ChildSnapshot listDirectChildren(
             ContentResolver resolver,
             Uri treeUri,
             String folderDocumentId) throws IOException {
         Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, folderDocumentId);
-        try (Cursor cursor = resolver.query(childrenUri, CHILD_ID_PROJECTION, null, null, null)) {
+        List<String> ids = new ArrayList<>();
+        int folderCount = 0;
+
+        try (Cursor cursor = resolver.query(childrenUri, CHILD_PROJECTION, null, null, null)) {
             if (cursor == null) {
                 throw new IOException("Drive did not return the selected folder contents.");
             }
-            return !cursor.moveToFirst();
+            int idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
+            int mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE);
+            while (cursor.moveToNext()) {
+                ids.add(cursor.getString(idColumn));
+                if (isFolderMimeType(cursor.getString(mimeColumn))) {
+                    folderCount++;
+                }
+            }
         }
+
+        Collections.sort(ids);
+        return new ChildSnapshot(ids, folderCount);
+    }
+
+    public boolean isFolderEmpty(
+            ContentResolver resolver,
+            Uri treeUri,
+            String folderDocumentId) throws IOException {
+        return listDirectChildren(resolver, treeUri, folderDocumentId).count() == 0;
     }
 
     public DriveFolder createFolder(
@@ -103,6 +146,16 @@ public final class DriveClient {
             throw new IOException("Drive created a folder without returning its identity.");
         }
         return new DriveFolder(createdDocumentId, displayName);
+    }
+
+    public void deleteDocument(
+            ContentResolver resolver,
+            Uri treeUri,
+            String documentId) throws IOException {
+        Uri documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId);
+        if (!DocumentsContract.deleteDocument(resolver, documentUri)) {
+            throw new IOException("Drive did not confirm child-item deletion.");
+        }
     }
 
     public DriveFolder renameFolder(
@@ -143,6 +196,17 @@ public final class DriveClient {
             }
         }
         return null;
+    }
+
+    static boolean sameDocumentIds(List<String> first, List<String> second) {
+        if (first.size() != second.size()) {
+            return false;
+        }
+        List<String> firstSorted = new ArrayList<>(first);
+        List<String> secondSorted = new ArrayList<>(second);
+        Collections.sort(firstSorted);
+        Collections.sort(secondSorted);
+        return firstSorted.equals(secondSorted);
     }
 
     static boolean isFolderMimeType(String mimeType) {

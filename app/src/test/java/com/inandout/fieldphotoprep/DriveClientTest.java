@@ -63,4 +63,31 @@ public final class DriveClientTest {
         assertEquals("target-id", found.id());
         assertNull(DriveClient.findById(folders, "missing-id"));
     }
+
+    @Test
+    public void clearReuseConfirmationSnapshotMatchesSameIdsRegardlessOfOrder() {
+        assertTrue(DriveClient.sameDocumentIds(
+                Arrays.asList("photo-2", "photo-1"),
+                Arrays.asList("photo-1", "photo-2")));
+    }
+
+    @Test
+    public void clearReuseConfirmationSnapshotRejectsChangedContents() {
+        assertFalse(DriveClient.sameDocumentIds(
+                Arrays.asList("photo-1", "photo-2"),
+                Arrays.asList("photo-1", "photo-3")));
+        assertFalse(DriveClient.sameDocumentIds(
+                Arrays.asList("photo-1", "photo-2"),
+                Arrays.asList("photo-1")));
+    }
+
+    @Test
+    public void childSnapshotCountsDirectItemsAndChildFolders() {
+        DriveClient.ChildSnapshot snapshot = new DriveClient.ChildSnapshot(
+                Arrays.asList("photo", "nested-folder"), 1);
+
+        assertEquals(2, snapshot.count());
+        assertEquals(1, snapshot.folderCount());
+        assertEquals(Arrays.asList("photo", "nested-folder"), snapshot.documentIds());
+    }
 }

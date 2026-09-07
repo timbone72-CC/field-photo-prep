@@ -40,11 +40,11 @@ Delivered:
 
 Validated with `HNP Jobs → FIELD PHOTO PREP TEST → Cut Grass - 2026-09-06`.
 
-### Phase 3A — Empty Work-Order Folder Reuse — IN PROGRESS
+### Phase 3A — Empty Work-Order Folder Reuse — COMPLETE
 
 Goal: recycle an older same-work-order folder only when it is truly empty.
 
-Scope:
+Delivered:
 - operator selects the specific old work-order folder;
 - app verifies it is the same work-order type and an older date;
 - app revalidates the exact folder identity under the selected address;
@@ -53,12 +53,9 @@ Scope:
 - folder identity and parent remain unchanged;
 - no deletion is permitted.
 
-Required gate:
-- empty-folder positive reuse test;
-- non-empty fail-closed test;
-- explicit Level 3 merge approval.
+Validated on the operator phone with both the empty-folder positive reuse and non-empty fail-closed checks, then merged through PR #6.
 
-### Phase 3B — Clear & Reuse — PENDING
+### Phase 3B — Clear & Reuse — IN PROGRESS
 
 Goal: allow deliberate recycling of a non-empty old work-order folder when the operator explicitly chooses it.
 
