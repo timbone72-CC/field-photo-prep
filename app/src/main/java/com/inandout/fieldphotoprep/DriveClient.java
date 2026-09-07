@@ -1,103 +1,64 @@
 package com.inandout.fieldphotoprep;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import android.content.ContentResolver;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.DocumentsContract;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public final class DriveClient {
-    private static final String FOLDER_MIME = "application/vnd.google-apps.folder";
-    private static final String FILES_URL = "https://www.googleapis.com/drive/v3/files";
+    private static final String[] PROJECTION = {
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE
+    };
 
-    public List<DriveFolder> listFolders(String accessToken, String parentId) throws Exception {
-        List<DriveFolder> all = new ArrayList<>();
-        String pageToken = null;
-        do {
-            URI uri = URI.create(buildListFoldersUrl(parentId, pageToken));
-            HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(20000);
-
-            int status = connection.getResponseCode();
-            String body = readBody(status >= 200 && status < 300
-                    ? connection.getInputStream()
-                    : connection.getErrorStream());
-            connection.disconnect();
-
-            if (status < 200 || status >= 300) {
-                throw new IOException("Drive request failed (HTTP " + status + "). " + body);
+    public DriveFolder getTreeFolder(ContentResolver resolver, Uri treeUri) throws IOException {
+        String documentId = DocumentsContract.getTreeDocumentId(treeUri);
+        Uri documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId);
+        try (Cursor cursor = resolver.query(documentUri, PROJECTION, null, null, null)) {
+            if (cursor == null || !cursor.moveToFirst()) {
+                throw new IOException("The selected folder could not be read.");
             }
+            String name = cursor.getString(cursor.getColumnIndexOrThrow(
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME));
+            String mimeType = cursor.getString(cursor.getColumnIndexOrThrow(
+                    DocumentsContract.Document.COLUMN_MIME_TYPE));
+            if (!isFolderMimeType(mimeType)) {
+                throw new IOException("The selected item is not a folder.");
+            }
+            return new DriveFolder(documentId, name);
+        }
+    }
 
-            JSONObject root = new JSONObject(body);
-            JSONArray files = root.optJSONArray("files");
-            if (files != null) {
-                for (int i = 0; i < files.length(); i++) {
-                    JSONObject file = files.getJSONObject(i);
-                    all.add(new DriveFolder(file.getString("id"), file.getString("name")));
+    public List<DriveFolder> listFolders(ContentResolver resolver, Uri treeUri) throws IOException {
+        String parentDocumentId = DocumentsContract.getTreeDocumentId(treeUri);
+        Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocumentId);
+        List<DriveFolder> folders = new ArrayList<>();
+
+        try (Cursor cursor = resolver.query(childrenUri, PROJECTION, null, null, null)) {
+            if (cursor == null) {
+                throw new IOException("The selected folder did not return a folder list.");
+            }
+            int idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
+            int nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
+            int mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE);
+            while (cursor.moveToNext()) {
+                if (isFolderMimeType(cursor.getString(mimeColumn))) {
+                    folders.add(new DriveFolder(cursor.getString(idColumn), cursor.getString(nameColumn)));
                 }
             }
-            pageToken = root.optString("nextPageToken", null);
-            if (pageToken != null && pageToken.isBlank()) {
-                pageToken = null;
-            }
-        } while (pageToken != null);
-
-        Collections.sort(all);
-        return all;
-    }
-
-    static String buildListFoldersUrl(String parentId, String pageToken) {
-        String query = buildFolderQuery(parentId);
-        StringBuilder url = new StringBuilder(FILES_URL)
-                .append("?q=").append(encode(query))
-                .append("&fields=").append(encode("nextPageToken,files(id,name)"))
-                .append("&orderBy=").append(encode("name"))
-                .append("&pageSize=1000")
-                .append("&spaces=drive")
-                .append("&supportsAllDrives=true")
-                .append("&includeItemsFromAllDrives=true");
-        if (pageToken != null && !pageToken.isBlank()) {
-            url.append("&pageToken=").append(encode(pageToken));
         }
-        return url.toString();
+
+        Collections.sort(folders);
+        return folders;
     }
 
-    static String buildFolderQuery(String parentId) {
-        return "'" + escapeDriveLiteral(parentId) + "' in parents and "
-                + "mimeType = '" + FOLDER_MIME + "' and trashed = false";
-    }
-
-    static String escapeDriveLiteral(String value) {
-        return value.replace("\\", "\\\\").replace("'", "\\'");
-    }
-
-    private static String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
-
-    private static String readBody(InputStream stream) throws IOException {
-        if (stream == null) {
-            return "";
-        }
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            StringBuilder body = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                body.append(line);
-            }
-            return body.toString();
-        }
+    static boolean isFolderMimeType(String mimeType) {
+        return DocumentsContract.Document.MIME_TYPE_DIR.equals(mimeType);
     }
 }
