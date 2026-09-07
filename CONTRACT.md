@@ -48,8 +48,16 @@ HNP
 18. The app must not guess a destination from a folder name when a stored folder ID exists.
 19. Reopening the app, address, or work order must not create a second Drive folder merely because the app restarted.
 20. If a stored destination folder can no longer be accessed, the app must stop the affected upload and report the problem rather than silently creating or choosing another folder.
-21. The app must not move, rename, delete, or change sharing permissions on an existing Drive folder unless that exact behavior is separately approved.
+21. Except for the approved folder-reuse controls below, the app must not move, rename, delete, or change sharing permissions on an existing Drive folder.
 22. No additional permanent work-order number or app-generated business identifier is required in the initial model. If same-property, same-work-order, same-date occurrences become a real ambiguity, that case must be designed explicitly rather than guessed around.
+23. When the requested dated work-order folder does not exist, the app may offer an older folder for the same address and same work-order name as a reuse candidate.
+24. An old work-order folder that is truly empty may be renamed to the new `Work Order - YYYY-MM-DD` name and reused while retaining the same Drive folder ID.
+25. Empty-folder reuse may never change the address-folder parent.
+26. A non-empty old work-order folder is never cleared, renamed, or reused automatically.
+27. The operator may explicitly choose **Clear & Reuse** for a non-empty old work-order folder under the same address. Before destructive action, the app must show the old folder name and the number of child items that will be removed and require confirmation.
+28. **Clear & Reuse** removes only the selected work-order folder's child items, confirms that the folder is empty, renames that same folder to the new dated work-order name, and reuses its existing Drive folder ID.
+29. Failure to remove every child item, failure to confirm emptiness, or failure to rename must stop the reuse workflow. The app must not begin sending new-work photos into a partially cleared folder.
+30. Address folders are not eligible for automatic or **Clear & Reuse** recycling in the initial model.
 
 ## 3. Photo capture and temporary protection
 
@@ -88,6 +96,8 @@ HNP
 10. The app must not automatically share uploaded photos or folders, change inherited permissions, or create public links.
 11. Files created under a shared parent may inherit that parent's Drive permissions; the app does not independently broaden sharing.
 12. Sign-in or Drive authorization failure must not delete temporary photos that have not yet been confirmed in Drive.
+13. Work-order-folder rename and child deletion are permitted only through the approved empty-folder reuse or confirmed **Clear & Reuse** workflow in Section 2.
+14. A folder reuse operation must operate by exact Drive folder ID; visible folder names alone may never authorize deletion or rename.
 
 ## 6. Upload queue and retry
 
@@ -116,7 +126,8 @@ HNP
 4. Successfully uploaded image data does not need to remain in Field Photo Prep.
 5. Google authentication credentials or refresh tokens must not be written into ordinary app backups, logs, or exported records.
 6. Deleting a local remembered-folder entry must not automatically delete its Drive folder or Drive photos.
-7. Deleting a Drive photo, work-order folder, or address folder from inside the app is not part of the initial approved scope.
+7. General-purpose Drive photo, work-order-folder, or address-folder deletion from inside the app is not part of the initial approved scope.
+8. The only initial app-driven deletion of existing Drive content is the explicit, confirmed child-item removal required by **Clear & Reuse** for one selected work-order folder.
 
 ## 9. Initial user interface scope
 
@@ -128,6 +139,7 @@ The first working app needs only the surfaces required for the core workflow:
 - choose or create an address folder;
 - refresh and see existing work-order folders under that address;
 - choose or create a `Work Order - YYYY-MM-DD` folder;
+- optionally reuse an old same-work-order folder, including explicit **Clear & Reuse** when the operator chooses a non-empty folder;
 - take photos for that work occurrence;
 - see temporary upload status; and
 - retry failed or waiting uploads.
@@ -145,6 +157,7 @@ The following are not required for the first working version unless separately a
 - photo labels or watermarks;
 - before/after categories;
 - automatic Drive sharing changes;
+- general-purpose Drive deletion or folder cleanup outside the approved work-order-folder reuse flow;
 - video capture;
 - background location tracking;
 - OCR;
@@ -154,4 +167,4 @@ The following are not required for the first working version unless separately a
 
 ## 11. Safety priority
 
-When two behaviors conflict, preserve any photo not yet confirmed in Drive and preserve its exact work-order-folder destination identity before optimizing convenience, speed, cleanup, or storage use. After confirmed Drive storage, the app should favor removing unnecessary local image copies rather than becoming a second photo archive.
+When two behaviors conflict, preserve any photo not yet confirmed in Drive and preserve its exact work-order-folder destination identity before optimizing convenience, speed, cleanup, or storage use. Destructive Drive reuse must remain operator-initiated, narrowly scoped, and fail closed. After confirmed Drive storage, the app should favor removing unnecessary local image copies rather than becoming a second photo archive.
