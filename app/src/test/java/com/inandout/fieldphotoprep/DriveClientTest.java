@@ -9,6 +9,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public final class DriveClientTest {
@@ -49,5 +50,17 @@ public final class DriveClientTest {
         assertEquals(2, matches.size());
         assertEquals("a", matches.get(0).id());
         assertEquals("b", matches.get(1).id());
+    }
+
+    @Test
+    public void folderIdentityLookupUsesIdNotVisibleName() {
+        List<DriveFolder> folders = Arrays.asList(
+                new DriveFolder("old-id", "Cut Grass - 2026-09-06"),
+                new DriveFolder("target-id", "Cut Grass - 2026-09-06"));
+
+        DriveFolder found = DriveClient.findById(folders, "target-id");
+
+        assertEquals("target-id", found.id());
+        assertNull(DriveClient.findById(folders, "missing-id"));
     }
 }

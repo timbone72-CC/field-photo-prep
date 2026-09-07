@@ -17,6 +17,10 @@ public final class DriveClient {
             DocumentsContract.Document.COLUMN_MIME_TYPE
     };
 
+    private static final String[] CHILD_ID_PROJECTION = {
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID
+    };
+
     public DriveFolder getTreeFolder(ContentResolver resolver, Uri treeUri) throws IOException {
         String documentId = DocumentsContract.getTreeDocumentId(treeUri);
         Uri documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId);
@@ -64,6 +68,19 @@ public final class DriveClient {
         return folders;
     }
 
+    public boolean isFolderEmpty(
+            ContentResolver resolver,
+            Uri treeUri,
+            String folderDocumentId) throws IOException {
+        Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, folderDocumentId);
+        try (Cursor cursor = resolver.query(childrenUri, CHILD_ID_PROJECTION, null, null, null)) {
+            if (cursor == null) {
+                throw new IOException("Drive did not return the selected folder contents.");
+            }
+            return !cursor.moveToFirst();
+        }
+    }
+
     public DriveFolder createFolder(
             ContentResolver resolver,
             Uri treeUri,
@@ -88,6 +105,26 @@ public final class DriveClient {
         return new DriveFolder(createdDocumentId, displayName);
     }
 
+    public DriveFolder renameFolder(
+            ContentResolver resolver,
+            Uri treeUri,
+            String folderDocumentId,
+            String newDisplayName) throws IOException {
+        if (newDisplayName == null || newDisplayName.isBlank()) {
+            throw new IOException("Folder name is required.");
+        }
+        Uri folderUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, folderDocumentId);
+        Uri renamedUri = DocumentsContract.renameDocument(resolver, folderUri, newDisplayName);
+        if (renamedUri == null) {
+            throw new IOException("Drive did not confirm folder rename.");
+        }
+        String returnedDocumentId = DocumentsContract.getDocumentId(renamedUri);
+        if (returnedDocumentId == null || returnedDocumentId.isBlank()) {
+            throw new IOException("Drive renamed the folder without returning its identity.");
+        }
+        return new DriveFolder(returnedDocumentId, newDisplayName);
+    }
+
     static List<DriveFolder> findExactNameMatches(List<DriveFolder> folders, String requestedName) {
         List<DriveFolder> matches = new ArrayList<>();
         for (DriveFolder folder : folders) {
@@ -97,6 +134,15 @@ public final class DriveClient {
         }
         Collections.sort(matches);
         return matches;
+    }
+
+    static DriveFolder findById(List<DriveFolder> folders, String documentId) {
+        for (DriveFolder folder : folders) {
+            if (folder.id().equals(documentId)) {
+                return folder;
+            }
+        }
+        return null;
     }
 
     static boolean isFolderMimeType(String mimeType) {
