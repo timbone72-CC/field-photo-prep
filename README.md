@@ -41,7 +41,7 @@ Phase 1 does **not** contain camera capture, work-order creation, photo upload, 
 1. Use a Google Cloud project with the Google Drive API enabled.
 2. Configure the OAuth consent screen and add the intended test account while the app is in testing.
 3. Create an **Android OAuth client** for package `io.github.timbone72cc.fieldphotoprep` using the SHA-1 of the signing certificate used for the installed build.
-4. Open the project in Android Studio or build it with JDK 17, Android API 37, and Gradle 9.6.0.
+4. Open the project in Android Studio or build it with JDK 17, Android API 36, and Gradle 9.6.0.
 
 No OAuth client secret or access token belongs in this repository.
 
