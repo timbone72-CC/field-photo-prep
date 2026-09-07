@@ -59,8 +59,7 @@ public final class DriveClient {
     }
 
     static String buildListFoldersUrl(String parentId, String pageToken) {
-        String query = "'" + escapeDriveLiteral(parentId) + "' in parents and "
-                + "mimeType = '" + FOLDER_MIME + "' and trashed = false";
+        String query = buildFolderQuery(parentId);
         StringBuilder url = new StringBuilder(FILES_URL)
                 .append("?q=").append(encode(query))
                 .append("&fields=").append(encode("nextPageToken,files(id,name)"))
@@ -73,6 +72,11 @@ public final class DriveClient {
             url.append("&pageToken=").append(encode(pageToken));
         }
         return url.toString();
+    }
+
+    static String buildFolderQuery(String parentId) {
+        return "'" + escapeDriveLiteral(parentId) + "' in parents and "
+                + "mimeType = '" + FOLDER_MIME + "' and trashed = false";
     }
 
     static String escapeDriveLiteral(String value) {
