@@ -55,10 +55,22 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        authorizationClient = Identity.getAuthorizationClient(this);
+
+        // Draw a usable screen before touching Google Play services. If Google
+        // authorization cannot initialize on a particular device, keep the app
+        // open and show the problem instead of crashing before first paint.
         folderPrefs = new FolderPrefs(this);
         buildUi();
         renderSavedMaster();
+
+        try {
+            authorizationClient = Identity.getAuthorizationClient(this);
+            statusText.setText("Ready. Connect Google Drive to continue.");
+        } catch (Throwable error) {
+            authorizationClient = null;
+            connectButton.setEnabled(false);
+            showStartupError("Google authorization is unavailable on this device", error);
+        }
     }
 
     @Override
@@ -84,7 +96,7 @@ public final class MainActivity extends Activity {
         root.addView(phase);
 
         statusText = new TextView(this);
-        statusText.setText("Google Drive is not connected yet.");
+        statusText.setText("Starting…");
         statusText.setPadding(0, dp(12), 0, dp(8));
         root.addView(statusText);
 
@@ -145,14 +157,23 @@ public final class MainActivity extends Activity {
     }
 
     private void authorizeDrive() {
-        setBusy("Connecting to Google Drive…");
-        AuthorizationRequest request = AuthorizationRequest.builder()
-                .setRequestedScopes(Collections.singletonList(new Scope(DRIVE_METADATA_READONLY)))
-                .build();
+        if (authorizationClient == null) {
+            showMessage("Google authorization is unavailable. Restart the app after updating Google Play services.");
+            return;
+        }
 
-        authorizationClient.authorize(request)
-                .addOnSuccessListener(this::handleAuthorizationResult)
-                .addOnFailureListener(error -> showError("Google Drive authorization failed", error));
+        setBusy("Connecting to Google Drive…");
+        try {
+            AuthorizationRequest request = AuthorizationRequest.builder()
+                    .setRequestedScopes(Collections.singletonList(new Scope(DRIVE_METADATA_READONLY)))
+                    .build();
+
+            authorizationClient.authorize(request)
+                    .addOnSuccessListener(this::handleAuthorizationResult)
+                    .addOnFailureListener(error -> showError("Google Drive authorization failed", error));
+        } catch (Throwable error) {
+            showError("Could not start Google Drive authorization", error);
+        }
     }
 
     private void handleAuthorizationResult(AuthorizationResult result) {
@@ -181,6 +202,10 @@ public final class MainActivity extends Activity {
         }
         if (resultCode != RESULT_OK || data == null) {
             showMessage("Google Drive connection was cancelled.");
+            return;
+        }
+        if (authorizationClient == null) {
+            showMessage("Google authorization is unavailable.");
             return;
         }
         try {
@@ -331,7 +356,7 @@ public final class MainActivity extends Activity {
     }
 
     private void setNotBusy() {
-        connectButton.setEnabled(true);
+        connectButton.setEnabled(authorizationClient != null);
         chooseMasterButton.setEnabled(accessToken != null);
         refreshButton.setEnabled(accessToken != null && folderPrefs.getMasterFolder() != null);
     }
@@ -343,8 +368,17 @@ public final class MainActivity extends Activity {
 
     private void showError(String prefix, Throwable error) {
         String detail = error.getMessage();
-        statusText.setText(prefix + (detail == null ? "." : ": " + detail));
+        String type = error.getClass().getSimpleName();
+        statusText.setText(prefix + " [" + type + "]" + (detail == null ? "." : ": " + detail));
         setNotBusy();
+    }
+
+    private void showStartupError(String prefix, Throwable error) {
+        String detail = error.getMessage();
+        String type = error.getClass().getSimpleName();
+        statusText.setText(prefix + " [" + type + "]" + (detail == null ? "." : ": " + detail));
+        chooseMasterButton.setEnabled(false);
+        refreshButton.setEnabled(false);
     }
 
     private int dp(int value) {
