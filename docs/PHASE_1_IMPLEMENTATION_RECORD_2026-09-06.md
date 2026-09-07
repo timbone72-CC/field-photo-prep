@@ -82,15 +82,27 @@ No remote Drive content writes occur in Phase 1.
 
 Focused automated coverage verifies that only directory MIME types are treated as address folders.
 
-Final gate before merge:
+Automated gate on runtime head `5cb012988151cbcf7024c0f0d9156626e83d69dd` passed:
 
 1. `gradle test`;
 2. `gradle assembleDebug`;
-3. Android emulator launch smoke test;
-4. inspect the branch diff;
-5. on the operator's Android phone, choose the real safe/shared master folder through the system picker, verify its direct address folders appear, restart the app, and verify persisted access still works.
+3. Android emulator install/launch smoke test.
 
-Phase 1 must not be merged until the real-device master-folder reality check succeeds and the operator explicitly approves the Level 3 merge.
+### Real-device master-folder reality gate — PASSED
+
+Operator verification on 2026-09-06:
+
+1. Installed and opened the Phase 1 folder-picker APK on the operator's Android phone.
+2. Opened Android's system folder picker and selected the real shared master folder `HNP Jobs` from Google Drive.
+3. Returned to Field Photo Prep successfully.
+4. Field Photo Prep displayed `Master folder: HNP Jobs` and discovered **15 direct address folders** beneath it.
+5. Fully closed Field Photo Prep and reopened it.
+6. The saved `HNP Jobs` master selection and address-folder listing remained available without selecting the folder again.
+7. No Phase 1 Drive create, rename, move, delete, upload, or sharing operation was performed.
+
+Result: real-device master-folder selection, direct-child discovery, and persisted access are verified for the operator's Android phone.
+
+Phase 1 remains unmerged pending the operator's explicit Level 3 merge approval.
 
 ## Rollback
 
