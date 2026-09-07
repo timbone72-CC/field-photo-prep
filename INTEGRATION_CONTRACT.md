@@ -28,7 +28,8 @@ This contract covers the Drive boundary only. Future workbook, Free Map Router, 
 4. A Drive folder ID already linked to a remembered address remains authoritative even if its name changes.
 5. Before address-folder creation, the app checks the approved master folder for an exact usable name match.
 6. One match is reused, multiple matches require operator choice, and no match may be created as one new address folder.
-7. Discovery must not modify, rename, move, delete, or change permissions on folders it reads.
+7. Discovery must not modify, rename, move, delete, or change permissions on address folders it reads.
+8. Address folders are not eligible for automatic recycling or **Clear & Reuse** in the initial model.
 
 ## Work-order folder contract
 
@@ -36,14 +37,30 @@ This contract covers the Drive boundary only. Future workbook, Free Map Router, 
 2. Initial work-order folder names use `Work Order - YYYY-MM-DD`, for example `Cut Grass - 2026-09-06`.
 3. The work-order name is descriptive text such as `Cut Grass`, `Remove Trash`, `Winterization`, or `Full Property Inspection`.
 4. The date is the local calendar date for that specific work occurrence.
-5. Repeated work of the same type on different dates must use separate dated work-order folders.
+5. Repeated work of the same type on different dates must use separate dated work-order folders unless the operator intentionally recycles an older folder under the approved reuse rules below.
 6. Before creating a dated work-order folder, the app checks the selected address folder for an exact usable folder-name match.
 7. If exactly one matching work-order folder exists, the app reuses it and stores its Drive ID.
 8. If multiple exact matches exist, the app requires operator choice and must not guess by timestamp, ordering, or other inference.
-9. If no exact match exists, the app may create one under the selected address folder.
+9. If no exact match exists, the app may create one under the selected address folder or offer an eligible older same-work-order folder for reuse.
 10. Once selected or created, the work-order folder's Drive ID is authoritative destination identity. Its visible name is not identity.
 11. Reopening the same work occurrence uses its stored folder ID and must not create a duplicate merely from its visible name.
 12. Same-property, same-work-order, same-date ambiguity is not automatically solved by inventing another identifier. If that becomes a real workflow need, it requires an explicit design change.
+
+## Work-order folder recycling contract
+
+1. Folder recycling is limited to work-order folders under the currently selected address folder.
+2. An automatic or simple reuse candidate must have the same work-order name as the new occurrence; the date may differ.
+3. The app must query the selected old folder's children before deciding whether it is empty.
+4. A truly empty old folder may be renamed to the requested new `Work Order - YYYY-MM-DD` name and reused with the same Drive folder ID.
+5. A non-empty old folder may never be cleared, renamed, or reused automatically.
+6. The operator may explicitly choose **Clear & Reuse** for a non-empty old work-order folder.
+7. Before **Clear & Reuse**, the app must identify the folder by exact Drive ID, enumerate its child items, show the old folder name and child-item count, and obtain operator confirmation.
+8. After confirmation, the app may remove only the child items whose direct parent is that selected work-order folder.
+9. The app must verify that the selected work-order folder is empty after removal and before rename.
+10. Only after confirmed emptiness may the app rename that same folder to the requested new dated work-order name and retain its existing Drive folder ID as the new occurrence destination.
+11. If any child removal fails, if the emptiness check is uncertain, or if rename fails, the workflow stops and no new-work photo may be uploaded into that folder until the operator resolves the failure.
+12. Reuse never moves the selected work-order folder to another address and never deletes the work-order folder itself.
+13. General bulk cleanup, address-folder deletion, and deletion of arbitrary Drive content remain outside the initial scope.
 
 ## Photo upload contract
 
@@ -60,9 +77,9 @@ This contract covers the Drive boundary only. Future workbook, Free Map Router, 
 ## Authentication and permissions
 
 1. The app authenticates with the user's Google identity rather than using a service account as the normal personal Drive owner.
-2. Use the least authorization that can support selecting the master folder, discovering address/work-order folders, creating folders, and uploading photos.
+2. Use the least authorization that can support selecting the master folder, discovering address/work-order folders, creating folders, uploading photos, and the explicitly approved work-order-folder rename/child-deletion reuse flow.
 3. Any requested permission that can expose metadata or content outside the approved workflow must be documented with its exact purpose before merge.
-4. If pre-existing-folder discovery cannot be implemented with the currently approved authorization, the required additional metadata access must be explicitly reviewed rather than silently broadening permissions.
+4. If pre-existing-folder discovery or approved recycling cannot be implemented with the currently approved authorization, the required additional access must be explicitly reviewed rather than silently broadening permissions.
 5. Authentication material must not be exposed in logs, exported job data, image metadata added by the app, or repository files.
 6. Sign-out or expired authorization may pause Drive work but must not destroy temporary photos that have not yet been confirmed remotely.
 
@@ -81,6 +98,7 @@ This contract covers the Drive boundary only. Future workbook, Free Map Router, 
 4. Address-folder and work-order-folder create retries must not knowingly create duplicates after a confirmed successful create.
 5. Duplicate control may use stored remote file/folder IDs and app-generated stable photo identities; visible names alone are insufficient identity after selection.
 6. Folder-name matching is only a discovery step. Once a folder is selected or linked, its Drive ID owns identity.
+7. A failed or interrupted **Clear & Reuse** operation must be treated as incomplete destructive state and must not be retried blindly without first re-reading the actual selected folder contents and name from Drive.
 
 ## Safe-environment rule
 
@@ -88,7 +106,7 @@ Drive integration development and verification uses a dedicated test master fold
 
 ## Google Drive Reality Gate
 
-Any runtime change that alters or depends on Drive authentication, master-folder selection, address-folder discovery, work-order-folder discovery, folder creation, folder identity, upload destination, upload confirmation, retry, or remote file identity must complete this gate before being called ready, mergeable, or publishable:
+Any runtime change that alters or depends on Drive authentication, master-folder selection, address-folder discovery, work-order-folder discovery, folder creation, folder identity, folder recycling, child deletion, rename, upload destination, upload confirmation, retry, or remote file identity must complete this gate before being called ready, mergeable, or publishable:
 
 1. Write the real operator sequence from the initiating tap to the final visible result.
 2. Map the boundary as `app state → address folder ID → work-order folder ID → Drive API result → persisted app state`.
@@ -97,12 +115,15 @@ Any runtime change that alters or depends on Drive authentication, master-folder
 5. In the safe Drive fixture, prove existing address-folder discovery returns the real children expected for the test master folder.
 6. Under a selected address folder, prove dated work-order discovery returns the real work-order children expected there.
 7. Prove one exact existing folder is reused without creating a duplicate and that multiple same-named folders require operator choice at each relevant level.
-8. For newly created folders/files, inspect the actual Drive item and confirm it is under the expected parent and has the expected type/name.
-9. Confirm the app persisted the returned/selected Drive identities and can reopen/retry without creating duplicates.
-10. Confirm unrelated test Drive content is unchanged.
-11. For upload changes, force or simulate one interrupted/failed attempt and prove the temporary recoverable photo and exact work-order-folder destination survive.
-12. After confirmed upload, prove the app can remove unnecessary temporary image data without deleting the Drive copy.
-13. If rollout steps are ordered, do not perform the later step until the required earlier evidence exists.
+8. Prove an empty old same-work-order folder can be renamed/reused without changing its Drive ID or parent.
+9. For **Clear & Reuse**, use disposable test content and prove the app shows the correct old folder and child count before confirmation, removes only that folder's children, verifies emptiness, then renames/reuses the same folder ID.
+10. Force one child-deletion or rename failure and prove new-work uploads do not begin in the partially processed folder.
+11. For newly created folders/files, inspect the actual Drive item and confirm it is under the expected parent and has the expected type/name.
+12. Confirm the app persisted the returned/selected Drive identities and can reopen/retry without creating duplicates.
+13. Confirm unrelated test Drive content is unchanged.
+14. For upload changes, force or simulate one interrupted/failed attempt and prove the temporary recoverable photo and exact work-order-folder destination survive.
+15. After confirmed upload, prove the app can remove unnecessary temporary image data without deleting the Drive copy.
+16. If rollout steps are ordered, do not perform the later step until the required earlier evidence exists.
 
 ## Future cross-project integration
 
@@ -110,4 +131,4 @@ No workbook or Free Map Router handoff is part of the initial build. If one is l
 
 ## When extra work is not required
 
-A change that cannot affect Drive authentication, folder discovery, folder identity, folder creation, upload, retry, remote state, or permissions needs only: `No Google Drive integration impact.` It does not require a real Drive smoke test.
+A change that cannot affect Drive authentication, folder discovery, folder identity, folder creation, folder recycling, deletion, rename, upload, retry, remote state, or permissions needs only: `No Google Drive integration impact.` It does not require a real Drive smoke test.
