@@ -15,6 +15,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -54,6 +55,7 @@ public final class MainActivity extends Activity {
     private Button refreshWorkOrdersButton;
     private Button dateButton;
     private Button useCreateButton;
+    private Button reuseEmptyButton;
     private EditText workOrderInput;
     private ListView folderList;
     private ArrayAdapter<DriveFolder> adapter;
@@ -104,7 +106,7 @@ public final class MainActivity extends Activity {
         root.addView(title);
 
         TextView phase = new TextView(this);
-        phase.setText("Phase 2 · Work-order folders");
+        phase.setText("Phase 3A · Empty folder reuse");
         phase.setTextSize(14);
         root.addView(phase);
 
@@ -169,6 +171,11 @@ public final class MainActivity extends Activity {
         useCreateButton.setText("Use / Create Work Order");
         useCreateButton.setOnClickListener(v -> useOrCreateWorkOrder());
         workOrderControls.addView(useCreateButton);
+
+        reuseEmptyButton = new Button(this);
+        reuseEmptyButton.setText("Reuse Selected Empty Folder");
+        reuseEmptyButton.setOnClickListener(v -> reuseSelectedEmptyFolder());
+        workOrderControls.addView(reuseEmptyButton);
 
         currentWorkOrderText = new TextView(this);
         currentWorkOrderText.setPadding(0, dp(8), 0, dp(4));
@@ -374,7 +381,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if (createBlockedUntilRefresh) {
-            showMessage("Refresh work-order folders before trying another create.");
+            showMessage("Refresh work-order folders before trying another Drive write.");
             return;
         }
 
@@ -440,6 +447,145 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void reuseSelectedEmptyFolder() {
+        if (selectedAddress == null) {
+            showMessage("Choose an address first.");
+            return;
+        }
+        if (selectedWorkOrder == null) {
+            showMessage("Tap the older work-order folder you want to reuse first.");
+            return;
+        }
+        Uri treeUri = folderPrefs.getMasterTreeUri();
+        if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
+            showMessage("Master folder access expired. Choose it again.");
+            return;
+        }
+        if (!hasPersistedWritePermission(treeUri)) {
+            showMessage("This master folder is read-only. Choose it again and allow write access.");
+            return;
+        }
+        if (createBlockedUntilRefresh) {
+            showMessage("Refresh work-order folders before trying another Drive write.");
+            return;
+        }
+
+        final String requestedName;
+        try {
+            requestedName = WorkOrderFolderName.build(workOrderInput.getText().toString(), selectedDate.toString());
+        } catch (IllegalArgumentException error) {
+            showMessage(error.getMessage());
+            return;
+        }
+
+        final String candidateId = selectedWorkOrder.id();
+        final String candidateName = selectedWorkOrder.name();
+        if (candidateName.equals(requestedName)) {
+            showMessage("The selected folder already has the requested work-order date.");
+            return;
+        }
+        try {
+            if (!WorkOrderFolderName.isOlderSameWorkOrderFolder(
+                    candidateName, workOrderInput.getText().toString(), selectedDate.toString())) {
+                showMessage("Select an older folder for the same work order before reusing it.");
+                return;
+            }
+        } catch (IllegalArgumentException error) {
+            showMessage(error.getMessage());
+            return;
+        }
+
+        final String addressId = selectedAddress.id();
+        setBusy("Checking whether " + candidateName + " is safe to reuse…");
+        executor.execute(() -> {
+            try {
+                List<DriveFolder> folders = driveClient.listFolders(
+                        getContentResolver(), treeUri, addressId);
+                List<DriveFolder> requestedMatches = DriveClient.findExactNameMatches(folders, requestedName);
+
+                if (requestedMatches.size() > 1) {
+                    runOnUiThread(() -> {
+                        if (!isStillOnAddress(addressId)) {
+                            return;
+                        }
+                        visibleFolders.clear();
+                        visibleFolders.addAll(folders);
+                        adapter.notifyDataSetChanged();
+                        statusText.setText(requestedMatches.size() + " folders named " + requestedName
+                                + " already exist. No old folder was renamed; tap the intended existing folder.");
+                        setNotBusy();
+                    });
+                    return;
+                }
+
+                if (requestedMatches.size() == 1) {
+                    DriveFolder existing = requestedMatches.get(0);
+                    runOnUiThread(() -> {
+                        if (!isStillOnAddress(addressId)) {
+                            return;
+                        }
+                        visibleFolders.clear();
+                        visibleFolders.addAll(folders);
+                        adapter.notifyDataSetChanged();
+                        selectWorkOrder(existing, "Requested dated folder already exists; old folder unchanged");
+                    });
+                    return;
+                }
+
+                DriveFolder actualCandidate = DriveClient.findById(folders, candidateId);
+                if (actualCandidate == null) {
+                    runOnUiThread(() -> showMessage(
+                            "The selected old folder is no longer under this address. Refresh and choose again."));
+                    return;
+                }
+                if (!WorkOrderFolderName.isOlderSameWorkOrderFolder(
+                        actualCandidate.name(), workOrderInput.getText().toString(), selectedDate.toString())) {
+                    runOnUiThread(() -> showMessage(
+                            "The selected folder no longer matches an older occurrence of this work order."));
+                    return;
+                }
+
+                if (!driveClient.isFolderEmpty(getContentResolver(), treeUri, candidateId)) {
+                    runOnUiThread(() -> showMessage(
+                            "Selected old folder is not empty. Nothing was renamed or deleted."));
+                    return;
+                }
+
+                DriveFolder renameResult = driveClient.renameFolder(
+                        getContentResolver(), treeUri, candidateId, requestedName);
+                if (!candidateId.equals(renameResult.id())) {
+                    throw new IOException("Drive rename changed the folder identity; refresh before proceeding.");
+                }
+
+                List<DriveFolder> afterRename = driveClient.listFolders(
+                        getContentResolver(), treeUri, addressId);
+                DriveFolder verified = DriveClient.findById(afterRename, candidateId);
+                if (verified == null || !verified.name().equals(requestedName)) {
+                    throw new IOException("Drive rename could not be verified with the original folder identity.");
+                }
+                List<DriveFolder> verifiedMatches = DriveClient.findExactNameMatches(afterRename, requestedName);
+                if (verifiedMatches.size() != 1 || !verifiedMatches.get(0).id().equals(candidateId)) {
+                    throw new IOException("The renamed folder is ambiguous. Refresh and choose the intended folder.");
+                }
+
+                runOnUiThread(() -> {
+                    if (!isStillOnAddress(addressId)) {
+                        return;
+                    }
+                    visibleFolders.clear();
+                    visibleFolders.addAll(afterRename);
+                    adapter.notifyDataSetChanged();
+                    selectWorkOrder(verified, "Empty folder reused with the same identity");
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    createBlockedUntilRefresh = true;
+                    showError("Folder reuse result is not safe to repeat. Refresh before trying again", error);
+                });
+            }
+        });
+    }
+
     private boolean isStillOnAddress(String addressId) {
         return screen == Screen.WORK_ORDERS
                 && selectedAddress != null
@@ -459,13 +605,7 @@ public final class MainActivity extends Activity {
             renderCurrentWorkOrder();
             return;
         }
-        DriveFolder actual = null;
-        for (DriveFolder folder : folders) {
-            if (folder.id().equals(selectedWorkOrder.id())) {
-                actual = folder;
-                break;
-            }
-        }
+        DriveFolder actual = DriveClient.findById(folders, selectedWorkOrder.id());
         if (actual == null) {
             selectedWorkOrder = null;
             folderPrefs.clearCurrentWorkOrder();
@@ -546,6 +686,7 @@ public final class MainActivity extends Activity {
         workOrderInput.setEnabled(false);
         dateButton.setEnabled(false);
         useCreateButton.setEnabled(false);
+        reuseEmptyButton.setEnabled(false);
         folderList.setEnabled(false);
     }
 
@@ -564,6 +705,9 @@ public final class MainActivity extends Activity {
             workOrderInput.setEnabled(canRead);
             dateButton.setEnabled(canRead);
             useCreateButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
+            reuseEmptyButton.setEnabled(canRead && canWrite
+                    && selectedWorkOrder != null
+                    && !createBlockedUntilRefresh);
         }
     }
 
