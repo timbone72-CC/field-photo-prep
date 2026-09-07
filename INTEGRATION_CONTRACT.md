@@ -4,10 +4,10 @@
 
 - Local Android app: Field Photo Prep
 - Remote storage: the authenticated user's Google Drive
-- Primary folder flow: approved master Drive folder → existing or newly created job folder
-- Primary photo flow: captured photo → temporary local queue → exact Drive job folder → confirmed remote file
+- Primary folder flow: approved master Drive folder → address folder → dated work-order folder
+- Primary photo flow: captured photo → temporary local queue → exact Drive work-order folder → confirmed remote file
 
-Google Drive is the long-term source of truth for job folders and uploaded photos. The app may keep lightweight folder mappings and temporary upload state, but it is not a second photo archive.
+Google Drive is the long-term source of truth for address folders, work-order folders, and uploaded photos. The app may keep lightweight folder mappings and temporary upload state, but it is not a second photo archive.
 
 This contract covers the Drive boundary only. Future workbook, Free Map Router, or other-system integrations require their own documented handoff rules before runtime coupling is added.
 
@@ -20,33 +20,36 @@ This contract covers the Drive boundary only. Future workbook, Free Map Router, 
 5. Loss of access to the stored master folder must stop folder discovery and new child-folder creation until the operator resolves or replaces the destination.
 6. The app must not silently substitute another same-named master folder.
 
-## Existing job-folder discovery contract
+## Address-folder discovery contract
 
-1. Google Drive is authoritative for which job folders currently exist under the approved master folder.
-2. The app may query Drive for folder metadata needed to present those existing job folders, including folder ID and display name.
-3. Folder discovery is scoped to the approved workflow and must not become a general-purpose Drive browser unless separately approved.
-4. A locally remembered folder list is a cache only. The app must be able to refresh from Drive.
-5. A Drive folder ID already linked to a remembered job remains authoritative even if the folder name changes.
-6. When creating by requested folder name, the app first checks the approved master folder for matching existing folders.
-7. If exactly one usable matching folder exists, the app reuses that folder and stores its Drive ID.
-8. If multiple matching folders exist, the app requires the operator to choose the intended folder. It must not select by ordering, timestamp, or guesswork.
-9. If no matching folder exists, the app may create a new child folder.
-10. Discovery must not modify, rename, move, delete, or change permissions on folders it reads.
+1. Google Drive is authoritative for which address folders currently exist under the approved master folder.
+2. The app may query Drive for folder metadata needed to present those address folders, including folder ID and display name.
+3. A locally remembered address-folder list is a cache only. The app must be able to refresh from Drive.
+4. A Drive folder ID already linked to a remembered address remains authoritative even if its name changes.
+5. Before address-folder creation, the app checks the approved master folder for an exact usable name match.
+6. One match is reused, multiple matches require operator choice, and no match may be created as one new address folder.
+7. Discovery must not modify, rename, move, delete, or change permissions on folders it reads.
 
-## Job-folder creation contract
+## Work-order folder contract
 
-1. New job folders are created with the approved master folder ID as their parent.
-2. The app records the Drive folder ID returned by Google after successful creation.
-3. A job is not considered remotely linked until a valid existing or newly created Drive folder ID has been confirmed and persisted.
-4. Reopening an already linked job uses its stored folder ID and does not create a new folder merely from its name.
-5. If folder creation result is uncertain, the app must reconcile the result before blindly creating another same-named folder.
-6. Existing unrelated Drive folders must not be renamed, moved, deleted, or repurposed during job creation.
+1. A work-order folder lives directly under one selected address folder.
+2. Initial work-order folder names use `Work Order - YYYY-MM-DD`, for example `Cut Grass - 2026-09-06`.
+3. The work-order name is descriptive text such as `Cut Grass`, `Remove Trash`, `Winterization`, or `Full Property Inspection`.
+4. The date is the local calendar date for that specific work occurrence.
+5. Repeated work of the same type on different dates must use separate dated work-order folders.
+6. Before creating a dated work-order folder, the app checks the selected address folder for an exact usable folder-name match.
+7. If exactly one matching work-order folder exists, the app reuses it and stores its Drive ID.
+8. If multiple exact matches exist, the app requires operator choice and must not guess by timestamp, ordering, or other inference.
+9. If no exact match exists, the app may create one under the selected address folder.
+10. Once selected or created, the work-order folder's Drive ID is authoritative destination identity. Its visible name is not identity.
+11. Reopening the same work occurrence uses its stored folder ID and must not create a duplicate merely from its visible name.
+12. Same-property, same-work-order, same-date ambiguity is not automatically solved by inventing another identifier. If that becomes a real workflow need, it requires an explicit design change.
 
 ## Photo upload contract
 
-1. Every queued photo carries the exact destination job-folder ID captured when that photo entered the job workflow.
-2. Every upload request targets that folder ID explicitly.
-3. The currently visible/open job must not override a queued photo's stored destination.
+1. Every queued photo carries the exact destination work-order-folder ID captured when that photo entered the work occurrence.
+2. Every upload request targets that work-order folder ID explicitly.
+3. The currently visible/open address or work order must not override a queued photo's stored destination.
 4. Remote success is recorded only after Google confirms file creation.
 5. The app records enough remote identity to recognize a confirmed upload and avoid knowingly duplicating it on retry.
 6. A network timeout or ambiguous response is not equivalent to failure and not equivalent to confirmed success. The app must reconcile uncertainty before creating another copy or require operator action.
@@ -57,7 +60,7 @@ This contract covers the Drive boundary only. Future workbook, Free Map Router, 
 ## Authentication and permissions
 
 1. The app authenticates with the user's Google identity rather than using a service account as the normal personal Drive owner.
-2. Use the least authorization that can support selecting the master folder, discovering the approved job folders, creating folders, and uploading photos.
+2. Use the least authorization that can support selecting the master folder, discovering address/work-order folders, creating folders, and uploading photos.
 3. Any requested permission that can expose metadata or content outside the approved workflow must be documented with its exact purpose before merge.
 4. If pre-existing-folder discovery cannot be implemented with the currently approved authorization, the required additional metadata access must be explicitly reviewed rather than silently broadening permissions.
 5. Authentication material must not be exposed in logs, exported job data, image metadata added by the app, or repository files.
@@ -72,11 +75,11 @@ This contract covers the Drive boundary only. Future workbook, Free Map Router, 
 
 ## Retry and duplicate control
 
-1. Retry preserves immutable local photo identity and exact destination folder ID.
+1. Retry preserves immutable local photo identity and exact destination work-order-folder ID.
 2. Confirmed uploaded state is terminal for automatic retry unless the user explicitly requests a new copy.
 3. A failed local status update after remote success must be treated as an uncertain state to reconcile, not as permission to blindly re-upload.
-4. A folder-create retry likewise must not knowingly create duplicate job folders after a confirmed successful create.
-5. Duplicate control may use stored remote file/folder IDs and app-generated stable identities; visible names alone are insufficient identity.
+4. Address-folder and work-order-folder create retries must not knowingly create duplicates after a confirmed successful create.
+5. Duplicate control may use stored remote file/folder IDs and app-generated stable photo identities; visible names alone are insufficient identity after selection.
 6. Folder-name matching is only a discovery step. Once a folder is selected or linked, its Drive ID owns identity.
 
 ## Safe-environment rule
@@ -85,20 +88,21 @@ Drive integration development and verification uses a dedicated test master fold
 
 ## Google Drive Reality Gate
 
-Any runtime change that alters or depends on Drive authentication, master-folder selection, folder discovery, folder creation, folder identity, upload destination, upload confirmation, retry, or remote file identity must complete this gate before being called ready, mergeable, or publishable:
+Any runtime change that alters or depends on Drive authentication, master-folder selection, address-folder discovery, work-order-folder discovery, folder creation, folder identity, upload destination, upload confirmation, retry, or remote file identity must complete this gate before being called ready, mergeable, or publishable:
 
 1. Write the real operator sequence from the initiating tap to the final visible result.
-2. Map the boundary as `app state → actual Drive folder/file ID → Drive API result → persisted app state`.
+2. Map the boundary as `app state → address folder ID → work-order folder ID → Drive API result → persisted app state`.
 3. Verify the test account/folder and required permissions actually exist before the smoke check.
-4. Focused coverage must exercise the real state-building path; directly injecting a fake final folder ID or success state is useful unit coverage but is not sufficient by itself.
-5. In the safe Drive fixture, prove existing folder discovery returns the real child folders expected for the test master folder.
-6. Prove an existing folder is reused without creating a duplicate and that multiple same-named folders require operator choice.
-7. For newly created folders/files, inspect the actual Drive item and confirm it is under the expected parent and has the expected type/name.
-8. Confirm the app persisted the returned/selected Drive identity and can reopen/retry without creating a duplicate.
-9. Confirm unrelated test Drive content is unchanged.
-10. For upload changes, force or simulate one interrupted/failed attempt and prove the temporary recoverable photo and destination identity survive.
-11. After confirmed upload, prove the app can remove unnecessary temporary image data without deleting the Drive copy.
-12. If rollout steps are ordered, do not perform the later step until the required earlier evidence exists.
+4. Focused coverage must exercise the real state-building path; directly injecting fake folder IDs or success state is useful unit coverage but is not sufficient by itself.
+5. In the safe Drive fixture, prove existing address-folder discovery returns the real children expected for the test master folder.
+6. Under a selected address folder, prove dated work-order discovery returns the real work-order children expected there.
+7. Prove one exact existing folder is reused without creating a duplicate and that multiple same-named folders require operator choice at each relevant level.
+8. For newly created folders/files, inspect the actual Drive item and confirm it is under the expected parent and has the expected type/name.
+9. Confirm the app persisted the returned/selected Drive identities and can reopen/retry without creating duplicates.
+10. Confirm unrelated test Drive content is unchanged.
+11. For upload changes, force or simulate one interrupted/failed attempt and prove the temporary recoverable photo and exact work-order-folder destination survive.
+12. After confirmed upload, prove the app can remove unnecessary temporary image data without deleting the Drive copy.
+13. If rollout steps are ordered, do not perform the later step until the required earlier evidence exists.
 
 ## Future cross-project integration
 
