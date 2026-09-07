@@ -28,12 +28,13 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] Multiple same-named address matches require operator choice and are never guessed.
 - [ ] No-match creation creates exactly one address folder under the approved master folder.
 - [ ] Failure or ambiguous create result does not blindly create repeated address folders.
+- [ ] Address folders are never recycled by the work-order reuse feature.
 
 ## D. Work-order folder discovery and creation
 
 - [ ] Selecting an address shows the actual usable work-order folders directly under that address folder.
 - [ ] Work-order folders use `Work Order - YYYY-MM-DD` names, for example `Cut Grass - 2026-09-06`.
-- [ ] The same work-order name on different dates remains separated into different folders.
+- [ ] The same work-order name on different dates remains separated into different folders unless the operator intentionally reuses an old one.
 - [ ] Different work-order names on the same date remain separate folders.
 - [ ] Requesting a dated work-order name with exactly one existing match reuses that folder.
 - [ ] Reusing an existing work-order folder stores/retains that folder's Drive ID.
@@ -42,7 +43,24 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] No-match creation creates exactly one work-order folder under the selected address folder.
 - [ ] A work-order folder is never accidentally created at the master-folder root.
 
-## E. Camera capture
+## E. Work-order folder reuse
+
+- [ ] When the new dated folder does not exist, the app may offer older folders only under the selected address.
+- [ ] Simple reuse candidates match the requested work-order name, for example old `Cut Grass` for new `Cut Grass`.
+- [ ] The app checks the actual selected old folder contents before deciding whether it is empty.
+- [ ] A truly empty old work-order folder can be renamed to the new date without changing its Drive folder ID.
+- [ ] Empty-folder reuse does not change the folder's address parent.
+- [ ] A non-empty old folder is never cleared or renamed automatically.
+- [ ] **Clear & Reuse** shows the exact old folder name and child-item count before confirmation.
+- [ ] Cancelling confirmation changes nothing in Drive.
+- [ ] Confirmed **Clear & Reuse** removes only the selected work-order folder's child items.
+- [ ] The app verifies the selected folder is empty before renaming it.
+- [ ] The renamed folder keeps the same Drive ID.
+- [ ] A child-deletion failure stops reuse and leaves the folder visibly incomplete rather than pretending success.
+- [ ] A rename failure stops reuse and no new-work photos are sent into that folder.
+- [ ] No unrelated Drive file, sibling work-order folder, address folder, or other property is changed.
+
+## F. Camera capture
 
 - [ ] Camera preview opens for the selected work occurrence.
 - [ ] Photo capture succeeds on the supported device/emulator path.
@@ -51,14 +69,14 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] Camera works while offline.
 - [ ] Leaving the camera does not discard an unconfirmed accepted photo unexpectedly.
 
-## F. Photo preparation
+## G. Photo preparation
 
 - [ ] Prepared upload copy is created without losing the unconfirmed recoverable photo.
 - [ ] Prepared copy is visually usable for field documentation.
 - [ ] Orientation remains correct after preparation.
 - [ ] Preparation failure leaves enough recoverable temporary data to retry or recapture safely.
 
-## G. Upload destination
+## H. Upload destination
 
 - [ ] Photo uploads to the exact work-order-folder Drive ID bound to that photo.
 - [ ] Changing the currently open address before upload completes does not redirect the photo.
@@ -68,7 +86,7 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] Uploaded photo does not land in another same-named work-order folder.
 - [ ] Unrelated Drive files/folders remain unchanged.
 
-## H. Upload status and local cleanup
+## I. Upload status and local cleanup
 
 - [ ] Waiting state is distinguishable from uploaded state.
 - [ ] Uploading state is distinguishable from uploaded state.
@@ -78,7 +96,7 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] Temporary local image data is not removed before remote success and local bookkeeping are both secure.
 - [ ] Confirmed uploaded images do not remain indefinitely as an unnecessary in-app photo library.
 
-## I. Offline and retry
+## J. Offline and retry
 
 - [ ] Capture while offline creates a persistent temporary waiting item.
 - [ ] Waiting item survives app/process restart.
@@ -87,7 +105,7 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] Retry does not knowingly create a second copy after confirmed upload.
 - [ ] Ambiguous upload result is reconciled or surfaced rather than blindly retried.
 
-## J. Unconfirmed-photo protection
+## K. Unconfirmed-photo protection
 
 - [ ] Sign-in failure does not delete an unconfirmed photo.
 - [ ] Drive failure does not delete an unconfirmed photo.
@@ -95,16 +113,18 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] App restart does not delete waiting unconfirmed photos.
 - [ ] Successful cleanup after confirmed upload does not delete the Drive copy.
 
-## K. Permissions and destructive behavior
+## L. Permissions and destructive behavior
 
 - [ ] Folder discovery reads only what the approved workflow requires.
 - [ ] App does not create public Drive links automatically.
 - [ ] App does not alter Drive sharing permissions automatically.
-- [ ] App does not move/rename/delete existing Drive content during ordinary discover/create/upload flow.
-- [ ] App does not delete Drive photos, work-order folders, or address folders through any unapproved path.
+- [ ] Ordinary discover/create/upload flow does not move/rename/delete existing Drive content.
+- [ ] Destructive deletion occurs only inside confirmed **Clear & Reuse** for one exact selected work-order folder.
+- [ ] App does not delete the selected work-order folder itself during **Clear & Reuse**.
+- [ ] App does not delete address folders or arbitrary Drive content through the reuse feature.
 - [ ] Authentication material is not exposed in logs or exported app data.
 
-## L. Minimal field workflow
+## M. Minimal field workflow
 
 Run this as the primary end-to-end smoke check once the first working version exists:
 
@@ -120,9 +140,10 @@ Run this as the primary end-to-end smoke check once the first working version ex
 10. Confirm no unconfirmed photo is lost during upload/retry.
 11. After confirmed upload and local bookkeeping, confirm temporary image data can be cleaned up and the Drive copies remain intact.
 12. Restart the app, refresh Drive folders, and confirm the existing address and work-order folders are found without duplicates.
-13. Create `Cut Grass - 2026-09-13` under the same address and confirm it remains separate from the 2026-09-06 occurrence.
+13. Delete the disposable photos from the test `Cut Grass - 2026-09-06` folder so it is empty, then reuse it as `Cut Grass - 2026-09-13`; confirm the Drive folder ID stays the same.
+14. Add disposable content to that folder, choose **Clear & Reuse** for a later grass-cut date, confirm the warning/count, and verify only that folder's disposable children are removed before rename.
 
-## M. Initial non-requirements guard
+## N. Initial non-requirements guard
 
 For unrelated changes, confirm the change did not accidentally introduce or require:
 
@@ -130,6 +151,7 @@ For unrelated changes, confirm the change did not accidentally introduce or requ
 - workbook integration;
 - Free Map Router integration;
 - automatic sharing changes;
+- general-purpose Drive deletion outside approved **Clear & Reuse**;
 - video capture;
 - background location tracking;
 - OCR/AI processing;
