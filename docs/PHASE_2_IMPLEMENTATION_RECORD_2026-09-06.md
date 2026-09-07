@@ -129,6 +129,36 @@ Real-device checks for this phase:
 7. Confirm unrelated sibling/address/master Drive content is unchanged.
 8. Phase 2 does not test recycling, deletion, rename, camera, or uploads.
 
+## Automated verification result
+
+Runtime commit:
+
+`e0e5a25f5cec684fd1115992ae2c596c5801e528`
+
+GitHub Actions run `34080446197` passed on that exact runtime head:
+
+- unit tests: passed;
+- debug APK build: passed;
+- Android install/launch smoke test: passed;
+- debug APK artifact packaging: passed.
+
+## Real-device verification result
+
+Completed by the operator on 2026-09-06 using the disposable address folder:
+
+`HNP Jobs → FIELD PHOTO PREP TEST`
+
+Verified behavior:
+
+1. `FIELD PHOTO PREP TEST` was visible/selectable from the real `HNP Jobs` master folder.
+2. The app created/selectively used `Cut Grass - 2026-09-06` under that test address.
+3. Repeating the exact same Use/Create action reported `Existing work-order folder reused: Cut Grass - 2026-09-06`.
+4. Direct inspection in Google Drive confirmed there was only one `Cut Grass - 2026-09-06` folder under `FIELD PHOTO PREP TEST`; no duplicate was created by the repeated action.
+5. After fully closing and reopening Field Photo Prep, reopening `FIELD PHOTO PREP TEST` and refreshing work orders still showed the same `Cut Grass - 2026-09-06` folder.
+6. No recycle, rename, deletion, Clear & Reuse, camera, photo preparation, or upload behavior was exercised in this phase.
+
+The optional duplicate-name fixture test was not required for this device pass because no safe duplicate-name fixture was introduced. Automated coverage protects the multiple-exact-match branch and prevents automatic selection/creation in that state.
+
 ## Failure recovery
 
 - Read failure: refresh when Drive/provider access is restored; no write occurred.
@@ -138,4 +168,4 @@ Real-device checks for this phase:
 
 ## Pre-merge approval status
 
-Pending explicit operator approval after automated checks and the Phase 2 real-device reality gate pass.
+Reality-gate evidence is recorded. Phase 2 remains unmerged pending explicit operator approval for the Level 3 merge.
