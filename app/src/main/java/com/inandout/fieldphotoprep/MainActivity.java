@@ -54,6 +54,7 @@ public final class MainActivity extends Activity {
     private Button refreshAddressButton;
     private Button backButton;
     private Button refreshWorkOrdersButton;
+    private Button selectWorkOrderButton;
     private Button dateButton;
     private Button useCreateButton;
     private Button reuseEmptyButton;
@@ -159,6 +160,12 @@ public final class MainActivity extends Activity {
         navigationRow.addView(refreshWorkOrdersButton, new LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         workOrderControls.addView(navigationRow);
+
+        selectWorkOrderButton = new Button(this);
+        selectWorkOrderButton.setText("Select Work Order");
+        selectWorkOrderButton.setEnabled(false);
+        selectWorkOrderButton.setOnClickListener(v -> showWorkOrderPicker());
+        workOrderControls.addView(selectWorkOrderButton);
 
         workOrderInput = new EditText(this);
         workOrderInput.setHint("Work order, e.g. Cut Grass");
@@ -293,9 +300,11 @@ public final class MainActivity extends Activity {
         screen = Screen.WORK_ORDERS;
         addressControls.setVisibility(View.GONE);
         workOrderControls.setVisibility(View.VISIBLE);
+        listLabel.setVisibility(View.GONE);
+        folderList.setVisibility(View.GONE);
         addressText.setText("Address: " + address.name());
-        listLabel.setText("Work-order folders");
         renderCurrentWorkOrder();
+        renderWorkOrderPickerButton();
         refreshWorkOrderFolders();
     }
 
@@ -306,6 +315,8 @@ public final class MainActivity extends Activity {
         createBlockedUntilRefresh = false;
         addressControls.setVisibility(View.VISIBLE);
         workOrderControls.setVisibility(View.GONE);
+        listLabel.setVisibility(View.VISIBLE);
+        folderList.setVisibility(View.VISIBLE);
         listLabel.setText("Address folders");
         visibleFolders.clear();
         if (adapter != null) {
@@ -352,6 +363,38 @@ public final class MainActivity extends Activity {
                 runOnUiThread(() -> showError("Could not read work-order folders", error));
             }
         });
+    }
+
+    private void showWorkOrderPicker() {
+        if (screen != Screen.WORK_ORDERS || visibleFolders.isEmpty()) {
+            showMessage("No work-order folders are available to select.");
+            return;
+        }
+
+        CharSequence[] labels = new CharSequence[visibleFolders.size()];
+        for (int i = 0; i < visibleFolders.size(); i++) {
+            labels[i] = folderLabel(visibleFolders.get(i));
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select work-order folder")
+                .setItems(labels, (dialog, which) -> {
+                    if (which >= 0 && which < visibleFolders.size()) {
+                        selectWorkOrder(visibleFolders.get(which), "Work order selected");
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void renderWorkOrderPickerButton() {
+        if (selectWorkOrderButton == null) {
+            return;
+        }
+        int count = screen == Screen.WORK_ORDERS ? visibleFolders.size() : 0;
+        selectWorkOrderButton.setText(count == 0
+                ? "Select Work Order"
+                : "Select Work Order (" + count + ")");
     }
 
     private void chooseWorkOrderDate() {
@@ -417,7 +460,7 @@ public final class MainActivity extends Activity {
                         visibleFolders.addAll(folders);
                         adapter.notifyDataSetChanged();
                         statusText.setText(matches.size() + " folders named " + requestedName
-                                + " already exist. Tap the intended one; no folder was created.");
+                                + " already exist. Select the intended one; no folder was created.");
                         setNotBusy();
                     });
                     return;
@@ -460,7 +503,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if (selectedWorkOrder == null) {
-            showMessage("Tap the older work-order folder you want to reuse first.");
+            showMessage("Select the older work-order folder you want to reuse first.");
             return;
         }
         Uri treeUri = folderPrefs.getMasterTreeUri();
@@ -519,7 +562,7 @@ public final class MainActivity extends Activity {
                         visibleFolders.addAll(folders);
                         adapter.notifyDataSetChanged();
                         statusText.setText(requestedMatches.size() + " folders named " + requestedName
-                                + " already exist. No old folder was renamed; tap the intended existing folder.");
+                                + " already exist. No old folder was renamed; select the intended existing folder.");
                         setNotBusy();
                     });
                     return;
@@ -599,7 +642,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if (selectedWorkOrder == null) {
-            showMessage("Tap the older work-order folder you want to clear and reuse first.");
+            showMessage("Select the older work-order folder you want to clear and reuse first.");
             return;
         }
         Uri treeUri = folderPrefs.getMasterTreeUri();
@@ -658,7 +701,7 @@ public final class MainActivity extends Activity {
                         visibleFolders.addAll(folders);
                         adapter.notifyDataSetChanged();
                         statusText.setText(requestedMatches.size() + " folders named " + requestedName
-                                + " already exist. Nothing was deleted; tap the intended existing folder.");
+                                + " already exist. Nothing was deleted; select the intended existing folder.");
                         setNotBusy();
                     });
                     return;
@@ -986,6 +1029,7 @@ public final class MainActivity extends Activity {
         refreshAddressButton.setEnabled(false);
         backButton.setEnabled(false);
         refreshWorkOrdersButton.setEnabled(false);
+        selectWorkOrderButton.setEnabled(false);
         workOrderInput.setEnabled(false);
         dateButton.setEnabled(false);
         useCreateButton.setEnabled(false);
@@ -999,13 +1043,16 @@ public final class MainActivity extends Activity {
         boolean canRead = treeUri != null && hasPersistedReadPermission(treeUri);
         boolean canWrite = treeUri != null && hasPersistedWritePermission(treeUri);
 
+        renderWorkOrderPickerButton();
         folderList.setEnabled(canRead);
         if (screen == Screen.ADDRESSES) {
             chooseMasterButton.setEnabled(true);
             refreshAddressButton.setEnabled(canRead);
+            selectWorkOrderButton.setEnabled(false);
         } else {
             backButton.setEnabled(true);
             refreshWorkOrdersButton.setEnabled(canRead);
+            selectWorkOrderButton.setEnabled(canRead && !visibleFolders.isEmpty());
             workOrderInput.setEnabled(canRead);
             dateButton.setEnabled(canRead);
             useCreateButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
