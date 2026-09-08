@@ -53,6 +53,7 @@ Original field photos are protected source evidence.
 7. The resize percentage affects pixel dimensions, not the original file.
 8. The app must create a new encoded image file for the resized copy.
 9. The initial implementation should preserve normal field-photo visual quality rather than pursue the smallest technically possible file size.
+10. On representative Galaxy S21 field photos, the 60% setting must produce a materially smaller output file while retaining visually acceptable field-photo detail. No fixed megabyte target is required unless later testing supports one.
 
 ## 5. Output rules
 
@@ -63,6 +64,7 @@ Original field photos are protected source evidence.
 5. If Android prevents saving a requested copy, the app must report the failure rather than alter the source photo.
 6. Successfully created copies may remain available after sharing so the operator can retry an upload without resizing the originals again.
 7. Automatic deletion of successful resized copies is not part of the initial approved behavior.
+8. A future cleanup feature may delete only output files that the app can positively identify as Field Photo Prep-created copies. It must never infer that an original is safe to delete merely from its filename or folder location.
 
 ## 6. Filename rules
 
@@ -87,13 +89,16 @@ Original field photos are protected source evidence.
 
 ## 8. Batch-processing rules
 
-1. Each selected photo is processed as its own item within the batch.
-2. One failed photo must not cause already completed resized copies to be deleted.
-3. One failed photo should not prevent remaining selected photos from being attempted unless continuing would risk data corruption or the device cannot safely continue.
-4. The final result must distinguish successful photos from failed photos.
-5. The app must not report a batch as fully successful when one or more selected photos failed.
-6. The operator must be able to identify that a failure occurred without inspecting Android system logs.
-7. Processing must be designed to avoid loading an entire large batch of full-resolution images into memory at the same time.
+1. Each operator-started processing run is one batch, and each selected photo is processed as its own item within that batch.
+2. The current batch must remain identifiable separately from older prepared output so sharing or retrying the current job does not silently include photos from an earlier batch.
+3. The normal Share action must share only the current batch, or an explicitly selected prepared batch, and must not silently include older prepared photos.
+4. One failed photo must not cause already completed resized copies to be deleted.
+5. One failed photo should not prevent remaining selected photos from being attempted unless continuing would risk data corruption or the device cannot safely continue.
+6. The final result must distinguish successful photos from failed photos.
+7. The app must not report a batch as fully successful when one or more selected photos failed.
+8. The operator must be able to identify that a failure occurred without inspecting Android system logs.
+9. Processing must be designed to avoid loading an entire large batch of full-resolution images into memory at the same time.
+10. If the operator cancels after processing has begun, already completed resized copies remain available, unprocessed source photos remain unchanged, and the batch is reported as cancelled or incomplete rather than fully successful.
 
 ## 9. Supported files and output format
 
@@ -153,6 +158,7 @@ It should provide:
 - filename conflict protection;
 - supported metadata preservation;
 - clear success/failure reporting;
+- current-batch isolation so older prepared photos are not silently mixed into a new job;
 - operator-initiated sharing of resized copies.
 
 The following are outside the initial required scope unless separately approved:
