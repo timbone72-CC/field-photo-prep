@@ -34,6 +34,8 @@ Any failure in this section blocks merge or release.
 - Confirm landscape images remain landscape.
 - Confirm rotation/orientation is visually correct after processing.
 - Confirm a resized copy is visibly smaller in pixel dimensions than its original when the selected percentage is below 100%.
+- On representative Galaxy S21 field photos, record original and resized file sizes and confirm the 60% output is materially smaller while retaining visually acceptable field-photo detail.
+- Do not require a fixed megabyte target unless later approved testing establishes one.
 - Confirm resizing creates a new file rather than modifying the source file.
 - If additional resize percentages exist, verify each supported percentage independently.
 
@@ -61,9 +63,12 @@ Use disposable test photos that contain known metadata.
 ## 6. Batch processing
 
 - Process at least 30 normal Galaxy-style JPEG photos in one batch.
+- Confirm each processing run remains identifiable separately from older prepared output.
+- Prepare one batch, then prepare a second batch, and confirm the second batch does not silently contain or share photos from the first.
 - Confirm the success count matches the number of successfully created copies.
 - Confirm failed items are identified without being counted as successful.
 - Confirm one failed item does not corrupt or alter other originals.
+- Cancel processing after at least one output copy has completed and confirm completed copies remain available, unprocessed originals remain untouched, and the batch is reported as cancelled or incomplete.
 - Confirm the app remains responsive enough for the operator to understand that processing is still underway.
 - Confirm the operator receives a clear completion result when the batch finishes.
 
@@ -79,6 +84,8 @@ Use disposable test photos that contain known metadata.
 
 - Confirm sharing is initiated by the operator.
 - Confirm the Android share workflow receives resized copies, not originals, unless the operator explicitly chooses otherwise in a future approved feature.
+- Confirm the normal Share action includes only the current batch or an explicitly selected prepared batch, not older prepared photos.
+- Confirm a successfully prepared batch can be shared again without resizing the originals again.
 - Confirm Google Drive can be selected from the Android share workflow when installed and available.
 - Cancel the share flow and confirm both originals and resized copies remain intact.
 - Confirm a share failure does not delete or alter originals or completed resized copies.
@@ -112,4 +119,4 @@ Before approving a runtime release:
 - No protected original photo was modified, moved, renamed, overwritten, or deleted during verification.
 - Any Level 3 change has explicit operator approval before merge.
 
-A failure involving original-photo safety, data loss, unexpected permissions, or overwrite behavior is a hard stop. Do not merge, publish, or distribute that build until the failure is corrected and the affected checks pass again.
+A failure involving original-photo safety, data loss, unexpected permissions, overwrite behavior, or silent cross-batch photo mixing is a hard stop. Do not merge, publish, or distribute that build until the failure is corrected and the affected checks pass again.
