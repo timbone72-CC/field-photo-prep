@@ -129,7 +129,7 @@ The operator then reselected the intended `HNP Jobs` master and reopened `FIELD 
 - `Master folder: HNP Jobs`
 - `Address: FIELD PHOTO PREP TEST`
 
-As a safety hardening response, the Phase 3B confirmation was changed to display the full hierarchy itself before the destructive action is available. Runtime head after that hardening is listed under verification below.
+As a safety hardening response, the Phase 3B confirmation was changed to display the full hierarchy itself before the destructive action is available. The Android version code was then bumped so this hardened build can install in place over the earlier Phase 3B test build without clearing the corrected master selection.
 
 ### Cancellation check
 
@@ -163,11 +163,17 @@ Original Phase 3B runtime commit:
 
 passed Android CI run `34116076640`.
 
-Final hierarchy-warning runtime head:
+Hierarchy-warning runtime commit:
 
 `4a978d4fcdfb9a3c3676494d7273eee46de9e6e5`
 
-passed Android CI run `34244198117`:
+passed Android CI run `34244198117`.
+
+Final in-place-update runtime head:
+
+`4d9dcdf08c4020871bf8e736e4e1dbaa576d62de`
+
+passed Android CI run `34244802654`:
 
 - unit tests passed;
 - debug APK build passed;
