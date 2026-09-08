@@ -90,4 +90,12 @@ public final class DriveClientTest {
         assertEquals(1, snapshot.folderCount());
         assertEquals(Arrays.asList("photo", "nested-folder"), snapshot.documentIds());
     }
+
+    @Test
+    public void destructiveReuseRequiresProviderRefreshAndSettledCursor() {
+        assertTrue(DriveClient.isAuthoritativeChildState(true, false));
+        assertFalse(DriveClient.isAuthoritativeChildState(false, false));
+        assertFalse(DriveClient.isAuthoritativeChildState(true, true));
+        assertFalse(DriveClient.isAuthoritativeChildState(false, true));
+    }
 }
