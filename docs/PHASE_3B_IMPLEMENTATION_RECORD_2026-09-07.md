@@ -6,34 +6,33 @@ Date: 2026-09-07
 
 Phase 3B only:
 
-- keep all merged Phase 1, Phase 2, and Phase 3A behavior;
-- let the operator explicitly select one non-empty older work-order folder under the currently selected address;
-- require the requested new occurrence to use the same exact work-order text and a later local date;
-- before destructive action, re-read the selected address and re-resolve the selected old folder by stable document-provider ID;
-- enumerate every direct child item of that exact selected work-order folder;
-- show the old folder name, direct child-item count, and requested new folder name before confirmation;
-- warn when any direct child is itself a folder because deleting that direct child folder also removes its contents;
+- keep merged Phase 3A empty-folder reuse behavior;
+- let the operator explicitly choose **Clear & Reuse** for one selected non-empty old work-order folder;
+- re-resolve the selected address and work-order by stable document-provider identity before destructive work;
+- verify the selected folder is an older occurrence of the same exact work-order text;
+- confirm the requested new dated folder does not already exist;
+- enumerate every direct child item of the selected old folder;
+- show the full destructive hierarchy before confirmation: selected master, selected address, old work-order folder, direct-child count, and requested new work-order folder;
+- warn when any direct child is itself a folder because deleting that child folder also removes its contained descendants;
 - require explicit operator confirmation;
-- after confirmation, re-read the selected folder and its child IDs again;
-- if the selected folder name, target state, or child-ID set changed after confirmation, stop without deleting anything and require a fresh review;
-- remove only the direct child items returned from that exact selected work-order folder;
-- stop immediately on any child-deletion failure and never rename a partially cleared folder;
-- verify the selected work-order folder has zero children after deletion;
-- rename that same folder to the new `Work Order - YYYY-MM-DD` name only after confirmed emptiness;
-- verify the same stable folder ID still resolves under the same address with the new name;
+- after confirmation, re-read the selected folder and child IDs and stop if the confirmed set changed;
+- delete only the direct children that were explicitly included in the confirmed snapshot;
+- fail fast on the first deletion failure;
+- verify the selected work-order folder contains zero direct children after deletion;
+- only after confirmed emptiness, rename that same work-order folder to the requested `Work Order - YYYY-MM-DD` name;
+- verify the same stable folder ID remains under the same address and is the only exact target after rename;
 - persist that same folder identity as the selected work occurrence.
 
 Explicitly excluded:
 
 - automatic clearing or recycling;
-- address-folder deletion/recycling;
+- deleting the selected work-order folder itself;
+- deleting or recycling address folders;
 - deleting sibling work-order folders;
-- deleting arbitrary Drive content;
-- moving the selected work-order folder;
+- arbitrary Drive cleanup or file-manager behavior;
 - sharing/permission changes;
 - camera/photo preparation/upload;
-- workbook or Free Map Router integration;
-- general Drive cleanup or file-manager behavior.
+- workbook or Free Map Router integration.
 
 ## Governed base and rollback
 
@@ -47,125 +46,71 @@ Phase 3B branch:
 
 ## Change level
 
-Level 3 because Phase 3B intentionally deletes existing Google Drive content before reusing a work-order folder.
+Level 3 because this phase intentionally deletes existing remote child content before reusing a work-order folder.
 
-Explicit operator approval is required before merge after the final automated suite and real-device Drive reality gate pass.
+Explicit operator approval is required before merge after automated verification and the real-device Drive gate.
 
-## Identity boundary
+## Architecture and identity
 
-The app continues using Android Storage Access Framework (SAF) inside the persisted master-folder tree.
+The app continues using Android Storage Access Framework (SAF) inside the operator-selected persisted master-folder tree. No OAuth/REST token, account-wide Drive scope, INTERNET permission, dependency, signing, or sharing behavior changes in Phase 3B.
 
-For this runtime, contract references to Drive folder ID map to the stable document-provider ID inside the persisted tree grant.
+For this runtime, governed Drive folder identity maps to the document-provider ID inside the persisted tree grant.
 
 Destructive boundary:
 
-`persisted master tree URI → selected address document ID → selected old work-order document ID → direct-child snapshot → operator confirmation → second direct-child snapshot → exact child deletions → verified empty folder → rename → same work-order document ID with new name → persisted selected work-order state`
+`persisted master tree URI → selected address document ID → selected old work-order document ID → direct-child ID snapshot → explicit operator confirmation → snapshot revalidation → child deletions → confirmed empty folder → rename → same work-order document ID with new name → persisted selected work-order state`
 
-Visible names remain discovery/context only. No visible name alone authorizes deletion.
+Visible folder names are display/context only. Delete and rename authorization comes from the exact selected identities plus explicit confirmation.
 
-## Operator flow
+## Confirmation contract
 
-1. Open the intended address.
-2. Tap the exact older work-order folder to select it.
-3. Enter the same work-order text and choose the newer local date.
-4. Tap **Clear & Reuse Selected Folder**.
-5. App re-reads the selected address and resolves the selected old folder by exact ID.
-6. App verifies that the requested target dated folder does not already exist.
-7. App verifies that the selected old folder still has the same name and remains an older occurrence of the same exact work-order text.
-8. App enumerates all direct child items of that exact old folder.
-9. If the folder is empty, Phase 3B stops and tells the operator to use the non-destructive empty-folder reuse control.
-10. If non-empty, app shows the old folder name, direct child-item count, requested new folder name, and any child-folder warning.
-11. Operator may cancel; cancellation changes nothing.
-12. On confirmation, app re-reads the folder and its direct child IDs again.
-13. If the folder name, target state, or child-ID set changed since confirmation, app stops before deletion and requires a fresh review.
-14. App deletes only the confirmed direct child IDs from the selected work-order folder.
-15. Any child-deletion failure stops the workflow immediately. The folder is not renamed and further Drive writes are blocked until refresh.
-16. After all requested deletions return success, app re-enumerates the selected folder and requires zero children.
-17. Only then may the app rename the same folder ID to the new dated name.
-18. App re-reads the selected address and verifies exactly one requested target name exists and it is the original selected folder ID.
-19. Only then is Clear & Reuse reported complete.
+Before any deletion, the dialog must show:
 
-## Confirmation snapshot rule
+- master folder name;
+- address folder name;
+- old selected work-order folder name;
+- direct child-item count;
+- requested new work-order folder name;
+- a warning if any direct child is itself a folder.
 
-The confirmation is authorization for one exact destructive set, not a general permission to empty whatever happens to be in the folder later.
+The dialog provides **Cancel** and **Clear & Reuse** actions. Cancelling or dismissing changes nothing.
 
-The app records the direct child document IDs shown by the pre-confirmation enumeration. After confirmation it enumerates again and compares IDs without relying on order.
+The confirmation is bound to the exact child-ID snapshot. After confirmation, the app re-reads the current child IDs. If the set differs, no deletion begins and the operator must review Clear & Reuse again.
 
-If an item was added, removed, or replaced between those two reads, no deletion occurs. The operator must run Clear & Reuse again and confirm the new count/state.
+## Deletion and failure behavior
 
-## Child deletion rule
+- Delete only the confirmed direct child IDs of the selected work-order folder.
+- Never delete the selected work-order folder itself.
+- A direct child folder is treated as one direct item; Android/provider deletion of that folder also removes its descendants, which is why the confirmation warns about child folders.
+- Stop on the first deletion failure.
+- After any partial deletion failure, the old work-order folder is not renamed.
+- After partial/uncertain destructive state, block further create/reuse Drive writes until refresh and operator inspection.
+- After all requested deletions report success, re-read the selected folder and require zero children before rename.
+- Rename failure after successful clearing leaves the folder empty but not ready for new work; further writes remain blocked until refresh/inspection.
 
-- Only document IDs returned as direct children of the selected work-order folder may be passed to delete.
-- The selected work-order folder itself is never deleted.
-- The address folder is never deleted.
-- Sibling work-order folders are never deleted.
-- A direct child folder counts as one direct child item; deleting that child folder also removes its own contents, so the confirmation explicitly warns when child folders are present.
-- Deletion is sequential and fail-fast.
-- A failure after some earlier deletions is treated as incomplete destructive state; no rename follows.
+## Duplicate and stale-state rules
 
-## Failure and uncertain-state handling
+- If the requested dated target already exists, do not clear the old folder; select/reuse the existing target or require operator choice if duplicated.
+- If the selected old folder ID is no longer under the selected address, stop before deletion.
+- If its visible name changed before confirmation or between confirmation and deletion, stop.
+- If it is no longer an older same-work-order occurrence, stop.
+- If the confirmed child-ID set changed before deletion, stop.
+- If the app cannot read contents with certainty, stop.
+- No blind retry after a destructive failure or uncertain result.
 
-### Before the first child deletion
+## Automated coverage
 
-Read, eligibility, stale-selection, existing-target, changed-name, changed-child-set, and cancellation failures make no Drive change and do not enter destructive recovery state.
+Focused automated coverage includes:
 
-### After deletion begins
+- existing folder MIME/discovery behavior;
+- exact-name duplicate handling;
+- exact folder identity lookup by document ID;
+- child snapshot count and child-folder count;
+- stable child-ID comparison independent of enumeration order;
+- changed child-ID set rejection;
+- existing Phase 3A work-order eligibility/naming coverage.
 
-If any deletion fails:
-
-- stop immediately;
-- report how many of the confirmed direct items were removed before the failure;
-- do not rename the work-order folder;
-- block further create/reuse Drive writes until the operator refreshes actual Drive state;
-- require a fresh Clear & Reuse review before any later destructive retry.
-
-If deletion calls all return success but the folder cannot be confirmed empty:
-
-- do not rename;
-- mark the operation incomplete;
-- block further create/reuse Drive writes until refresh.
-
-If rename or post-rename verification fails after successful clearing:
-
-- do not report the folder ready;
-- block further create/reuse Drive writes until refresh;
-- require the operator to inspect the actual safe-fixture folder name/contents before proceeding.
-
-No photo upload exists yet, so Phase 3B cannot begin new-work uploads. Future upload phases must honor the same incomplete-destructive-state rule before allowing photos into a partially processed folder.
-
-## Read surfaces
-
-- persisted master-tree permission state;
-- direct work-order folders under the selected address;
-- exact selected work-order folder identity and name;
-- all direct child item IDs and MIME types under that selected work-order folder.
-
-## Write surfaces
-
-Remote:
-
-- deletion of confirmed direct child items of one exact selected work-order folder;
-- rename of that same selected work-order folder after verified emptiness.
-
-Local:
-
-- selected work-order name/ID after verified successful rename;
-- in-memory write-block state after uncertain/incomplete destructive results until refresh.
-
-No auth scope, master-folder permission, account, dependency, INTERNET permission, signing, sharing, or parent-folder behavior changes.
-
-## Focused automated coverage
-
-Phase 3B focused tests cover:
-
-- existing exact-match folder behavior remains unchanged;
-- selected folder identity remains ID-based;
-- confirmation child-ID snapshots compare independent of provider ordering;
-- any added/removed/replaced child causes snapshot mismatch;
-- direct-child snapshot count and child-folder count are preserved;
-- existing same-work-order older-date eligibility tests from Phase 3A remain in the complete suite.
-
-Provider deletion and rename success/failure cannot be proven by JVM helpers alone and require the real safe-folder gate below.
+Real Google Drive SAF deletion/rename behavior is verified through the safe device gate rather than overclaiming from JVM mocks.
 
 ## Safe Drive fixture / reality gate
 
@@ -173,63 +118,62 @@ Use only:
 
 `HNP Jobs → FIELD PHOTO PREP TEST`
 
-Expected current old occurrence after Phase 3A:
+No live customer/job folder is a test target.
 
-`Cut Grass - 2026-09-13`
+### Pre-destructive hierarchy check
 
-Target occurrence for successful Phase 3B test:
+During the first Phase 3B device setup, reinstall/reselection left the Android folder picker positioned inside a nested test folder and the operator accidentally selected a nested folder as the app master. No Phase 3B deletion was executed. The app's visible master/address labels exposed the mistake before destructive confirmation.
 
-`Cut Grass - 2026-09-20`
+The operator then reselected the intended `HNP Jobs` master and reopened `FIELD PHOTO PREP TEST`. The app correctly displayed:
 
-### A. Confirmation and cancellation check
+- `Master folder: HNP Jobs`
+- `Address: FIELD PHOTO PREP TEST`
 
-1. Put disposable direct child content inside `Cut Grass - 2026-09-13`.
-2. In the app select that exact folder, enter `Cut Grass`, and choose `2026-09-20`.
+As a safety hardening response, the Phase 3B confirmation was changed to display the full hierarchy itself before the destructive action is available. Runtime head after that hardening is listed under verification below.
+
+### Cancellation check
+
+1. Ensure one selected old test work-order folder has disposable direct content.
+2. Select that old folder and request a newer date for the same work-order text.
 3. Tap **Clear & Reuse Selected Folder**.
-4. Confirm the warning shows the exact old folder name and correct direct child count.
+4. Confirm the dialog shows correct master, address, old folder, direct-child count, and new folder.
 5. Tap **Cancel**.
-6. Inspect Drive and prove the old folder, all children, and absence of `Cut Grass - 2026-09-20` are unchanged.
+6. Inspect Drive: old folder and every disposable child remain unchanged, and no new target folder exists.
 
-### B. Successful Clear & Reuse
+### Successful Clear & Reuse check
 
-1. Repeat the same selection/request.
-2. Confirm the warning.
-3. Tap **Clear & Reuse**.
-4. App must not report success until the old folder is confirmed empty and the same folder ID is verified with the new name.
-5. Inspect Drive: the disposable direct children are gone, old dated name is gone, exactly one `Cut Grass - 2026-09-20` exists, and unrelated/sibling content is unchanged.
-6. Refresh/reopen the app and confirm that same folder identity resolves normally.
+1. Open the same controlled fixture and confirm disposable content only.
+2. Open Clear & Reuse and verify the full path/count again.
+3. Confirm **Clear & Reuse**.
+4. App must delete only the selected old folder's direct children.
+5. App must verify zero children before rename.
+6. App must rename/reuse that same folder identity for the new date.
+7. Inspect Drive: new dated name exists exactly once under `FIELD PHOTO PREP TEST`; old dated name is gone; selected folder identity is preserved; unrelated sibling/address content is unchanged.
+8. Refresh/reopen and confirm the renamed folder resolves normally.
 
-### C. Changed-after-confirmation fail-closed check
+### Failure-path reality check
 
-Using disposable test content only, change the selected folder contents after the warning is prepared but before destructive execution if a practical device/provider path can do so. The app must detect a different child-ID set and stop without deleting the newly changed set.
+Attempt a safe deterministic provider deletion or rename failure only if it can be produced without adding a production destructive testing backdoor or risking unrelated Drive content. If the provider cannot be safely forced to fail deterministically, document that limitation and rely on fail-fast code review/automated guards plus the successful real-provider path; do not claim a real provider failure test happened when it did not.
 
-### D. Provider failure gate
+## Automated verification
 
-Before merge, force or reproduce one real child-deletion or rename failure in a safe fixture if the provider offers a practical deterministic method. Prove the app does not rename a partially cleared folder and requires refresh before another write.
+Original Phase 3B runtime commit:
 
-Do not add a production destructive testing backdoor merely to manufacture this condition. If a deterministic provider-side failure cannot be produced safely, document the exact limitation and do not overclaim that this specific reality-gate item was proven.
+`0024d6c4b8d55593af2edd98f4ced1532f80486f`
 
-## Automated final gate
+passed Android CI run `34116076640`.
 
-On the exact final runtime head before merge:
+Final hierarchy-warning runtime head:
 
-1. focused tests pass;
-2. complete repository CI passes once;
-3. debug APK builds;
-4. Android install/launch smoke passes;
-5. APK artifact is packaged;
-6. safe real-device confirmation/cancel/success checks pass;
-7. any unresolved provider-failure-gate limitation is explicitly reported rather than hidden;
-8. explicit operator approval is obtained before merge.
+`4a978d4fcdfb9a3c3676494d7273eee46de9e6e5`
 
-## Rollback
+passed Android CI run `34244198117`:
 
-If Phase 3B fails verification or is rejected, leave `main` at:
+- unit tests passed;
+- debug APK build passed;
+- Android install/launch smoke test passed;
+- APK artifact packaged successfully.
 
-`44aa0ff71b12c7fd11c0e1820872e9146d9730a7`
+## Merge status
 
-That preserves Phase 3A empty-folder reuse and contains no Clear & Reuse child deletion path.
-
-## Pre-merge approval status
-
-Pending final CI, real-device Drive verification, and explicit operator approval.
+Not authorized yet. Real-device cancellation/success evidence and explicit Level 3 operator approval are still required before merge.
