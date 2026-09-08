@@ -3,6 +3,7 @@ package com.inandout.fieldphotoprep;
 import android.content.ContentResolver;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.DocumentsContract;
 
 import java.io.IOException;
@@ -21,6 +22,9 @@ public final class DriveClient {
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_MIME_TYPE
     };
+
+    private static final int FRESH_CHILD_MAX_ATTEMPTS = 6;
+    private static final long FRESH_CHILD_RETRY_DELAY_MS = 500L;
 
     public static final class ChildSnapshot {
         private final List<String> documentIds;
@@ -41,6 +45,16 @@ public final class DriveClient {
 
         public int folderCount() {
             return folderCount;
+        }
+    }
+
+    private static final class ChildQueryResult {
+        private final ChildSnapshot snapshot;
+        private final boolean loading;
+
+        ChildQueryResult(ChildSnapshot snapshot, boolean loading) {
+            this.snapshot = snapshot;
+            this.loading = loading;
         }
     }
 
@@ -77,6 +91,9 @@ public final class DriveClient {
             if (cursor == null) {
                 throw new IOException("The selected folder did not return a folder list.");
             }
+            if (isCursorLoading(cursor)) {
+                throw new IOException("Drive is still loading this folder. Refresh and try again.");
+            }
             int idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
             int nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
             int mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE);
@@ -95,26 +112,34 @@ public final class DriveClient {
             ContentResolver resolver,
             Uri treeUri,
             String folderDocumentId) throws IOException {
+        Uri folderUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, folderDocumentId);
         Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, folderDocumentId);
-        List<String> ids = new ArrayList<>();
-        int folderCount = 0;
 
-        try (Cursor cursor = resolver.query(childrenUri, CHILD_PROJECTION, null, null, null)) {
-            if (cursor == null) {
-                throw new IOException("Drive did not return the selected folder contents.");
-            }
-            int idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
-            int mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE);
-            while (cursor.moveToNext()) {
-                ids.add(cursor.getString(idColumn));
-                if (isFolderMimeType(cursor.getString(mimeColumn))) {
-                    folderCount++;
+        if (!requestFreshProviderState(resolver, folderUri, childrenUri)) {
+            throw new IOException(
+                    "Drive could not confirm a fresh folder-content listing. Nothing was changed; try again after Drive finishes syncing.");
+        }
+
+        ChildSnapshot previousSettled = null;
+        for (int attempt = 0; attempt < FRESH_CHILD_MAX_ATTEMPTS; attempt++) {
+            ChildQueryResult result = queryDirectChildren(resolver, childrenUri);
+            if (!result.loading) {
+                if (previousSettled != null
+                        && sameDocumentIds(previousSettled.documentIds(), result.snapshot.documentIds())) {
+                    return result.snapshot;
                 }
+                previousSettled = result.snapshot;
+            } else {
+                previousSettled = null;
+            }
+
+            if (attempt + 1 < FRESH_CHILD_MAX_ATTEMPTS) {
+                sleepForFreshnessRetry();
             }
         }
 
-        Collections.sort(ids);
-        return new ChildSnapshot(ids, folderCount);
+        throw new IOException(
+                "Drive did not return two matching settled folder-content checks. Nothing was changed; wait for Drive to sync and try again.");
     }
 
     public boolean isFolderEmpty(
@@ -211,5 +236,65 @@ public final class DriveClient {
 
     static boolean isFolderMimeType(String mimeType) {
         return DocumentsContract.Document.MIME_TYPE_DIR.equals(mimeType);
+    }
+
+    static boolean isAuthoritativeChildState(boolean refreshAccepted, boolean loading) {
+        return refreshAccepted && !loading;
+    }
+
+    private ChildQueryResult queryDirectChildren(
+            ContentResolver resolver,
+            Uri childrenUri) throws IOException {
+        List<String> ids = new ArrayList<>();
+        int folderCount = 0;
+
+        try (Cursor cursor = resolver.query(childrenUri, CHILD_PROJECTION, null, null, null)) {
+            if (cursor == null) {
+                throw new IOException("Drive did not return the selected folder contents.");
+            }
+            boolean loading = isCursorLoading(cursor);
+            int idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
+            int mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE);
+            while (cursor.moveToNext()) {
+                ids.add(cursor.getString(idColumn));
+                if (isFolderMimeType(cursor.getString(mimeColumn))) {
+                    folderCount++;
+                }
+            }
+            Collections.sort(ids);
+            return new ChildQueryResult(new ChildSnapshot(ids, folderCount), loading);
+        }
+    }
+
+    private boolean requestFreshProviderState(
+            ContentResolver resolver,
+            Uri folderUri,
+            Uri childrenUri) {
+        boolean accepted = false;
+        try {
+            accepted = resolver.refresh(folderUri, Bundle.EMPTY, null);
+        } catch (RuntimeException ignored) {
+            // Fall through to the child-list URI refresh request.
+        }
+        try {
+            accepted = resolver.refresh(childrenUri, Bundle.EMPTY, null) || accepted;
+        } catch (RuntimeException ignored) {
+            // A provider that cannot refresh cannot be trusted for destructive reuse.
+        }
+        return accepted;
+    }
+
+    private static boolean isCursorLoading(Cursor cursor) {
+        Bundle extras = cursor.getExtras();
+        return extras != null && extras.getBoolean(DocumentsContract.EXTRA_LOADING, false);
+    }
+
+    private static void sleepForFreshnessRetry() throws IOException {
+        try {
+            Thread.sleep(FRESH_CHILD_RETRY_DELAY_MS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Folder-content verification was interrupted.", interrupted);
+        }
     }
 }
