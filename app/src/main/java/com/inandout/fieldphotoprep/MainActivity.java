@@ -732,6 +732,12 @@ public final class MainActivity extends Activity {
             return;
         }
 
+        DriveFolder master = folderPrefs.getMasterFolder();
+        if (master == null || selectedAddress == null) {
+            showMessage("The folder hierarchy is incomplete. Nothing was deleted.");
+            return;
+        }
+
         String folderWarning = snapshot.folderCount() == 0
                 ? ""
                 : "\n\n" + snapshot.folderCount() + " of those direct items "
@@ -740,11 +746,13 @@ public final class MainActivity extends Activity {
 
         new AlertDialog.Builder(this)
                 .setTitle("Clear & Reuse selected folder?")
-                .setMessage("Old folder: " + candidateName
+                .setMessage("Master: " + master.name()
+                        + "\nAddress: " + selectedAddress.name()
+                        + "\nOld folder: " + candidateName
                         + "\nDirect items to remove: " + snapshot.count()
                         + "\nNew folder: " + requestedName
                         + folderWarning
-                        + "\n\nOnly continue if these are disposable old-work items.")
+                        + "\n\nOnly continue if this full path and item count are correct.")
                 .setNegativeButton("Cancel", (dialog, which) ->
                         showMessage("Clear & Reuse cancelled. Nothing was changed."))
                 .setPositiveButton("Clear & Reuse", (dialog, which) ->
