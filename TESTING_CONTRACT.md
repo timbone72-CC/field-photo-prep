@@ -21,6 +21,7 @@ Real field-job originals must not be used as destructive test targets.
 Test fixtures should include, when practical:
 
 - ordinary JPEG photos;
+- representative Galaxy S21 field photos;
 - photos with EXIF date/time metadata;
 - photos with GPS metadata;
 - photos without GPS metadata;
@@ -57,7 +58,10 @@ When resize behavior is affected, tests must verify:
 4. the source image remains unchanged;
 5. multiple selected photos can be processed as one batch;
 6. one failed photo does not silently corrupt another photo's output;
-7. successful and failed items are reported accurately to the operator.
+7. successful and failed items are reported accurately to the operator;
+8. on representative Galaxy S21 field photos, 60% output files are materially smaller than their source files while retaining visually acceptable field-photo detail.
+
+The first usable release must record representative before-and-after file sizes during validation. No fixed megabyte target or compression ratio is required unless later evidence supports one.
 
 ## 5. Filename and overwrite tests
 
@@ -95,10 +99,12 @@ When photo or storage permissions are affected, verify that:
 When Android sharing or Google Drive handoff behavior is affected, verify that:
 
 1. sharing is operator-initiated;
-2. only resized copies selected for sharing are handed off;
-3. originals are not substituted for resized copies;
-4. cancelling the share action does not delete or modify originals or completed resized copies;
-5. a share failure is reported without damaging local files.
+2. only resized copies from the current batch, or another batch explicitly selected by the operator, are handed off;
+3. older prepared photos are not silently mixed into a current share action;
+4. originals are not substituted for resized copies;
+5. cancelling the share action does not delete or modify originals or completed resized copies;
+6. a share failure is reported without damaging local files;
+7. a completed batch can be shared again without requiring the source photos to be resized again.
 
 Direct Google Drive API integration is outside the initial release unless separately approved and contracted.
 
@@ -113,7 +119,16 @@ The test plan must include at least:
 - 30 photos;
 - a larger batch chosen to expose memory or stability problems on the target Android device class.
 
-A large batch must not cause source-photo loss or silent partial overwrites. If device limits are reached, the app must stop safely and report the incomplete work.
+Batch validation must also verify that:
+
+- each processing run is identifiable separately from older prepared batches;
+- starting a new batch does not silently add older prepared photos to it;
+- cancelling after some photos finish keeps completed resized copies available;
+- unprocessed originals remain unchanged after cancellation;
+- a cancelled or incomplete batch is not reported as fully successful;
+- a large batch does not cause source-photo loss or silent partial overwrites.
+
+If device limits are reached, the app must stop safely and report the incomplete work.
 
 ## 10. Change-level verification
 
