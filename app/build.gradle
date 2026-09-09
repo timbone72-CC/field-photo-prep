@@ -10,8 +10,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 8
-        versionName '0.4.3-phase3b-work-order-picker'
+        versionCode 9
+        versionName '0.4.4-phase3b-scrollable-work-order'
 
         testInstrumentationRunner 'android.test.InstrumentationTestRunner'
     }
