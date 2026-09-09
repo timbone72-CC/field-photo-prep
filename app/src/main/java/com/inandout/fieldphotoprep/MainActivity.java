@@ -14,6 +14,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.IOException;
@@ -50,6 +51,7 @@ public final class MainActivity extends Activity {
     private TextView currentWorkOrderText;
     private LinearLayout addressControls;
     private LinearLayout workOrderControls;
+    private ScrollView workOrderScroll;
     private Button chooseMasterButton;
     private Button refreshAddressButton;
     private Button backButton;
@@ -138,7 +140,6 @@ public final class MainActivity extends Activity {
 
         workOrderControls = new LinearLayout(this);
         workOrderControls.setOrientation(LinearLayout.VERTICAL);
-        workOrderControls.setVisibility(View.GONE);
 
         addressText = new TextView(this);
         addressText.setTextSize(18);
@@ -194,7 +195,15 @@ public final class MainActivity extends Activity {
         currentWorkOrderText = new TextView(this);
         currentWorkOrderText.setPadding(0, dp(8), 0, dp(4));
         workOrderControls.addView(currentWorkOrderText);
-        root.addView(workOrderControls);
+
+        workOrderScroll = new ScrollView(this);
+        workOrderScroll.setFillViewport(true);
+        workOrderScroll.setVisibility(View.GONE);
+        workOrderScroll.addView(workOrderControls, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(workOrderScroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
 
         listLabel = new TextView(this);
         listLabel.setTextSize(16);
@@ -299,7 +308,7 @@ public final class MainActivity extends Activity {
         createBlockedUntilRefresh = false;
         screen = Screen.WORK_ORDERS;
         addressControls.setVisibility(View.GONE);
-        workOrderControls.setVisibility(View.VISIBLE);
+        workOrderScroll.setVisibility(View.VISIBLE);
         listLabel.setVisibility(View.GONE);
         folderList.setVisibility(View.GONE);
         addressText.setText("Address: " + address.name());
@@ -314,7 +323,7 @@ public final class MainActivity extends Activity {
         selectedWorkOrder = null;
         createBlockedUntilRefresh = false;
         addressControls.setVisibility(View.VISIBLE);
-        workOrderControls.setVisibility(View.GONE);
+        workOrderScroll.setVisibility(View.GONE);
         listLabel.setVisibility(View.VISIBLE);
         folderList.setVisibility(View.VISIBLE);
         listLabel.setText("Address folders");
