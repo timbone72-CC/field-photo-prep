@@ -128,9 +128,8 @@ public final class PendingPhotoStore {
     }
 
     /**
-     * Legacy startup entry point used by the photo screen. It first resolves interrupted camera
-     * captures, then also fails closed any persisted in-flight upload via the Phase 7A upload
-     * reconciliation step before returning the settled local queue snapshot.
+     * Resolves only interrupted camera captures. Upload-process recovery is intentionally separate
+     * and is invoked once from Application process startup, not every time a screen is recreated.
      */
     public ScanResult reconcileInterruptedCaptures() throws IOException {
         ScanResult before = scan();
@@ -144,7 +143,7 @@ public final class PendingPhotoStore {
                 removeEmptyReservation(record);
             }
         }
-        return reconcileInterruptedUploads();
+        return scan();
     }
 
     /**
