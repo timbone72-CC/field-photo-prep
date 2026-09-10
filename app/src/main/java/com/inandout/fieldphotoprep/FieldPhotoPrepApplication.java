@@ -11,7 +11,7 @@ import java.io.IOException;
 public final class FieldPhotoPrepApplication extends Application implements CameraXConfig.Provider {
     @Override
     public CameraXConfig getCameraXConfig() {
-        return Camera2Config.defaultConfig(this);
+        return Camera2Config.defaultConfig();
     }
 
     @Override
