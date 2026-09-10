@@ -147,32 +147,39 @@ Detailed plan:
 
 `docs/PHASE_8_FIELD_WORKFLOW_RELEASE_HARDENING_PLAN_2026-09-10.md`
 
-### Phase 8A — Field workflow polish — IN PROGRESS
+### Phase 8A — Field workflow polish — COMPLETE
 
-Use observed A16 friction only:
-- remove stale developer phase labels from normal screens;
-- clearly separate selecting an existing work order from creating/reusing a dated work order;
-- make the work-order name field explicitly name-only so it does not look like a search field;
-- simplify implementation-heavy photo-screen top copy;
-- keep all Drive, identity, queue, camera, retry, and cleanup semantics unchanged.
+Delivered and validated:
+- stale developer phase labels were removed from normal screens;
+- existing-work-order selection is clearly separated from creating/reusing a dated work order;
+- the work-order entry field now states that it accepts the work-order name only;
+- implementation-heavy normal photo-screen copy was simplified;
+- Drive, identity, queue, camera, retry, reconciliation, and cleanup semantics were unchanged.
+
+Phase 8A passed Android CI and merged through PR #21 on 2026-09-10.
 
 The external Samsung camera OK/Retake screen remains accepted for the first release. Removing it reliably would likely require an in-app camera subsystem such as CameraX and is deferred unless field use proves that cost worthwhile.
 
-### Phase 8B — Normal install/update/release path — PENDING
+### Phase 8B — Normal install/update/release path — COMPLETE
 
-- keep the stable test key non-production;
-- define a secure release-signing path without committing private release key material;
-- make version progression intentional;
-- build one release-candidate APK with recorded identity/checksum;
-- prove update behavior on the primary phone without unexpected state loss;
-- document rollback.
+Delivered and validated:
+- internal/test APKs now use application ID `com.inandout.fieldphotoprep.internal` and launcher label `Field Photo Prep Internal`;
+- the stable checked-in test key remains explicitly non-production and signs only the internal/debug build;
+- the future production identity remains `com.inandout.fieldphotoprep` and is reserved for a separately secured production signer;
+- no production private key was created or committed;
+- version progression was advanced intentionally to versionCode 17 / `0.12-field-release-hardening-internal` for the internal build;
+- Android CI passed unit tests, internal build, stable signer verification, instrumentation, internal launch smoke, and artifact packaging;
+- Samsung Galaxy A16 physical validation proved `Field Photo Prep` and `Field Photo Prep Internal` install side-by-side as distinct apps;
+- the internal app independently selected `HNP Jobs`, reopened the existing safe test work order, and successfully returned a camera capture as a protected `WAITING` record under the `.internal` package/FileProvider identity.
+
+Phase 8B merged through PR #22 on 2026-09-10. Permanent evidence: `docs/PHASE_8B_DEVICE_REALITY_GATE_RECORD_2026-09-10.md`.
 
 No Play Store publication is assumed.
 
-### Phase 8C — Second Android phone/shared-master reality check — PENDING
+### Phase 8C — Second Android phone/shared-master reality check — NEXT
 
 On another supported Android phone using that operator's own Google Drive access to the shared approved master:
-- install normally;
+- install the internal build normally;
 - select the intended Drive provider/account and approved shared master;
 - reopen a safe existing address/work order without duplicates;
 - capture/prepare/upload one disposable photo;
