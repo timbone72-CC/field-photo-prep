@@ -286,7 +286,7 @@ public final class DrivePhotoUploader {
 
             ParcelFileDescriptor descriptor;
             try {
-                descriptor = resolver.openFileDescriptor(documentUri, "wt");
+                descriptor = resolver.openFileDescriptor(documentUri, "w");
             } catch (SecurityException error) {
                 throw new IOException("Drive access was denied while opening the photo for writing.", error);
             }
@@ -303,7 +303,6 @@ public final class DrivePhotoUploader {
                     written += count;
                 }
                 output.flush();
-                output.getFD().sync();
             }
             return written;
         }
