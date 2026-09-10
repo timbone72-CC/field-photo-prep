@@ -14,6 +14,39 @@ Before changing runtime code, tests that define runtime behavior, Google Drive b
 
 Documentation-only edits must still read the document being changed and the change-class rules below.
 
+## Mandatory master device-gate reread
+
+For any physical Android device-gate work, phone testing, APK install/test transition, device-gate result classification, deviation from the staged device path, merge recommendation based on device evidence, or Phase 7B design that relies on H4 observations, read:
+
+`docs/MASTER_DEVICE_REALITY_GATE_PLAN_2026-09-10.md`
+
+Re-read that file at all of these checkpoints:
+
+1. at the start of every physical-device test session;
+2. immediately before installing or switching to the next APK/gate;
+3. immediately before declaring a gate PASS, BLOCKED, or FAIL;
+4. before deviating from the straight-line path because of an unexpected result; and
+5. before recommending merge approval or starting Phase 7B design from device evidence.
+
+Do not replace these rereads with memory, a chat summary, or repeated ad hoc safety prompts. The master plan exists to keep device work straight-line, proportional, and free of unnecessary verification loops while preserving genuine stop conditions.
+
+## Mandatory phase-staging doctrine
+
+For phase transitions, planning work after a completed device gate, deciding how far a phase should be implemented before the next phone gate, or deciding whether development should stop for physical-device evidence, read:
+
+`docs/PHASE_STAGING_DOCTRINE.md`
+
+This is especially mandatory for the Phase 6 → Phase 7 transition.
+
+Re-read it:
+
+1. after the Phase 6 device evidence is consolidated and before finalizing the Phase 7 implementation plan;
+2. before deciding that Phase 7 has reached its next genuine phone-dependent boundary;
+3. before creating the next staged device-gate plan; and
+4. whenever new device/provider evidence changes an assumption that controls how far the current phase can proceed.
+
+Default rule: build as far as can be honestly proven without the phone, then stage once at the next genuine device-dependent boundary. Do not fragment development into repeated phone checks, repeated safety prompts, or one-command-at-a-time Bash loops when the next safe work can proceed from evidence already established.
+
 ## Choose the smallest honest change class
 
 ### Level 1 — low risk

@@ -28,7 +28,7 @@ public final class PendingPhotoQueueStateTest {
     public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
-    public void legacyWaitingRecordLoadsWithSafeDefaultsAndNextWriteUsesSchema2() throws Exception {
+    public void legacyWaitingRecordLoadsWithSafeDefaultsAndNextWriteUsesSchema3() throws Exception {
         File root = temporaryFolder.newFolder("legacy");
         writeLegacyRecord(root, ID1, PendingPhotoRecord.State.WAITING,
                 "address-1", "Address One", "work-1", "Cut Grass - 2026-09-09");
@@ -41,12 +41,13 @@ public final class PendingPhotoQueueStateTest {
         assertEquals(0, loaded.uploadAttemptCount());
         assertEquals(0L, loaded.lastAttemptAtEpochMs());
         assertNull(loaded.statusDetail());
+        assertNull(loaded.provisionalRemoteFileId());
         assertNull(loaded.remoteFileId());
 
         PendingPhotoRecord uploading = store.beginUploadAttempt(ID1);
         Properties persisted = loadProperties(new File(root, uploading.metadataFileName()));
 
-        assertEquals("2", persisted.getProperty("schemaVersion"));
+        assertEquals("3", persisted.getProperty("schemaVersion"));
         assertEquals("1", persisted.getProperty("uploadAttemptCount"));
         assertEquals(Long.toString(ATTEMPT_TIME_1), persisted.getProperty("lastAttemptAtEpochMs"));
         assertEquals("work-1", uploading.workOrderId());
@@ -66,7 +67,7 @@ public final class PendingPhotoQueueStateTest {
         assertEquals(PendingPhotoRecord.State.WAITING, result.records().get(0).state());
         assertTrue(store.hasImageData(result.records().get(0)));
         Properties persisted = loadProperties(new File(root, result.records().get(0).metadataFileName()));
-        assertEquals("2", persisted.getProperty("schemaVersion"));
+        assertEquals("3", persisted.getProperty("schemaVersion"));
     }
 
     @Test

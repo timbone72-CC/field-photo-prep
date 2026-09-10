@@ -35,15 +35,52 @@ public final class DrivePhotoUploaderTest {
     }
 
     @Test
-    public void successCreatesUnderExactStoredWorkOrderAndReturnsVerifiedIdentity() throws Exception {
+    public void createUsesExactStoredWorkOrderAndDoesNotWriteBytes() throws Exception {
         File prepared = prepared("prepared-jpeg-bytes");
         FakeProvider provider = new FakeProvider();
         DrivePhotoUploader uploader = new DrivePhotoUploader(provider);
 
-        DrivePhotoUploader.UploadResult result = uploader.upload(uploadingRecord(), prepared);
+        DrivePhotoUploader.CreatedUpload created = uploader.create(uploadingRecord(), prepared);
 
         assertEquals("work-provider-id", provider.createParentId);
         assertEquals(DrivePhotoUploader.remoteFileNameFor(PHOTO_ID), provider.createDisplayName);
+        assertEquals("remote-photo-id", created.remoteFileId());
+        assertEquals(prepared.length(), created.expectedBytes());
+        assertFalse(provider.writeCalled);
+    }
+
+    @Test
+    public void writeAndVerifyRequiresPersistedMatchingProvisionalIdentity() throws Exception {
+        File prepared = prepared("prepared-jpeg-bytes");
+        FakeProvider provider = new FakeProvider();
+        DrivePhotoUploader uploader = new DrivePhotoUploader(provider);
+        PendingPhotoRecord uploading = uploadingRecord();
+        DrivePhotoUploader.CreatedUpload created = uploader.create(uploading, prepared);
+
+        try {
+            uploader.writeAndVerify(uploading, created, prepared);
+            fail("Expected write barrier failure");
+        } catch (DrivePhotoUploader.UploadException error) {
+            assertTrue(error.remoteStateUncertain());
+        }
+        assertFalse(provider.writeCalled);
+
+        PendingPhotoRecord withWrongProvisional =
+                uploading.recordProvisionalRemoteFileId("different-remote-id");
+        try {
+            uploader.writeAndVerify(withWrongProvisional, created, prepared);
+            fail("Expected mismatched provisional identity failure");
+        } catch (DrivePhotoUploader.UploadException error) {
+            assertTrue(error.remoteStateUncertain());
+        }
+        assertFalse(provider.writeCalled);
+
+        PendingPhotoRecord persisted =
+                uploading.recordProvisionalRemoteFileId(created.remoteFileId());
+        DrivePhotoUploader.UploadResult result =
+                uploader.writeAndVerify(persisted, created, prepared);
+
+        assertTrue(provider.writeCalled);
         assertEquals(prepared.length(), provider.lastWrittenBytes);
         assertEquals("remote-photo-id", result.remoteFileId());
         assertEquals(prepared.length(), result.bytesWritten());
@@ -55,12 +92,13 @@ public final class DrivePhotoUploaderTest {
         provider.failDestinationRead = true;
 
         try {
-            new DrivePhotoUploader(provider).upload(uploadingRecord(), prepared("bytes"));
+            new DrivePhotoUploader(provider).create(uploadingRecord(), prepared("bytes"));
             fail("Expected upload failure");
         } catch (DrivePhotoUploader.UploadException error) {
             assertFalse(error.remoteStateUncertain());
         }
         assertFalse(provider.createCalled);
+        assertFalse(provider.writeCalled);
     }
 
     @Test
@@ -69,12 +107,13 @@ public final class DrivePhotoUploaderTest {
         provider.destinationMimeType = "image/jpeg";
 
         try {
-            new DrivePhotoUploader(provider).upload(uploadingRecord(), prepared("bytes"));
+            new DrivePhotoUploader(provider).create(uploadingRecord(), prepared("bytes"));
             fail("Expected upload failure");
         } catch (DrivePhotoUploader.UploadException error) {
             assertFalse(error.remoteStateUncertain());
         }
         assertFalse(provider.createCalled);
+        assertFalse(provider.writeCalled);
     }
 
     @Test
@@ -82,17 +121,24 @@ public final class DrivePhotoUploaderTest {
         FakeProvider provider = new FakeProvider();
         provider.failCreate = true;
 
-        assertUncertain(provider);
+        try {
+            new DrivePhotoUploader(provider).create(uploadingRecord(), prepared("prepared-photo"));
+            fail("Expected uncertain upload result");
+        } catch (DrivePhotoUploader.UploadException error) {
+            assertTrue(error.remoteStateUncertain());
+        }
         assertTrue(provider.createCalled);
+        assertFalse(provider.writeCalled);
     }
 
     @Test
-    public void writeFailureAfterCreateIsUncertain() throws Exception {
+    public void writeFailureAfterPersistedProvisionalIdentityIsUncertain() throws Exception {
         FakeProvider provider = new FakeProvider();
         provider.failWrite = true;
 
-        assertUncertain(provider);
+        assertWriteStageUncertain(provider);
         assertTrue(provider.createCalled);
+        assertTrue(provider.writeCalled);
     }
 
     @Test
@@ -100,7 +146,7 @@ public final class DrivePhotoUploaderTest {
         FakeProvider provider = new FakeProvider();
         provider.failVerificationRead = true;
 
-        assertUncertain(provider);
+        assertWriteStageUncertain(provider);
         assertTrue(provider.createCalled);
         assertTrue(provider.writeCalled);
     }
@@ -110,13 +156,39 @@ public final class DrivePhotoUploaderTest {
         FakeProvider provider = new FakeProvider();
         provider.shortWrite = true;
 
-        assertUncertain(provider);
+        assertWriteStageUncertain(provider);
         assertTrue(provider.writeCalled);
     }
 
-    private void assertUncertain(FakeProvider provider) throws Exception {
+    @Test
+    public void changedPreparedFileAfterCreateStopsBeforeWriter() throws Exception {
+        FakeProvider provider = new FakeProvider();
+        DrivePhotoUploader uploader = new DrivePhotoUploader(provider);
+        File prepared = prepared("first-size");
+        PendingPhotoRecord uploading = uploadingRecord();
+        DrivePhotoUploader.CreatedUpload created = uploader.create(uploading, prepared);
+        PendingPhotoRecord persisted =
+                uploading.recordProvisionalRemoteFileId(created.remoteFileId());
+        Files.write(prepared.toPath(), "different-size-content".getBytes(StandardCharsets.UTF_8));
+
         try {
-            new DrivePhotoUploader(provider).upload(uploadingRecord(), prepared("prepared-photo"));
+            uploader.writeAndVerify(persisted, created, prepared);
+            fail("Expected uncertain changed-source result");
+        } catch (DrivePhotoUploader.UploadException error) {
+            assertTrue(error.remoteStateUncertain());
+        }
+        assertFalse(provider.writeCalled);
+    }
+
+    private void assertWriteStageUncertain(FakeProvider provider) throws Exception {
+        DrivePhotoUploader uploader = new DrivePhotoUploader(provider);
+        File prepared = prepared("prepared-photo");
+        PendingPhotoRecord uploading = uploadingRecord();
+        DrivePhotoUploader.CreatedUpload created = uploader.create(uploading, prepared);
+        PendingPhotoRecord persisted =
+                uploading.recordProvisionalRemoteFileId(created.remoteFileId());
+        try {
+            uploader.writeAndVerify(persisted, created, prepared);
             fail("Expected uncertain upload result");
         } catch (DrivePhotoUploader.UploadException error) {
             assertTrue(error.remoteStateUncertain());

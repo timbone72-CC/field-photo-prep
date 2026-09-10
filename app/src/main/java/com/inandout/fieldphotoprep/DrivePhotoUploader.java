@@ -55,6 +55,50 @@ public final class DrivePhotoUploader {
         }
     }
 
+    public static final class CreatedUpload {
+        private final String photoId;
+        private final String destinationId;
+        private final String remoteFileId;
+        private final String remoteDisplayName;
+        private final long expectedBytes;
+
+        CreatedUpload(
+                String photoId,
+                String destinationId,
+                String remoteFileId,
+                String remoteDisplayName,
+                long expectedBytes) {
+            this.photoId = requireText(photoId, "created upload photo id");
+            this.destinationId = requireText(destinationId, "created upload destination id");
+            this.remoteFileId = requireText(remoteFileId, "created remote file id");
+            this.remoteDisplayName = requireText(remoteDisplayName, "created remote display name");
+            if (expectedBytes <= 0) {
+                throw new IllegalArgumentException("Expected upload byte count must be positive.");
+            }
+            this.expectedBytes = expectedBytes;
+        }
+
+        String photoId() {
+            return photoId;
+        }
+
+        String destinationId() {
+            return destinationId;
+        }
+
+        public String remoteFileId() {
+            return remoteFileId;
+        }
+
+        public String remoteDisplayName() {
+            return remoteDisplayName;
+        }
+
+        public long expectedBytes() {
+            return expectedBytes;
+        }
+    }
+
     public static final class UploadResult {
         private final String remoteFileId;
         private final String remoteDisplayName;
@@ -105,17 +149,14 @@ public final class DrivePhotoUploader {
         this.provider = Objects.requireNonNull(provider, "provider");
     }
 
-    public UploadResult upload(PendingPhotoRecord uploadingRecord, File preparedFile)
+    /**
+     * Validates the immutable queued destination and performs only the remote create operation.
+     * No prepared JPEG bytes are written by this method.
+     */
+    public CreatedUpload create(PendingPhotoRecord uploadingRecord, File preparedFile)
             throws UploadException {
-        if (uploadingRecord == null) {
-            throw safeFailure("A persisted uploading photo record is required.", null);
-        }
-        if (uploadingRecord.state() != PendingPhotoRecord.State.UPLOADING) {
-            throw safeFailure("The photo must be durably UPLOADING before Drive creation begins.", null);
-        }
-        if (preparedFile == null || !preparedFile.isFile() || preparedFile.length() <= 0) {
-            throw safeFailure("The prepared JPEG is missing or empty. No Drive file was created.", null);
-        }
+        validateUploadingRecordBeforeCreate(uploadingRecord);
+        validatePreparedBeforeCreate(preparedFile);
 
         final long expectedBytes = preparedFile.length();
         final String destinationId = uploadingRecord.workOrderId();
@@ -125,14 +166,20 @@ public final class DrivePhotoUploader {
         try {
             destination = provider.readDocument(destinationId);
         } catch (IOException | RuntimeException error) {
-            throw safeFailure("The exact stored work-order destination could not be read. No Drive file was created.", error);
+            throw safeFailure(
+                    "The exact stored work-order destination could not be read. No Drive file was created.",
+                    error);
         }
 
         if (!destinationId.equals(destination.id())) {
-            throw safeFailure("Drive returned a different destination identity. No Drive file was created.", null);
+            throw safeFailure(
+                    "Drive returned a different destination identity. No Drive file was created.",
+                    null);
         }
         if (!DocumentsContract.Document.MIME_TYPE_DIR.equals(destination.mimeType())) {
-            throw safeFailure("The exact stored work-order destination is no longer a folder. No Drive file was created.", null);
+            throw safeFailure(
+                    "The exact stored work-order destination is no longer a folder. No Drive file was created.",
+                    null);
         }
 
         final RemoteDocument created;
@@ -149,16 +196,74 @@ public final class DrivePhotoUploader {
                     "Drive did not return the created photo identity. Remote state must be reconciled before retry.",
                     null);
         }
+        if (!JPEG_MIME_TYPE.equals(created.mimeType()) || !remoteName.equals(created.displayName())) {
+            throw uncertainFailure(
+                    "Drive returned unexpected created-photo metadata. Remote state must be reconciled before retry.",
+                    null);
+        }
+
+        return new CreatedUpload(
+                uploadingRecord.id(),
+                destinationId,
+                created.id(),
+                remoteName,
+                expectedBytes);
+    }
+
+    /**
+     * Writes and verifies a photo only after the queue record proves the created identity was
+     * durably persisted as provisional duplicate-protection evidence.
+     */
+    public UploadResult writeAndVerify(
+            PendingPhotoRecord uploadingRecord,
+            CreatedUpload createdUpload,
+            File preparedFile) throws UploadException {
+        if (uploadingRecord == null || uploadingRecord.state() != PendingPhotoRecord.State.UPLOADING) {
+            throw uncertainFailure(
+                    "The created Drive photo cannot be written without a persisted UPLOADING record. Remote state must be reconciled before retry.",
+                    null);
+        }
+        if (createdUpload == null) {
+            throw uncertainFailure(
+                    "The created Drive photo identity is unavailable. Remote state must be reconciled before retry.",
+                    null);
+        }
+        if (!createdUpload.photoId().equals(uploadingRecord.id())
+                || !createdUpload.destinationId().equals(uploadingRecord.workOrderId())) {
+            throw uncertainFailure(
+                    "The created Drive photo token does not belong to this photo and destination. Remote state must be reconciled before retry.",
+                    null);
+        }
+        if (!createdUpload.remoteFileId().equals(uploadingRecord.provisionalRemoteFileId())) {
+            throw uncertainFailure(
+                    "The created Drive photo identity was not durably bound to this upload before writing. Remote state must be reconciled before retry.",
+                    null);
+        }
+        if (!createdUpload.remoteDisplayName().equals(remoteFileNameFor(uploadingRecord.id()))) {
+            throw uncertainFailure(
+                    "The created Drive photo name does not match this photo identity. Remote state must be reconciled before retry.",
+                    null);
+        }
+        if (preparedFile == null || !preparedFile.isFile() || preparedFile.length() <= 0) {
+            throw uncertainFailure(
+                    "The prepared JPEG became unavailable after Drive creation. Remote state must be reconciled before retry.",
+                    null);
+        }
+        if (preparedFile.length() != createdUpload.expectedBytes()) {
+            throw uncertainFailure(
+                    "The prepared JPEG changed after Drive creation. Remote state must be reconciled before retry.",
+                    null);
+        }
 
         final long bytesWritten;
         try {
-            bytesWritten = provider.writeDocument(created.id(), preparedFile);
+            bytesWritten = provider.writeDocument(createdUpload.remoteFileId(), preparedFile);
         } catch (IOException | RuntimeException error) {
             throw uncertainFailure(
                     "Drive photo writing was interrupted after creation began. Remote state must be reconciled before retry.",
                     error);
         }
-        if (bytesWritten != expectedBytes) {
+        if (bytesWritten != createdUpload.expectedBytes()) {
             throw uncertainFailure(
                     "Drive did not accept the complete prepared photo byte count. Remote state must be reconciled before retry.",
                     null);
@@ -166,7 +271,7 @@ public final class DrivePhotoUploader {
 
         final RemoteDocument verified;
         try {
-            verified = provider.readDocument(created.id());
+            verified = provider.readDocument(createdUpload.remoteFileId());
         } catch (IOException | RuntimeException error) {
             throw uncertainFailure(
                     "The created Drive photo could not be verified. Remote state must be reconciled before retry.",
@@ -174,11 +279,12 @@ public final class DrivePhotoUploader {
         }
 
         if (verified == null
-                || !created.id().equals(verified.id())
+                || !createdUpload.remoteFileId().equals(verified.id())
                 || !JPEG_MIME_TYPE.equals(verified.mimeType())
-                || !remoteName.equals(verified.displayName())
+                || !createdUpload.remoteDisplayName().equals(verified.displayName())
                 || verified.sizeBytes() == 0L
-                || (verified.sizeBytes() > 0L && verified.sizeBytes() != expectedBytes)) {
+                || (verified.sizeBytes() > 0L
+                && verified.sizeBytes() != createdUpload.expectedBytes())) {
             throw uncertainFailure(
                     "The created Drive photo metadata did not verify exactly. Remote state must be reconciled before retry.",
                     null);
@@ -215,6 +321,31 @@ public final class DrivePhotoUploader {
             output.flush();
         }
         return written;
+    }
+
+    private static void validateUploadingRecordBeforeCreate(PendingPhotoRecord uploadingRecord)
+            throws UploadException {
+        if (uploadingRecord == null) {
+            throw safeFailure("A persisted uploading photo record is required.", null);
+        }
+        if (uploadingRecord.state() != PendingPhotoRecord.State.UPLOADING) {
+            throw safeFailure(
+                    "The photo must be durably UPLOADING before Drive creation begins.",
+                    null);
+        }
+        if (uploadingRecord.provisionalRemoteFileId() != null) {
+            throw uncertainFailure(
+                    "This upload already has provisional remote identity and must not create another Drive photo.",
+                    null);
+        }
+    }
+
+    private static void validatePreparedBeforeCreate(File preparedFile) throws UploadException {
+        if (preparedFile == null || !preparedFile.isFile() || preparedFile.length() <= 0) {
+            throw safeFailure(
+                    "The prepared JPEG is missing or empty. No Drive file was created.",
+                    null);
+        }
     }
 
     private static UploadException safeFailure(String message, Throwable cause) {
@@ -273,7 +404,9 @@ public final class DrivePhotoUploader {
                         cursor.getString(mimeColumn),
                         size);
             } catch (SecurityException error) {
-                throw new IOException("Persisted Drive access is unavailable for the requested document.", error);
+                throw new IOException(
+                        "Persisted Drive access is unavailable for the requested document.",
+                        error);
             }
         }
 
@@ -297,7 +430,8 @@ public final class DrivePhotoUploader {
             }
             String createdId = DocumentsContract.getDocumentId(createdUri);
             if (createdId == null || createdId.isBlank()) {
-                throw new IOException("Document provider created a photo without returning its identity.");
+                throw new IOException(
+                        "Document provider created a photo without returning its identity.");
             }
             return new RemoteDocument(createdId, displayName, JPEG_MIME_TYPE, -1L);
         }
@@ -310,7 +444,9 @@ public final class DrivePhotoUploader {
             try {
                 descriptor = resolver.openFileDescriptor(documentUri, "w");
             } catch (SecurityException error) {
-                throw new IOException("Drive access was denied while opening the photo for writing.", error);
+                throw new IOException(
+                        "Drive access was denied while opening the photo for writing.",
+                        error);
             }
             return writePreparedToDescriptor(descriptor, source);
         }
