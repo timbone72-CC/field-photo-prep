@@ -1,6 +1,7 @@
 package com.inandout.fieldphotoprep;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.content.UriPermission;
@@ -51,6 +52,7 @@ public final class MainActivity extends Activity {
     private LinearLayout workOrderControls;
     private Button chooseMasterButton;
     private Button refreshAddressButton;
+    private Button useCreateAddressButton;
     private Button backButton;
     private Button refreshWorkOrdersButton;
     private Button dateButton;
@@ -106,7 +108,7 @@ public final class MainActivity extends Activity {
         root.addView(title);
 
         TextView phase = new TextView(this);
-        phase.setText("Phase 3A · Empty folder reuse");
+        phase.setText("Phase 4 · Address folder creation");
         phase.setTextSize(14);
         root.addView(phase);
 
@@ -131,6 +133,12 @@ public final class MainActivity extends Activity {
         refreshAddressButton.setEnabled(false);
         refreshAddressButton.setOnClickListener(v -> refreshAddressFolders());
         addressControls.addView(refreshAddressButton);
+
+        useCreateAddressButton = new Button(this);
+        useCreateAddressButton.setText("Use / Create Address");
+        useCreateAddressButton.setEnabled(false);
+        useCreateAddressButton.setOnClickListener(v -> showAddressEntryDialog());
+        addressControls.addView(useCreateAddressButton);
         root.addView(addressControls);
 
         workOrderControls = new LinearLayout(this);
@@ -260,6 +268,7 @@ public final class MainActivity extends Activity {
             return;
         }
 
+        createBlockedUntilRefresh = false;
         setBusy("Refreshing address folders…");
         executor.execute(() -> {
             try {
@@ -274,6 +283,144 @@ public final class MainActivity extends Activity {
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> showError("Could not read address folders", error));
+            }
+        });
+    }
+
+    private void showAddressEntryDialog() {
+        Uri treeUri = folderPrefs.getMasterTreeUri();
+        DriveFolder master = folderPrefs.getMasterFolder();
+        if (treeUri == null || master == null) {
+            showMessage("Choose a master folder first.");
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri) || !hasPersistedWritePermission(treeUri)) {
+            showMessage("The master folder needs read/write access before an address can be created.");
+            return;
+        }
+        if (createBlockedUntilRefresh) {
+            showMessage("Refresh address folders before trying another Drive write.");
+            return;
+        }
+
+        EditText input = new EditText(this);
+        input.setHint("Address folder name");
+        input.setSingleLine(true);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Use or create address folder")
+                .setView(input)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Use / Create", (dialog, which) ->
+                        useOrCreateAddress(input.getText().toString()))
+                .show();
+    }
+
+    private void useOrCreateAddress(String rawName) {
+        Uri treeUri = folderPrefs.getMasterTreeUri();
+        DriveFolder master = folderPrefs.getMasterFolder();
+        if (treeUri == null || master == null) {
+            showMessage("Choose a master folder first.");
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri)) {
+            showMessage("Master folder access expired. Choose it again.");
+            return;
+        }
+        if (!hasPersistedWritePermission(treeUri)) {
+            showMessage("This master folder is read-only. Choose it again and allow write access.");
+            return;
+        }
+        if (createBlockedUntilRefresh) {
+            showMessage("Refresh address folders before trying another Drive write.");
+            return;
+        }
+
+        final String requestedName;
+        try {
+            requestedName = AddressFolderName.build(rawName);
+        } catch (IllegalArgumentException error) {
+            showMessage(error.getMessage());
+            return;
+        }
+
+        final String masterId = master.id();
+        setBusy("Checking for address " + requestedName + "…");
+        executor.execute(() -> {
+            try {
+                List<DriveFolder> folders = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, masterId);
+                List<DriveFolder> matches = DriveClient.findExactNameMatches(folders, requestedName);
+
+                if (matches.size() > 1) {
+                    runOnUiThread(() -> {
+                        if (screen != Screen.ADDRESSES) {
+                            return;
+                        }
+                        visibleFolders.clear();
+                        visibleFolders.addAll(folders);
+                        adapter.notifyDataSetChanged();
+                        statusText.setText(matches.size() + " address folders named " + requestedName
+                                + " already exist. Tap the intended one; no folder was created.");
+                        setNotBusy();
+                    });
+                    return;
+                }
+
+                if (matches.size() == 1) {
+                    DriveFolder existing = matches.get(0);
+                    runOnUiThread(() -> {
+                        if (screen != Screen.ADDRESSES) {
+                            return;
+                        }
+                        visibleFolders.clear();
+                        visibleFolders.addAll(folders);
+                        adapter.notifyDataSetChanged();
+                        openAddress(existing);
+                    });
+                    return;
+                }
+
+                DriveFolder created = driveClient.createFolder(
+                        getContentResolver(), treeUri, masterId, requestedName);
+                List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, masterId);
+                DriveFolder verified = DriveClient.findById(afterCreate, created.id());
+                List<DriveFolder> verifiedMatches = DriveClient.findExactNameMatches(afterCreate, requestedName);
+
+                if (verified == null || !verified.name().equals(requestedName)) {
+                    throw new IOException("Drive returned an address ID that could not be verified under the selected master.");
+                }
+
+                if (verifiedMatches.size() != 1 || !verifiedMatches.get(0).id().equals(created.id())) {
+                    runOnUiThread(() -> {
+                        if (screen != Screen.ADDRESSES) {
+                            return;
+                        }
+                        createBlockedUntilRefresh = true;
+                        visibleFolders.clear();
+                        visibleFolders.addAll(afterCreate);
+                        adapter.notifyDataSetChanged();
+                        statusText.setText("Address create result is ambiguous. Tap the intended same-named folder; no additional folder will be created until refresh.");
+                        setNotBusy();
+                    });
+                    return;
+                }
+
+                runOnUiThread(() -> {
+                    if (screen != Screen.ADDRESSES) {
+                        return;
+                    }
+                    visibleFolders.clear();
+                    visibleFolders.addAll(afterCreate);
+                    adapter.notifyDataSetChanged();
+                    openAddress(verified);
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    createBlockedUntilRefresh = true;
+                    showError("Address create result is not safe to repeat. Refresh address folders before trying again", error);
+                });
             }
         });
     }
@@ -626,7 +773,7 @@ public final class MainActivity extends Activity {
     }
 
     private String folderLabel(DriveFolder folder) {
-        if (screen != Screen.WORK_ORDERS || !hasDuplicateVisibleName(folder.name())) {
+        if (!hasDuplicateVisibleName(folder.name())) {
             return folder.name();
         }
         return folder.name() + "  [" + shortId(folder.id()) + "]";
@@ -681,6 +828,7 @@ public final class MainActivity extends Activity {
         statusText.setText(message);
         chooseMasterButton.setEnabled(false);
         refreshAddressButton.setEnabled(false);
+        useCreateAddressButton.setEnabled(false);
         backButton.setEnabled(false);
         refreshWorkOrdersButton.setEnabled(false);
         workOrderInput.setEnabled(false);
@@ -699,6 +847,7 @@ public final class MainActivity extends Activity {
         if (screen == Screen.ADDRESSES) {
             chooseMasterButton.setEnabled(true);
             refreshAddressButton.setEnabled(canRead);
+            useCreateAddressButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
         } else {
             backButton.setEnabled(true);
             refreshWorkOrdersButton.setEnabled(canRead);
