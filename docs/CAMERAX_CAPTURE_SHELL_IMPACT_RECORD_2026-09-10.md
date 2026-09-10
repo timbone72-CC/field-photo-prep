@@ -2,11 +2,19 @@
 
 Date: 2026-09-10
 
-Status: IN PROGRESS
+Status: **STAGED — automated verification PASS; physical camera gate pending**
 
 Branch: `feat/in-app-camerax-capture-shell`
 
 Rollback baseline: `0f25b5ee2dda19b316aca32dcf056ac804b78c7b`
+
+Exact automated-tested runtime head: `9f4bc9a2e45cd22be4bcb2730b2f8677190a3105`
+
+Android CI run: `34533037807`
+
+Internal APK artifact: `10174455137` (`field-photo-prep-internal-apk`)
+
+Artifact digest: `sha256:98e5a1ff3f9ae46ec55f36e36db753ab640e9ec5723f95ae4accf21d72236d20`
 
 ## User-facing problem
 
@@ -88,17 +96,28 @@ These were the current stable AndroidX releases when this record was created on 
 4. Back/cancel during an active file write must not race the parent into deleting an empty-looking reservation before CameraX finishes.
 5. Device-specific CameraX preview/orientation behavior cannot be called field-proven from CI alone.
 
-## Focused verification
+## Automated verification
 
-Existing `PendingPhotoStoreTest` coverage remains the focused persistence boundary and must continue to pass, especially:
+PASS on exact runtime head `9f4bc9a2e45cd22be4bcb2730b2f8677190a3105`.
+
+Android CI run `34533037807` completed successfully with:
+
+- unit tests;
+- internal debug APK build;
+- stable test-signer verification;
+- emulator instrumentation tests;
+- internal app launch smoke test; and
+- APK artifact packaging.
+
+The later documentation-only branch commits do not alter the tested runtime.
+
+Existing `PendingPhotoStoreTest` coverage remains the focused persistence boundary, especially:
 
 - `beginCapturePersistsExactBindingBeforeImageDataExists`;
 - `successfulCaptureRequiresBytesThenPersistsWaitingAcrossReload`;
 - `emptyCameraReturnRemovesOnlyEmptyReservation`;
 - `interruptedCaptureWithBytesIsPreservedAsWaiting`;
 - `destinationBindingDoesNotChangeWhenAnotherWorkOrderExists`.
-
-The final runtime head must also pass the repository's complete Android CI suite once.
 
 ## Physical-device smoke check
 
@@ -114,6 +133,10 @@ Before this behavior is called field-proven on the supported Android phone:
 8. visually confirm usable orientation/content.
 
 This is the smallest required CameraX device reality gate for this slice. It does not require a Drive upload because upload behavior is unchanged.
+
+## Merge state
+
+Do not merge this draft pull request until the physical-camera smoke gate passes. Do not add multi-shot capture to this slice.
 
 ## Rollback
 
