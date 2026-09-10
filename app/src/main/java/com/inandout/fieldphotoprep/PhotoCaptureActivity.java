@@ -17,12 +17,12 @@ import android.widget.TextView;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
-import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class PhotoCaptureActivity extends Activity {
     private static final int REQUEST_CAPTURE_PHOTO = 2001;
@@ -32,6 +32,7 @@ public final class PhotoCaptureActivity extends Activity {
 
     private FolderPrefs folderPrefs;
     private PendingPhotoStore photoStore;
+    private PhotoPreparer photoPreparer;
     private DriveFolder address;
     private DriveFolder workOrder;
     private String pendingCaptureId;
@@ -40,8 +41,10 @@ public final class PhotoCaptureActivity extends Activity {
     private TextView statusText;
     private TextView pendingCountText;
     private TextView selectedPhotoText;
+    private TextView preparedPhotoText;
     private LinearLayout pendingList;
     private Button takePhotoButton;
+    private Button prepareButton;
     private Button discardButton;
 
     @Override
@@ -49,6 +52,7 @@ public final class PhotoCaptureActivity extends Activity {
         super.onCreate(savedInstanceState);
         folderPrefs = new FolderPrefs(this);
         photoStore = new PendingPhotoStore(new File(getFilesDir(), "pending_photos"));
+        photoPreparer = new PhotoPreparer(new File(getFilesDir(), "prepared_photos"));
         address = folderPrefs.getCurrentAddress();
         workOrder = folderPrefs.getCurrentWorkOrder();
         if (savedInstanceState != null) {
@@ -59,6 +63,7 @@ public final class PhotoCaptureActivity extends Activity {
         if (address == null || workOrder == null) {
             statusText.setText("Choose an exact address and work order before taking photos.");
             takePhotoButton.setEnabled(false);
+            prepareButton.setEnabled(false);
             discardButton.setEnabled(false);
             return;
         }
@@ -88,7 +93,7 @@ public final class PhotoCaptureActivity extends Activity {
         root.addView(title);
 
         TextView phase = new TextView(this);
-        phase.setText("Phase 5 · Photo capture");
+        phase.setText("Phase 6A · Photo preparation");
         phase.setTextSize(14);
         root.addView(phase);
 
@@ -129,8 +134,18 @@ public final class PhotoCaptureActivity extends Activity {
         root.addView(pendingList);
 
         selectedPhotoText = new TextView(this);
-        selectedPhotoText.setPadding(0, dp(12), 0, dp(6));
+        selectedPhotoText.setPadding(0, dp(12), 0, dp(4));
         root.addView(selectedPhotoText);
+
+        preparedPhotoText = new TextView(this);
+        preparedPhotoText.setPadding(0, 0, 0, dp(6));
+        root.addView(preparedPhotoText);
+
+        prepareButton = new Button(this);
+        prepareButton.setText("Prepare Selected Photo for Upload");
+        prepareButton.setEnabled(false);
+        prepareButton.setOnClickListener(v -> prepareSelectedPhoto());
+        root.addView(prepareButton);
 
         discardButton = new Button(this);
         discardButton.setText("Discard Selected Temporary Photo");
@@ -223,7 +238,7 @@ public final class PhotoCaptureActivity extends Activity {
                         ? "Camera returned without usable image data. No empty photo was kept."
                         : "Camera cancelled. No photo data was saved.");
             } else if (resultCode == RESULT_OK) {
-                statusText.setText("Photo protected locally and waiting for a future Drive upload.");
+                statusText.setText("Photo protected locally and waiting for preparation/upload.");
             } else {
                 statusText.setText("Camera did not report success, but image data exists, so the photo was preserved.");
             }
@@ -275,8 +290,10 @@ public final class PhotoCaptureActivity extends Activity {
         for (PendingPhotoRecord record : records) {
             Button photoButton = new Button(this);
             boolean unusable = unusableWaitingIds.contains(record.id());
+            boolean prepared = hasPreparedCopy(record.id());
             String label = record.state().name()
                     + (unusable ? " · IMAGE MISSING" : "")
+                    + (prepared ? " · PREPARED" : "")
                     + "\n" + formatTime(record.createdAtEpochMs())
                     + " · …" + shortId(record.id());
             photoButton.setText(label);
@@ -290,13 +307,62 @@ public final class PhotoCaptureActivity extends Activity {
     }
 
     private void renderSelectedPhoto() {
-        if (selectedPhotoText == null || discardButton == null) {
+        if (selectedPhotoText == null
+                || preparedPhotoText == null
+                || prepareButton == null
+                || discardButton == null) {
             return;
         }
         selectedPhotoText.setText(selectedPhotoId == null
                 ? "Selected temporary photo: none"
                 : "Selected temporary photo: …" + shortId(selectedPhotoId));
-        discardButton.setEnabled(selectedPhotoId != null);
+        if (selectedPhotoId == null) {
+            preparedPhotoText.setText("Prepared copy: none selected");
+            prepareButton.setEnabled(false);
+            discardButton.setEnabled(false);
+            return;
+        }
+
+        File prepared = getPreparedFileOrNull(selectedPhotoId);
+        preparedPhotoText.setText(prepared != null && prepared.isFile() && prepared.length() > 0
+                ? "Prepared copy: " + formatBytes(prepared.length())
+                : "Prepared copy: not created");
+        prepareButton.setEnabled(true);
+        discardButton.setEnabled(true);
+    }
+
+    private void prepareSelectedPhoto() {
+        if (selectedPhotoId == null) {
+            return;
+        }
+        try {
+            PendingPhotoRecord record = photoStore.getById(selectedPhotoId);
+            if (record == null) {
+                statusText.setText("The selected temporary photo no longer exists.");
+                refreshPhotoList();
+                return;
+            }
+            if (record.state() != PendingPhotoRecord.State.WAITING) {
+                statusText.setText("Wait for capture to finish before preparing this photo.");
+                return;
+            }
+            if (!photoStore.hasImageData(record)) {
+                statusText.setText("The protected original is missing or empty. Nothing was prepared.");
+                return;
+            }
+
+            prepareButton.setEnabled(false);
+            PreparedPhotoResult result = photoPreparer.prepare(photoStore, record);
+            statusText.setText("Prepared for upload: "
+                    + formatBytes(result.originalBytes()) + " → "
+                    + formatBytes(result.preparedBytes()) + " · "
+                    + result.width() + "×" + result.height()
+                    + ". Protected original kept.");
+            refreshPhotoList();
+        } catch (Exception error) {
+            showError("Could not prepare the selected photo; protected original was kept", error);
+            refreshPhotoList();
+        }
     }
 
     private void confirmDiscardSelected() {
@@ -308,7 +374,7 @@ public final class PhotoCaptureActivity extends Activity {
                 .setTitle("Discard temporary photo?")
                 .setMessage("Work order: " + workOrder.name()
                         + "\nPhoto: …" + shortId(id)
-                        + "\n\nThis removes only this app-private temporary photo. It does not delete anything from Drive.")
+                        + "\n\nThis removes this photo's app-private original and prepared copy. It does not delete anything from Drive.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Discard", (dialog, which) -> discardSelected(id))
                 .show();
@@ -316,6 +382,10 @@ public final class PhotoCaptureActivity extends Activity {
 
     private void discardSelected(String id) {
         try {
+            File prepared = photoPreparer.preparedFile(id);
+            if (prepared.exists() && !prepared.delete()) {
+                throw new IllegalStateException("Could not remove the prepared copy. Protected original was left unchanged.");
+            }
             photoStore.discard(id);
             if (id.equals(selectedPhotoId)) {
                 selectedPhotoId = null;
@@ -325,6 +395,19 @@ public final class PhotoCaptureActivity extends Activity {
             showError("Could not completely discard the selected temporary photo", error);
         }
         refreshPhotoList();
+    }
+
+    private boolean hasPreparedCopy(String id) {
+        File prepared = getPreparedFileOrNull(id);
+        return prepared != null && prepared.isFile() && prepared.length() > 0;
+    }
+
+    private File getPreparedFileOrNull(String id) {
+        try {
+            return photoPreparer.preparedFile(id);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private void renderScanWarnings(PendingPhotoStore.ScanResult result) {
@@ -360,6 +443,16 @@ public final class PhotoCaptureActivity extends Activity {
 
     private String formatTime(long epochMs) {
         return TIME_FORMAT.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()));
+    }
+
+    private String formatBytes(long bytes) {
+        if (bytes >= 1024L * 1024L) {
+            return String.format(Locale.US, "%.1f MB", bytes / (1024d * 1024d));
+        }
+        if (bytes >= 1024L) {
+            return String.format(Locale.US, "%.0f KB", bytes / 1024d);
+        }
+        return bytes + " B";
     }
 
     private String shortId(String id) {
