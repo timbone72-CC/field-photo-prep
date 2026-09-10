@@ -30,14 +30,28 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           APKSIGNER="$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "${APKSIGNER}"
-          EXPECTED="2c0a9616fd819333ed98b33593fbe597e120e95936103c6b7a76270e985d3fba"
-          ACTUAL="$("${APKSIGNER}" verify --print-certs "${APK}" | awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print tolower($2); exit}')"
-          echo "Expected signer SHA-256: ${EXPECTED}"
-          echo "Actual signer SHA-256:   ${ACTUAL}"
-          test "${ACTUAL}" = "${EXPECTED}"
+          "${APKSIGNER}" verify --print-certs "${APK}" > apk-signer.txt
+          cat apk-signer.txt
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          expected = "2c0a9616fd819333ed98b33593fbe597e120e95936103c6b7a76270e985d3fba"
+          text = pathlib.Path("apk-signer.txt").read_text(encoding="utf-8")
+          match = re.search(r"certificate SHA-256 digest:\s*([0-9a-fA-F]+)", text, re.IGNORECASE)
+          if not match:
+              print("Could not locate the APK certificate SHA-256 digest in apksigner output.", file=sys.stderr)
+              sys.exit(1)
+          actual = match.group(1).lower()
+          print(f"Expected signer SHA-256: {expected}")
+          print(f"Actual signer SHA-256:   {actual}")
+          if actual != expected:
+              sys.exit(1)
+          PY
       - name: Enable KVM
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Instrumented image tests and launch smoke test
