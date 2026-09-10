@@ -257,6 +257,24 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 requireText(detail, "uncertainty detail"), provisionalRemoteFileId, null);
     }
 
+    public PendingPhotoRecord resolveUncertainAsRetryableAbsence(String detail) {
+        if (state != State.UNCERTAIN) {
+            throw new IllegalStateException(
+                    "Only an uncertain upload can be released for retry after reconciliation.");
+        }
+        if (provisionalRemoteFileId != null) {
+            throw new IllegalStateException(
+                    "Unresolved provisional remote identity blocks retry release.");
+        }
+        return copy(
+                State.FAILED,
+                uploadAttemptCount,
+                lastAttemptAtEpochMs,
+                requireText(detail, "reconciliation detail"),
+                null,
+                null);
+    }
+
     public PendingPhotoRecord recoverInterruptedUpload() {
         if (state != State.UPLOADING) {
             return this;
