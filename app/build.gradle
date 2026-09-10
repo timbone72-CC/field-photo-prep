@@ -10,8 +10,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 14
-        versionName '0.9-phase6b-drive-upload'
+        versionCode 15
+        versionName '0.10-phase7b-reconciliation-cleanup'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
