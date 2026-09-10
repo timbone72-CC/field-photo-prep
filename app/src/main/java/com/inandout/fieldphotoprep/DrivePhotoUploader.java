@@ -8,7 +8,6 @@ import android.provider.DocumentsContract;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -285,22 +284,26 @@ public final class DrivePhotoUploader {
             long written = 0L;
             byte[] buffer = new byte[64 * 1024];
 
-            try (ParcelFileDescriptor descriptor = resolver.openFileDescriptor(documentUri, "wt")) {
-                if (descriptor == null) {
-                    throw new IOException("Document provider did not open the created photo for writing.");
-                }
-                try (FileInputStream input = new FileInputStream(source);
-                     FileOutputStream output = new FileOutputStream(descriptor.getFileDescriptor())) {
-                    int count;
-                    while ((count = input.read(buffer)) != -1) {
-                        output.write(buffer, 0, count);
-                        written += count;
-                    }
-                    output.flush();
-                    output.getFD().sync();
-                }
+            ParcelFileDescriptor descriptor;
+            try {
+                descriptor = resolver.openFileDescriptor(documentUri, "wt");
             } catch (SecurityException error) {
-                throw new IOException("Drive access was denied while writing the photo.", error);
+                throw new IOException("Drive access was denied while opening the photo for writing.", error);
+            }
+            if (descriptor == null) {
+                throw new IOException("Document provider did not open the created photo for writing.");
+            }
+
+            try (FileInputStream input = new FileInputStream(source);
+                 ParcelFileDescriptor.AutoCloseOutputStream output =
+                         new ParcelFileDescriptor.AutoCloseOutputStream(descriptor)) {
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, count);
+                    written += count;
+                }
+                output.flush();
+                output.getFD().sync();
             }
             return written;
         }
