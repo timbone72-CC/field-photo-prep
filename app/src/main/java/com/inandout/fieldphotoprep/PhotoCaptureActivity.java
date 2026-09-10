@@ -2,18 +2,12 @@ package com.inandout.fieldphotoprep;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
-import android.content.ClipData;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-
-import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.time.Instant;
@@ -210,21 +204,12 @@ public final class PhotoCaptureActivity extends Activity {
 
         pendingCaptureId = record.id();
         try {
-            Uri outputUri = FileProvider.getUriForFile(
-                    this,
-                    getPackageName() + ".fileprovider",
-                    photoStore.imageFile(record));
-            Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri);
-            cameraIntent.setClipData(ClipData.newRawUri("Field Photo Prep capture", outputUri));
-            cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            statusText.setText("Opening camera for " + workOrder.name() + "…");
+            Intent cameraIntent = new Intent(this, CameraCaptureActivity.class);
+            cameraIntent.putExtra(CameraCaptureActivity.EXTRA_CAPTURE_ID, record.id());
+            statusText.setText("Opening in-app camera for " + workOrder.name() + "…");
             startActivityForResult(cameraIntent, REQUEST_CAPTURE_PHOTO);
-        } catch (ActivityNotFoundException error) {
-            finishFailedCameraLaunch("No camera app is available", error);
         } catch (Exception error) {
-            finishFailedCameraLaunch("Could not open the camera safely", error);
+            finishFailedCameraLaunch("Could not open the in-app camera safely", error);
         }
     }
 
@@ -259,16 +244,29 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
 
+        String cameraError = data == null
+                ? null
+                : data.getStringExtra(CameraCaptureActivity.EXTRA_ERROR_MESSAGE);
         try {
             PendingPhotoRecord preserved = photoStore.finishCaptureIfImageExists(captureId);
             if (preserved == null) {
-                statusText.setText(resultCode == RESULT_OK
-                        ? "Camera returned without usable image data. No empty photo was kept."
-                        : "Camera cancelled. No photo data was saved.");
-            } else if (resultCode == RESULT_OK) {
-                statusText.setText("Photo protected locally and waiting for preparation/upload.");
+                if (cameraError != null && !cameraError.trim().isEmpty()) {
+                    statusText.setText(cameraError);
+                } else {
+                    statusText.setText(resultCode == RESULT_OK
+                            ? "Camera returned without usable image data. No empty photo was kept."
+                            : "Camera cancelled. No photo data was saved.");
+                }
             } else {
-                statusText.setText("Camera did not report success, but image data exists, so the photo was preserved.");
+                selectedPhotoId = preserved.id();
+                if (resultCode == RESULT_OK) {
+                    statusText.setText("Photo captured, protected locally, and selected.");
+                } else if (cameraError != null && !cameraError.trim().isEmpty()) {
+                    statusText.setText(cameraError
+                            + " Non-empty image data exists, so the photo was preserved and selected.");
+                } else {
+                    statusText.setText("Camera did not report success, but image data exists, so the photo was preserved and selected.");
+                }
             }
         } catch (Exception error) {
             showError("Camera returned, but the protected photo state needs inspection", error);
