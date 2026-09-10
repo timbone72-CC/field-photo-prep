@@ -65,7 +65,7 @@ jobs:
             gradle connectedDebugAndroidTest
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.inandout.fieldphotoprep.internal
-            adb shell am start -W -n com.inandout.fieldphotoprep.internal/.MainActivity
+            adb shell am start -W -n com.inandout.fieldphotoprep.internal/com.inandout.fieldphotoprep.MainActivity
             sleep 3
             adb shell pidof com.inandout.fieldphotoprep.internal | grep -q '[0-9]'
             echo "Field Photo Prep Internal instrumentation and launch smoke tests passed"
