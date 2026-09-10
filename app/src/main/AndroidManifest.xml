@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:name=".FieldPhotoPrepApplication"
         android:allowBackup="true"
@@ -15,6 +17,10 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <activity
+            android:name=".CameraCaptureActivity"
+            android:exported="false" />
 
         <activity
             android:name=".PhotoCaptureActivity"
