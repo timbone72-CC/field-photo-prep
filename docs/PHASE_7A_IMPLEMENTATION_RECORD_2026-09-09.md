@@ -20,7 +20,7 @@ Phase 7A only:
 - persist confirmed remote file identity only when a future caller explicitly supplies a confirmed remote identity;
 - allow upload attempts to begin only from `WAITING` or `FAILED`;
 - make `UPLOADED` terminal for automatic retry;
-- convert a persisted `UPLOADING` record found after restart into `UNCERTAIN`, not `WAITING` or `FAILED`;
+- convert a persisted `UPLOADING` record found after actual process restart into `UNCERTAIN`, not `WAITING` or `FAILED`;
 - block automatic retry of `UNCERTAIN` until a later Drive-reconciliation phase resolves whether remote creation occurred;
 - preserve exact address/work-order provider IDs through every queue transition;
 - keep protected originals intact throughout all Phase 7A transitions, including simulated confirmed success;
@@ -103,9 +103,11 @@ Ambiguous/interrupted flow:
 Restart recovery rule:
 
 - a persisted `UPLOADING` state means the previous process ended before local confirmation bookkeeping completed;
-- Phase 7A therefore changes it to `UNCERTAIN` on restart/reconciliation;
+- Phase 7A therefore changes it to `UNCERTAIN` on actual Android process startup;
 - it is never silently changed back to `WAITING` or `FAILED`;
 - Phase 7A provides no automatic path from `UNCERTAIN` back to retryable state because remote reconciliation does not exist yet.
+
+The process-start boundary is deliberate. `PhotoCaptureActivity` recreation/navigation does **not** classify a currently active `UPLOADING` record as interrupted. `FieldPhotoPrepApplication` owns the once-per-process recovery call, while the photo screen continues to own interrupted-camera reconciliation. This avoids baking in a future race with a live upload worker.
 
 Confirmed-success rule:
 
@@ -134,7 +136,8 @@ All Phase 7A state is app-private local metadata and requires no network.
 - `WAITING` survives restart unchanged.
 - `FAILED` survives restart unchanged and remains retryable.
 - `UPLOADED` survives restart as terminal bookkeeping.
-- stale persisted `UPLOADING` is converted to `UNCERTAIN` during restart reconciliation.
+- stale persisted `UPLOADING` is converted to `UNCERTAIN` at actual process startup.
+- normal screen recreation does not rewrite `UPLOADING`.
 - protected image data is not deleted by reconciliation.
 - one record's state transition must not rewrite another record.
 
@@ -142,7 +145,9 @@ All Phase 7A state is app-private local metadata and requires no network.
 
 Phase 7A does not add automatic cleanup.
 
-Explicit local discard remains available only for safe pre-confirmation states where no upload is in flight or ambiguous. It must refuse `UPLOADING`, `UNCERTAIN`, and `UPLOADED` records so the app does not erase evidence needed to resolve or prevent duplicates.
+Explicit local discard remains available only for safe pre-confirmation states where no upload is in flight or ambiguous. It refuses `UPLOADING`, `UNCERTAIN`, and `UPLOADED` records so the app does not erase evidence needed to resolve or prevent duplicates.
+
+The photo screen also disables unsafe Prepare/Discard actions based on the persisted queue state and visibly identifies `UNCERTAIN` results as requiring later remote reconciliation.
 
 Future post-confirmation cleanup will be a separate guarded change.
 
@@ -153,17 +158,18 @@ Future post-confirmation cleanup will be a separate guarded change.
 - invalid/unknown schema fails closed and leaves paired image data untouched;
 - missing protected image is surfaced and never converted into successful upload state by reconciliation;
 - interrupted `UPLOADING` is preserved as `UNCERTAIN` with its exact destination binding;
+- if process-start reconciliation itself cannot complete, it fails closed without manufacturing a retryable or successful state;
 - no queue failure in Phase 7A deletes remote or local photos.
 
 ## Safe test fixture
 
 No Drive fixture is required for this local-only phase because no Drive/provider operation is performed.
 
-Use temporary app/JVM storage containing disposable metadata/image files. Automated tests must prove persistence by creating one store instance, changing state, then constructing a new store instance over the same files.
+Temporary JVM/app storage with disposable metadata/image files was used. Persistence tests create one store instance, change state, then construct a new store instance over the same files.
 
-## Required automated coverage
+## Automated coverage completed
 
-Focused coverage must include:
+Focused and complete-suite coverage includes:
 
 - legacy schema-v1 `CAPTURING` and `WAITING` records load safely with queue defaults;
 - new writes use schema version 2;
@@ -172,16 +178,52 @@ Focused coverage must include:
 - `FAILED → UPLOADING` increments attempt count and preserves destination identities;
 - `UPLOADING → FAILED` persists failure detail while retaining image and destination;
 - explicit ambiguous transition produces `UNCERTAIN`;
-- restart reconciliation converts stale `UPLOADING` to `UNCERTAIN` and preserves protected image;
+- actual process-start recovery converts stale `UPLOADING` to `UNCERTAIN` and preserves protected image;
+- photo-screen capture reconciliation does not misclassify a live `UPLOADING` state as interrupted;
 - `UNCERTAIN` cannot begin another upload attempt;
 - `UPLOADED` requires explicit confirmed remote identity and cannot begin another upload attempt;
 - confirmed-success bookkeeping preserves the protected original in Phase 7A;
 - one photo failure does not alter another photo;
 - address/work-order provider identities never change across transitions;
 - explicit local discard refuses `UPLOADING`, `UNCERTAIN`, and `UPLOADED`;
-- existing capture/restart and Phase 6A preparation tests remain passing.
+- existing capture/restart and Phase 6A preparation/image tests remain passing.
 
-Final runtime head must pass the complete JVM suite, debug build, existing Android emulator image instrumentation/launch smoke, and APK packaging.
+## Final automated verification
+
+Exact tested Phase 7A runtime head:
+
+`95ae6a0c46e48c9f77ca85412ad86f650a4d9459`
+
+Android CI run:
+
+`34434158082`
+
+Job:
+
+`102735664934`
+
+Result: **PASS**.
+
+Passed on the exact runtime head:
+
+- complete JVM/unit suite;
+- debug APK build;
+- KVM/emulator setup;
+- Android emulator instrumented image/preparation tests;
+- app launch smoke test with the registered `FieldPhotoPrepApplication` process-start recovery path;
+- APK artifact packaging.
+
+Artifact:
+
+- ID: `10135640611`
+- digest: `sha256:a26baa39daf27b4e28b452e4bc63fb6acf87a45bd8cd374212d98b71d590fa34`
+
+Test build:
+
+- versionCode: `13`
+- versionName: `0.8-phase7a-persistent-upload-queue`
+
+Any later branch commit that changes only this implementation record is documentation-only; the runtime evidence above remains tied specifically to `95ae6a0c46e48c9f77ca85412ad86f650a4d9459`.
 
 ## Real-device status
 
@@ -193,4 +235,4 @@ Its later integration with actual Drive upload/reconciliation will require the A
 
 Implementation authorized by the operator's explicit instruction to build **Phase 7A — Persistent Upload Queue State**.
 
-Pre-merge status: **not approved**. This Level 3 stacked branch remains unmerged until its dependency chain and explicit pre-merge approval requirements are satisfied.
+Pre-merge status: **not approved**. This Level 3 stacked branch remains unmerged until its Phase 5/Phase 6A dependency chain is resolved and explicit pre-merge approval is received.
