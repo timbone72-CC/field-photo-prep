@@ -25,15 +25,18 @@ public final class PendingPhotoStore {
     public static final class ScanResult {
         private final List<PendingPhotoRecord> records;
         private final List<String> corruptMetadataFiles;
-        private final List<String> unusableWaitingPhotoIds;
+        private final List<String> unusableQueuedPhotoIds;
+        private final List<String> uncertainPhotoIds;
 
         ScanResult(
                 List<PendingPhotoRecord> records,
                 List<String> corruptMetadataFiles,
-                List<String> unusableWaitingPhotoIds) {
+                List<String> unusableQueuedPhotoIds,
+                List<String> uncertainPhotoIds) {
             this.records = Collections.unmodifiableList(new ArrayList<>(records));
             this.corruptMetadataFiles = Collections.unmodifiableList(new ArrayList<>(corruptMetadataFiles));
-            this.unusableWaitingPhotoIds = Collections.unmodifiableList(new ArrayList<>(unusableWaitingPhotoIds));
+            this.unusableQueuedPhotoIds = Collections.unmodifiableList(new ArrayList<>(unusableQueuedPhotoIds));
+            this.uncertainPhotoIds = Collections.unmodifiableList(new ArrayList<>(uncertainPhotoIds));
         }
 
         public List<PendingPhotoRecord> records() {
@@ -44,8 +47,20 @@ public final class PendingPhotoStore {
             return corruptMetadataFiles;
         }
 
+        public List<String> unusableQueuedPhotoIds() {
+            return unusableQueuedPhotoIds;
+        }
+
+        /**
+         * Compatibility alias retained for Phase 5/6A callers. Phase 7A broadens this list to all
+         * non-capturing, non-confirmed queue states that require a protected image.
+         */
         public List<String> unusableWaitingPhotoIds() {
-            return unusableWaitingPhotoIds;
+            return unusableQueuedPhotoIds;
+        }
+
+        public List<String> uncertainPhotoIds() {
+            return uncertainPhotoIds;
         }
     }
 
@@ -100,6 +115,9 @@ public final class PendingPhotoStore {
         if (record == null) {
             throw new IOException("The pending capture record could not be found.");
         }
+        if (record.state() != PendingPhotoRecord.State.CAPTURING) {
+            throw new IOException("Only a capturing photo can finish camera capture.");
+        }
         if (!hasImageData(record)) {
             removeEmptyReservation(record);
             return null;
@@ -124,11 +142,88 @@ public final class PendingPhotoStore {
         return scan();
     }
 
+    /**
+     * Converts persisted in-flight uploads into UNCERTAIN after process/app restart.
+     *
+     * A previous process may have reached the remote provider before dying, so an UPLOADING record
+     * can never be made retryable merely because the process restarted.
+     */
+    public ScanResult reconcileInterruptedUploads() throws IOException {
+        ScanResult before = scan();
+        for (PendingPhotoRecord record : before.records()) {
+            if (record.state() == PendingPhotoRecord.State.UPLOADING) {
+                writeRecord(record.recoverInterruptedUpload());
+            }
+        }
+        return scan();
+    }
+
+    public PendingPhotoRecord beginUploadAttempt(String id) throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        if (!record.canBeginUploadAttempt()) {
+            throw new IOException("This photo is not safe to start or retry automatically from state "
+                    + record.state().name() + ".");
+        }
+        if (!hasImageData(record)) {
+            throw new IOException("The protected original is missing or empty. Upload did not start.");
+        }
+        PendingPhotoRecord uploading;
+        try {
+            uploading = record.beginUploadAttempt(timeSource.nowEpochMs());
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            throw new IOException("Could not begin a safe upload attempt.", error);
+        }
+        writeRecord(uploading);
+        return uploading;
+    }
+
+    public PendingPhotoRecord markUploadFailed(String id, String detail) throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        PendingPhotoRecord failed;
+        try {
+            failed = record.markUploadFailed(detail);
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            throw new IOException("Could not mark upload failure from the current state.", error);
+        }
+        writeRecord(failed);
+        return failed;
+    }
+
+    public PendingPhotoRecord markUploadUncertain(String id, String detail) throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        PendingPhotoRecord uncertain;
+        try {
+            uncertain = record.markUploadUncertain(detail);
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            throw new IOException("Could not mark the upload result uncertain from the current state.", error);
+        }
+        writeRecord(uncertain);
+        return uncertain;
+    }
+
+    /**
+     * Persists confirmed-success bookkeeping only. This method performs no remote operation and the
+     * caller must supply the remote identity returned/verified by a later Drive integration phase.
+     */
+    public PendingPhotoRecord markUploadConfirmed(String id, String confirmedRemoteFileId)
+            throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        PendingPhotoRecord uploaded;
+        try {
+            uploaded = record.markUploadConfirmed(confirmedRemoteFileId);
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            throw new IOException("Could not persist confirmed upload identity from the current state.", error);
+        }
+        writeRecord(uploaded);
+        return uploaded;
+    }
+
     public ScanResult scan() throws IOException {
         ensureRoot();
         List<PendingPhotoRecord> records = new ArrayList<>();
         List<String> corrupt = new ArrayList<>();
-        List<String> unusableWaiting = new ArrayList<>();
+        List<String> unusableQueued = new ArrayList<>();
+        List<String> uncertain = new ArrayList<>();
 
         File[] files = root.listFiles();
         if (files == null) {
@@ -144,8 +239,11 @@ public final class PendingPhotoStore {
                     throw new IllegalArgumentException("Metadata filename does not match pending-photo id.");
                 }
                 records.add(record);
-                if (record.state() == PendingPhotoRecord.State.WAITING && !hasImageData(record)) {
-                    unusableWaiting.add(record.id());
+                if (record.needsProtectedImage() && !hasImageData(record)) {
+                    unusableQueued.add(record.id());
+                }
+                if (record.state() == PendingPhotoRecord.State.UNCERTAIN) {
+                    uncertain.add(record.id());
                 }
             } catch (IOException | RuntimeException error) {
                 corrupt.add(file.getName());
@@ -154,13 +252,15 @@ public final class PendingPhotoStore {
 
         Collections.sort(records);
         Collections.sort(corrupt);
-        Collections.sort(unusableWaiting);
-        return new ScanResult(records, corrupt, unusableWaiting);
+        Collections.sort(unusableQueued);
+        Collections.sort(uncertain);
+        return new ScanResult(records, corrupt, unusableQueued, uncertain);
     }
 
     public PendingPhotoRecord getById(String id) throws IOException {
         ensureRoot();
         File metadata = new File(root, PendingPhotoRecord.metadataFileNameFor(id));
+        ensureDirectChild(metadata);
         if (!metadata.isFile()) {
             return null;
         }
@@ -195,9 +295,10 @@ public final class PendingPhotoStore {
     }
 
     public void discard(String id) throws IOException {
-        PendingPhotoRecord record = getById(id);
-        if (record == null) {
-            throw new IOException("The selected temporary photo no longer exists.");
+        PendingPhotoRecord record = requireRecord(id);
+        if (!record.canDiscardLocally()) {
+            throw new IOException("Refusing to discard a photo in " + record.state().name()
+                    + " state because upload/duplicate-protection evidence may still be needed.");
         }
         File image = imageFile(record);
         if (image.exists() && !image.delete()) {
@@ -207,6 +308,14 @@ public final class PendingPhotoStore {
         if (metadata.exists() && !metadata.delete()) {
             throw new IOException("Image was removed, but its local metadata could not be removed.");
         }
+    }
+
+    private PendingPhotoRecord requireRecord(String id) throws IOException {
+        PendingPhotoRecord record = getById(id);
+        if (record == null) {
+            throw new IOException("The selected temporary photo no longer exists.");
+        }
+        return record;
     }
 
     private PendingPhotoRecord readRecord(File metadata) throws IOException {
