@@ -77,7 +77,7 @@ Current status:
 
 No automatic cleanup or bulk Drive management.
 
-### Phase 4 — Address Folder Creation — NEXT
+### Phase 4 — Address Folder Creation — IN PROGRESS — DEVICE GATE BLOCKED
 
 Goal: create a missing property/address folder safely under the approved master folder.
 
@@ -90,43 +90,84 @@ Scope:
 - persist returned folder identity;
 - never recycle address folders.
 
-### Phase 5 — Camera + Temporary Photo Protection — PENDING
+Current status:
+- runtime and automated Android CI verification are complete on PR #10;
+- PR remains unmerged pending the real Android/Google Drive create/reuse reality gate.
+
+### Phase 5 — Camera + Temporary Photo Protection — IN PROGRESS — DEVICE GATE BLOCKED
 
 Goal: take still photos inside the selected work occurrence without making the app a second photo library.
 
 Scope:
 - launch camera for the selected work order;
 - capture still photos only;
-- bind each accepted photo to the exact selected work-order folder identity;
+- bind each accepted photo to the exact selected work-order folder identity before camera launch;
 - retain an unconfirmed photo locally until Drive success or explicit discard;
 - survive app/process restart with unconfirmed photos;
 - camera capture must work without internet.
 
+Current status:
+- runtime and automated Android CI verification are complete on PR #11;
+- PR remains unmerged pending a physical Android camera/restart reality check.
+
 No video, AI classification, OCR, watermarking, or permanent in-app gallery.
 
-### Phase 6 — Photo Preparation + Drive Upload — PENDING
+### Phase 6A — Photo Preparation — IN PROGRESS — DEVICE GATE BLOCKED
 
-Goal: reduce upload size and send photos to the exact selected Drive destination.
+Goal: reduce upload size without weakening the protected original.
 
 Scope:
-- create a smaller prepared upload copy;
+- create a separate smaller prepared JPEG;
 - preserve correct orientation and field-documentation usability;
-- upload only to the exact bound work-order folder;
+- never overwrite/delete the protected original during preparation;
+- deterministic prepared identity from the immutable local photo UUID;
+- perform expensive preparation off the UI thread;
+- block conflicting local actions while preparation owns a photo.
+
+Current status:
+- runtime and complete Android CI/emulator image verification are complete on PR #12;
+- PR remains unmerged pending a short real-camera-photo visual/responsiveness check and its Phase 5 dependency.
+
+### Phase 6B — Drive Upload — PENDING
+
+Goal: send one prepared photo to its exact bound Drive work-order destination and record confirmed remote identity safely.
+
+Scope:
+- upload only to the exact provider document identity already stored on the photo;
 - mark uploaded only after confirmed remote creation;
 - retain enough remote identity to avoid knowingly duplicating confirmed uploads;
-- preserve the recoverable local photo if preparation or upload fails.
+- preserve the recoverable local photo if upload fails or remote outcome is uncertain;
+- use the Android safe-folder/DocumentsProvider reality gate before merge.
 
-### Phase 7 — Offline Queue, Retry & Cleanup — PENDING
+### Phase 7A — Persistent Upload Queue State — IN PROGRESS
 
-Goal: make the app dependable in weak/no-service field conditions.
+Goal: establish durable local upload/retry bookkeeping before real remote upload is connected.
 
 Scope:
-- persistent waiting/failed queue;
-- retry to the original immutable destination;
+- persistent `WAITING`, `UPLOADING`, `FAILED`, `UNCERTAIN`, and `UPLOADED` bookkeeping while preserving capture states;
+- immutable local photo identity and exact original destination through every transition;
+- attempt count and last-attempt timestamp;
+- failed state remains retryable;
+- interrupted/ambiguous in-flight state becomes `UNCERTAIN`, not blindly retryable;
+- confirmed-success bookkeeping requires explicit confirmed remote identity;
 - app/process restart survival;
-- one photo failure does not corrupt others;
-- uncertain remote result must be reconciled or surfaced rather than blindly duplicated;
-- remove temporary local image data only after confirmed Drive success and safe local bookkeeping.
+- one photo's transition cannot corrupt another;
+- no Drive upload/write in this subphase;
+- no automatic local image cleanup in this subphase.
+
+Detailed implementation record: `docs/PHASE_7A_IMPLEMENTATION_RECORD_2026-09-09.md`.
+
+### Phase 7B — Remote Retry, Reconciliation & Cleanup — PENDING
+
+Goal: finish weak/no-service behavior once real Drive upload exists.
+
+Scope:
+- retry failed work to the original immutable destination;
+- reconcile uncertain remote results before another create/upload attempt;
+- never knowingly duplicate an already confirmed remote photo;
+- isolate failures between photos;
+- remove temporary local image data only after confirmed Drive success and safe local bookkeeping;
+- preserve lightweight remote identity/history needed for duplicate prevention.
 
 ### Phase 8 — Field Workflow / Release Hardening — PENDING
 
