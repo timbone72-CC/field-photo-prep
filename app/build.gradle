@@ -10,8 +10,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 4
-        versionName '0.3-phase3a-empty-folder-reuse'
+        versionCode 10
+        versionName '0.6-phase5-camera-temp-protection'
 
         testInstrumentationRunner 'android.test.InstrumentationTestRunner'
     }
@@ -23,5 +23,6 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.core:core:1.17.0'
     testImplementation 'junit:junit:4.13.2'
 }
