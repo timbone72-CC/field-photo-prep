@@ -225,6 +225,21 @@ public final class PendingPhotoStore {
         return uncertain;
     }
 
+    public PendingPhotoRecord resolveUncertainAsRetryableAbsence(String id, String detail)
+            throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        PendingPhotoRecord failed;
+        try {
+            failed = record.resolveUncertainAsRetryableAbsence(detail);
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            throw new IOException(
+                    "Could not release the uncertain upload for retry from the current evidence.",
+                    error);
+        }
+        writeRecord(failed);
+        return failed;
+    }
+
     /**
      * Persists confirmed-success bookkeeping only. This method performs no remote operation and the
      * caller must supply the remote identity returned/verified by a later Drive integration phase.
