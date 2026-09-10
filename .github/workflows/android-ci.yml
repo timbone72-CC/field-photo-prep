@@ -23,12 +23,38 @@ jobs:
         run: gradle test
       - name: Debug build
         run: gradle assembleDebug
+      - name: Verify stable test APK signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APKSIGNER="$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "${APKSIGNER}"
+          "${APKSIGNER}" verify --print-certs "${APK}" > apk-signer.txt
+          cat apk-signer.txt
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          expected = "2c0a9616fd819333ed98b33593fbe597e120e95936103c6b7a76270e985d3fba"
+          text = pathlib.Path("apk-signer.txt").read_text(encoding="utf-8")
+          match = re.search(r"certificate SHA-256 digest:\s*([0-9a-fA-F]+)", text, re.IGNORECASE)
+          if not match:
+              print("Could not locate the APK certificate SHA-256 digest in apksigner output.", file=sys.stderr)
+              sys.exit(1)
+          actual = match.group(1).lower()
+          print(f"Expected signer SHA-256: {expected}")
+          print(f"Actual signer SHA-256:   {actual}")
+          if actual != expected:
+              sys.exit(1)
+          PY
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Launch smoke test
+      - name: Instrumented image tests and launch smoke test
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -36,12 +62,13 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
+            gradle connectedDebugAndroidTest
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.inandout.fieldphotoprep
             adb shell am start -W -n com.inandout.fieldphotoprep/.MainActivity
             sleep 3
             adb shell pidof com.inandout.fieldphotoprep | grep -q '[0-9]'
-            echo "Field Photo Prep launch smoke test passed"
+            echo "Field Photo Prep instrumentation and launch smoke tests passed"
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
