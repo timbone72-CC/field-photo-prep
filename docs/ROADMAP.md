@@ -128,7 +128,7 @@ Current status:
 - runtime and complete Android CI/emulator image verification are complete on PR #12;
 - PR remains unmerged pending a short real-camera-photo visual/responsiveness check and its Phase 5 dependency.
 
-### Phase 6B — Drive Upload — PENDING
+### Phase 6B — Drive Upload — IN PROGRESS — H4 DEVICE GATE BLOCKED
 
 Goal: send one prepared photo to its exact bound Drive work-order destination and record confirmed remote identity safely.
 
@@ -138,6 +138,16 @@ Scope:
 - retain enough remote identity to avoid knowingly duplicating confirmed uploads;
 - preserve the recoverable local photo if upload fails or remote outcome is uncertain;
 - use the Android safe-folder/DocumentsProvider reality gate before merge.
+
+Current status:
+- core Phase 6B Drive-upload runtime is implemented on the governed development line;
+- Phase 6B-H1 added durable `provisionalRemoteFileId` queue evidence while preserving confirmed `remoteFileId` as success-only;
+- Phase 6B-H2 implemented the create → persist provisional identity → write/verify barrier;
+- H2 automated verification passed on exact runtime/test head `8d23b061307725589aef69a31a00249744523406`;
+- H2 documentation head is `cbdba0ba89f9b302b496360ff97e9808b5d1a7bc`;
+- the remaining required Phase 6B-H4 physical Android + real Google Drive `DocumentsProvider` reality gate is blocked until the operator phone is available;
+- Level 3 merge approval has not been granted and the H2 pull request remains unmerged;
+- Phase 7B reconciliation, automatic retry, and cleanup are not part of Phase 6B and have not been implemented here.
 
 ### Phase 7A — Persistent Upload Queue State — IN PROGRESS
 
@@ -182,6 +192,16 @@ Scope:
 - prepare a normal install/update path for continued use.
 
 Feature expansion stays out unless field use proves it is necessary.
+
+## Lean architecture baseline
+
+The accepted lean-architecture audit baseline is recorded in:
+
+`docs/LEAN_ARCHITECTURE_BASELINE_2026-09-10.md`
+
+The audit found the current H2 app lean and near the appropriate minimum architecture for its field workflow. No runtime lean-up phase is planned before H4.
+
+Deferred cleanup candidates must be revisited only after the physical H4 evidence is known and during Phase 7B design, when their actual future value can be judged. Runtime safety boundaries are not to be simplified merely to reduce class or line count.
 
 ## Product boundary
 
