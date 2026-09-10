@@ -29,6 +29,7 @@ public final class PhotoCaptureActivity extends Activity {
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, h:mm a");
     private static final PhotoPreparationGate PREPARATION_GATE = new PhotoPreparationGate();
+    private static final PhotoUploadGate UPLOAD_GATE = new PhotoUploadGate();
 
     private FolderPrefs folderPrefs;
     private PendingPhotoStore photoStore;
@@ -45,6 +46,8 @@ public final class PhotoCaptureActivity extends Activity {
     private LinearLayout pendingList;
     private Button takePhotoButton;
     private Button prepareButton;
+    private Button uploadButton;
+    private Button reconcileButton;
     private Button discardButton;
 
     @Override
@@ -64,6 +67,8 @@ public final class PhotoCaptureActivity extends Activity {
             statusText.setText("Choose an exact address and work order before taking photos.");
             takePhotoButton.setEnabled(false);
             prepareButton.setEnabled(false);
+            uploadButton.setEnabled(false);
+            reconcileButton.setEnabled(false);
             discardButton.setEnabled(false);
             return;
         }
@@ -71,6 +76,9 @@ public final class PhotoCaptureActivity extends Activity {
         reconcileAndRefresh();
         if (PREPARATION_GATE.isBusy()) {
             statusText.setText("A photo is being prepared in the background. Protected originals are locked until it finishes.");
+            renderSelectedPhoto();
+        } else if (UPLOAD_GATE.isBusy()) {
+            statusText.setText("A Drive upload or reconciliation check is already running. Wait for its queue result.");
             renderSelectedPhoto();
         }
     }
@@ -97,7 +105,7 @@ public final class PhotoCaptureActivity extends Activity {
         root.addView(title);
 
         TextView phase = new TextView(this);
-        phase.setText("Phase 7A · Persistent upload queue");
+        phase.setText("Phase 7B · Reconciliation + local cleanup");
         phase.setTextSize(14);
         root.addView(phase);
 
@@ -150,6 +158,18 @@ public final class PhotoCaptureActivity extends Activity {
         prepareButton.setEnabled(false);
         prepareButton.setOnClickListener(v -> prepareSelectedPhoto());
         root.addView(prepareButton);
+
+        uploadButton = new Button(this);
+        uploadButton.setText("Upload Selected Prepared Photo");
+        uploadButton.setEnabled(false);
+        uploadButton.setOnClickListener(v -> uploadSelectedPhoto());
+        root.addView(uploadButton);
+
+        reconcileButton = new Button(this);
+        reconcileButton.setText("Reconcile Uncertain Upload");
+        reconcileButton.setEnabled(false);
+        reconcileButton.setOnClickListener(v -> reconcileSelectedPhoto());
+        root.addView(reconcileButton);
 
         discardButton = new Button(this);
         discardButton.setText("Discard Selected Temporary Photo");
@@ -263,7 +283,37 @@ public final class PhotoCaptureActivity extends Activity {
         } catch (Exception error) {
             showError("Could not reconcile temporary photos", error);
         }
+        cleanupPreviouslyConfirmedLocalCopies();
         refreshPhotoList();
+    }
+
+    private void cleanupPreviouslyConfirmedLocalCopies() {
+        try {
+            PendingPhotoStore.ScanResult scan = photoStore.scan();
+            ConfirmedPhotoCleanup cleanup = new ConfirmedPhotoCleanup(photoStore, photoPreparer);
+            int cleaned = 0;
+            int incomplete = 0;
+            for (PendingPhotoRecord record : scan.records()) {
+                if (record.state() != PendingPhotoRecord.State.UPLOADED || !hasAnyLocalCopy(record)) {
+                    continue;
+                }
+                ConfirmedPhotoCleanup.Result result = cleanup.cleanup(record.id());
+                if (result.complete()) {
+                    cleaned++;
+                } else {
+                    incomplete++;
+                }
+            }
+            if (incomplete > 0) {
+                statusText.setText(incomplete
+                        + " confirmed upload(s) still have local cleanup pending. Drive success remains confirmed.");
+            } else if (cleaned > 0) {
+                statusText.setText("Removed local image copies for " + cleaned
+                        + " previously confirmed upload(s). Drive copies and metadata were kept.");
+            }
+        } catch (Exception error) {
+            showError("Confirmed uploads remain safe, but local cleanup could not be completed", error);
+        }
     }
 
     private void refreshPhotoList() {
@@ -300,12 +350,18 @@ public final class PhotoCaptureActivity extends Activity {
             boolean unusable = unusableQueuedIds.contains(record.id());
             boolean prepared = hasPreparedCopy(record.id());
             boolean preparing = PREPARATION_GATE.isPreparing(record.id());
+            boolean remoteBusy = UPLOAD_GATE.isUploading(record.id());
             String attempt = record.uploadAttemptCount() > 0
                     ? " · attempt " + record.uploadAttemptCount()
                     : "";
+            String active = remoteBusy
+                    ? (record.state() == PendingPhotoRecord.State.UNCERTAIN
+                    ? " · RECONCILING"
+                    : " · SENDING")
+                    : preparing ? " · PREPARING" : prepared ? " · PREPARED" : "";
             String label = record.state().name() + attempt
                     + (unusable ? " · IMAGE MISSING" : "")
-                    + (preparing ? " · PREPARING" : prepared ? " · PREPARED" : "")
+                    + active
                     + "\n" + formatTime(record.createdAtEpochMs())
                     + " · …" + shortId(record.id());
             photoButton.setText(label);
@@ -322,12 +378,15 @@ public final class PhotoCaptureActivity extends Activity {
         if (selectedPhotoText == null
                 || preparedPhotoText == null
                 || prepareButton == null
+                || uploadButton == null
+                || reconcileButton == null
                 || discardButton == null
                 || takePhotoButton == null) {
             return;
         }
 
         boolean preparationBusy = PREPARATION_GATE.isBusy();
+        boolean remoteBusy = UPLOAD_GATE.isBusy();
         takePhotoButton.setEnabled(address != null
                 && workOrder != null
                 && pendingCaptureId == null
@@ -337,6 +396,8 @@ public final class PhotoCaptureActivity extends Activity {
             selectedPhotoText.setText("Selected temporary photo: none");
             preparedPhotoText.setText("Prepared copy: none selected");
             prepareButton.setEnabled(false);
+            uploadButton.setEnabled(false);
+            reconcileButton.setEnabled(false);
             discardButton.setEnabled(false);
             return;
         }
@@ -347,6 +408,8 @@ public final class PhotoCaptureActivity extends Activity {
         } catch (Exception error) {
             showError("Could not read the selected photo state", error);
             prepareButton.setEnabled(false);
+            uploadButton.setEnabled(false);
+            reconcileButton.setEnabled(false);
             discardButton.setEnabled(false);
             return;
         }
@@ -354,6 +417,8 @@ public final class PhotoCaptureActivity extends Activity {
             selectedPhotoText.setText("Selected temporary photo: no longer available");
             preparedPhotoText.setText("Prepared copy: unavailable");
             prepareButton.setEnabled(false);
+            uploadButton.setEnabled(false);
+            reconcileButton.setEnabled(false);
             discardButton.setEnabled(false);
             return;
         }
@@ -364,15 +429,36 @@ public final class PhotoCaptureActivity extends Activity {
         selectedPhotoText.setText("Selected temporary photo: …" + shortId(selectedPhotoId)
                 + " · " + selected.state().name() + attempt);
 
-        if (PREPARATION_GATE.isPreparing(selectedPhotoId)) {
+        File prepared = getPreparedFileOrNull(selectedPhotoId);
+        boolean hasPrepared = prepared != null && prepared.isFile() && prepared.length() > 0;
+        boolean hasLocalCopy = hasAnyLocalCopy(selected);
+        if (UPLOAD_GATE.isUploading(selectedPhotoId)) {
+            if (selected.state() == PendingPhotoRecord.State.UNCERTAIN) {
+                preparedPhotoText.setText("Prepared copy: "
+                        + (hasPrepared ? formatBytes(prepared.length()) : "unavailable")
+                        + "\nReconciliation: checking stored destination …"
+                        + shortId(selected.workOrderId()) + ". No remote write is allowed.");
+            } else {
+                preparedPhotoText.setText("Prepared copy: "
+                        + (hasPrepared ? formatBytes(prepared.length()) : "unavailable")
+                        + "\nUpload: sending to stored destination …"
+                        + shortId(selected.workOrderId()) + ".");
+            }
+        } else if (PREPARATION_GATE.isPreparing(selectedPhotoId)) {
             preparedPhotoText.setText("Prepared copy: preparing in background…");
         } else {
-            File prepared = getPreparedFileOrNull(selectedPhotoId);
-            String preparedStatus = prepared != null && prepared.isFile() && prepared.length() > 0
-                    ? "Prepared copy: " + formatBytes(prepared.length())
-                    : "Prepared copy: not created";
+            String preparedStatus;
+            if (selected.state() == PendingPhotoRecord.State.UPLOADED) {
+                preparedStatus = hasLocalCopy
+                        ? "Local cleanup: pending"
+                        : "Local copies: cleaned up";
+            } else {
+                preparedStatus = hasPrepared
+                        ? "Prepared copy: " + formatBytes(prepared.length())
+                        : "Prepared copy: not created";
+            }
             if (selected.state() == PendingPhotoRecord.State.UNCERTAIN) {
-                preparedStatus += "\nUpload result: UNCERTAIN — remote state must be reconciled before retry.";
+                preparedStatus += "\nUpload result: UNCERTAIN — reconcile before retry.";
             } else if (selected.state() == PendingPhotoRecord.State.UPLOADED) {
                 preparedStatus += "\nUpload result: confirmed"
                         + (selected.remoteFileId() == null
@@ -380,19 +466,34 @@ public final class PhotoCaptureActivity extends Activity {
                         : " · remote …" + shortId(selected.remoteFileId()));
             } else if (selected.state() == PendingPhotoRecord.State.FAILED
                     && selected.statusDetail() != null) {
-                preparedStatus += "\nLast upload attempt failed: " + selected.statusDetail();
+                preparedStatus += "\nLast upload/reconciliation result: " + selected.statusDetail();
             }
             preparedPhotoText.setText(preparedStatus);
         }
 
         prepareButton.setEnabled(!preparationBusy
+                && !remoteBusy
                 && selected.state() == PendingPhotoRecord.State.WAITING);
-        discardButton.setEnabled(!preparationBusy && selected.canDiscardLocally());
+        uploadButton.setEnabled(!preparationBusy
+                && !remoteBusy
+                && hasPrepared
+                && selected.canBeginUploadAttempt());
+        reconcileButton.setEnabled(!preparationBusy
+                && !remoteBusy
+                && selected.state() == PendingPhotoRecord.State.UNCERTAIN);
+        discardButton.setEnabled(!preparationBusy
+                && !remoteBusy
+                && selected.canDiscardLocally());
     }
 
     private void prepareSelectedPhoto() {
         final String photoId = selectedPhotoId;
         if (photoId == null) {
+            return;
+        }
+        if (UPLOAD_GATE.isBusy()) {
+            statusText.setText("Wait for the active Drive operation to finish before preparing another photo.");
+            renderSelectedPhoto();
             return;
         }
         if (PREPARATION_GATE.isBusy()) {
@@ -488,8 +589,258 @@ public final class PhotoCaptureActivity extends Activity {
         });
     }
 
+    private void uploadSelectedPhoto() {
+        final String photoId = selectedPhotoId;
+        if (photoId == null) {
+            return;
+        }
+        if (PREPARATION_GATE.isBusy()) {
+            statusText.setText("Wait for photo preparation to finish before uploading.");
+            renderSelectedPhoto();
+            return;
+        }
+        if (UPLOAD_GATE.isBusy()) {
+            statusText.setText("A Drive upload or reconciliation check is already in progress.");
+            renderSelectedPhoto();
+            return;
+        }
+
+        try {
+            PendingPhotoRecord record = photoStore.getById(photoId);
+            if (record == null) {
+                statusText.setText("The selected temporary photo no longer exists.");
+                refreshPhotoList();
+                return;
+            }
+            if (!record.canBeginUploadAttempt()) {
+                statusText.setText("This photo cannot be uploaded from state "
+                        + record.state().name() + ".");
+                renderSelectedPhoto();
+                return;
+            }
+            File prepared = photoPreparer.preparedFile(photoId);
+            if (!prepared.isFile() || prepared.length() <= 0) {
+                statusText.setText("Prepare this photo before uploading. Queue state was not changed.");
+                renderSelectedPhoto();
+                return;
+            }
+        } catch (Exception error) {
+            showError("Could not verify the selected photo before upload", error);
+            return;
+        }
+
+        if (!UPLOAD_GATE.tryBegin(photoId)) {
+            statusText.setText("A Drive operation is already in progress.");
+            renderSelectedPhoto();
+            return;
+        }
+
+        statusText.setText("Starting Drive upload to the photo's stored work-order destination…");
+        renderSelectedPhoto();
+        refreshPhotoList();
+
+        Thread worker = new Thread(() -> uploadPhotoInBackground(photoId),
+                "FieldPhotoPrep-upload");
+        try {
+            worker.start();
+        } catch (RuntimeException | Error error) {
+            UPLOAD_GATE.finish(photoId);
+            showError("Could not start the Drive upload; queue state was not changed", error);
+            renderSelectedPhoto();
+        }
+    }
+
+    private void uploadPhotoInBackground(String photoId) {
+        PendingPhotoRecord completed = null;
+        ConfirmedPhotoCleanup.Result cleanupResult = null;
+        Throwable uploadFailure = null;
+        Throwable cleanupFailure = null;
+        try {
+            DrivePhotoUploader uploader = new DrivePhotoUploader(
+                    getContentResolver(),
+                    folderPrefs.getMasterTreeUri());
+            PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
+                    photoStore,
+                    photoPreparer,
+                    uploader);
+            completed = coordinator.upload(photoId);
+            if (completed.state() == PendingPhotoRecord.State.UPLOADED) {
+                try {
+                    cleanupResult = coordinator.cleanupConfirmedLocalData(photoId);
+                } catch (Throwable error) {
+                    cleanupFailure = error;
+                }
+            }
+        } catch (Throwable error) {
+            uploadFailure = error;
+        } finally {
+            UPLOAD_GATE.finish(photoId);
+        }
+
+        final PendingPhotoRecord completedRecord = completed;
+        final ConfirmedPhotoCleanup.Result completedCleanup = cleanupResult;
+        final Throwable completedUploadFailure = uploadFailure;
+        final Throwable completedCleanupFailure = cleanupFailure;
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            if (completedUploadFailure == null
+                    && completedRecord != null
+                    && completedRecord.state() == PendingPhotoRecord.State.UPLOADED) {
+                String remote = "Drive upload confirmed · remote …"
+                        + shortId(completedRecord.remoteFileId()) + ". ";
+                if (completedCleanupFailure == null
+                        && completedCleanup != null
+                        && completedCleanup.complete()) {
+                    statusText.setText(remote
+                            + "Local original and prepared copy were removed; upload metadata was kept.");
+                } else {
+                    statusText.setText(remote
+                            + "Local cleanup is incomplete, but remote success remains confirmed and cleanup can be retried safely.");
+                }
+            } else {
+                showError("Drive upload did not reach confirmed success; local photo data was kept",
+                        completedUploadFailure == null
+                                ? new IllegalStateException("Upload did not return a confirmed queue result.")
+                                : completedUploadFailure);
+            }
+            refreshPhotoList();
+            renderSelectedPhoto();
+        });
+    }
+
+    private void reconcileSelectedPhoto() {
+        final String photoId = selectedPhotoId;
+        if (photoId == null) {
+            return;
+        }
+        if (PREPARATION_GATE.isBusy() || UPLOAD_GATE.isBusy()) {
+            statusText.setText("Wait for the active photo/Drive operation to finish before reconciliation.");
+            renderSelectedPhoto();
+            return;
+        }
+
+        try {
+            PendingPhotoRecord record = photoStore.getById(photoId);
+            if (record == null) {
+                statusText.setText("The selected temporary photo no longer exists.");
+                refreshPhotoList();
+                return;
+            }
+            if (record.state() != PendingPhotoRecord.State.UNCERTAIN) {
+                statusText.setText("Only an UNCERTAIN upload needs remote reconciliation.");
+                renderSelectedPhoto();
+                return;
+            }
+        } catch (Exception error) {
+            showError("Could not read the uncertain photo before reconciliation", error);
+            return;
+        }
+
+        if (!UPLOAD_GATE.tryBegin(photoId)) {
+            statusText.setText("A Drive operation is already in progress.");
+            renderSelectedPhoto();
+            return;
+        }
+
+        statusText.setText(
+                "Reconciling UNCERTAIN upload against its stored work-order destination. No remote file will be created, changed, or deleted.");
+        renderSelectedPhoto();
+        refreshPhotoList();
+
+        Thread worker = new Thread(() -> reconcilePhotoInBackground(photoId),
+                "FieldPhotoPrep-reconcile");
+        try {
+            worker.start();
+        } catch (RuntimeException | Error error) {
+            UPLOAD_GATE.finish(photoId);
+            showError("Could not start Drive reconciliation; queue state was not changed", error);
+            renderSelectedPhoto();
+        }
+    }
+
+    private void reconcilePhotoInBackground(String photoId) {
+        PhotoUploadCoordinator.ReconciliationResult reconciliation = null;
+        ConfirmedPhotoCleanup.Result cleanupResult = null;
+        Throwable failure = null;
+        Throwable cleanupFailure = null;
+        try {
+            DrivePhotoUploader uploader = new DrivePhotoUploader(
+                    getContentResolver(),
+                    folderPrefs.getMasterTreeUri());
+            DrivePhotoReconciler reconciler = new DrivePhotoReconciler(
+                    getContentResolver(),
+                    folderPrefs.getMasterTreeUri());
+            PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
+                    photoStore,
+                    photoPreparer,
+                    uploader,
+                    reconciler);
+            reconciliation = coordinator.reconcileUncertain(photoId);
+            if (reconciliation.record().state() == PendingPhotoRecord.State.UPLOADED) {
+                try {
+                    cleanupResult = coordinator.cleanupConfirmedLocalData(photoId);
+                } catch (Throwable error) {
+                    cleanupFailure = error;
+                }
+            }
+        } catch (Throwable error) {
+            failure = error;
+        } finally {
+            UPLOAD_GATE.finish(photoId);
+        }
+
+        final PhotoUploadCoordinator.ReconciliationResult completed = reconciliation;
+        final ConfirmedPhotoCleanup.Result completedCleanup = cleanupResult;
+        final Throwable completedFailure = failure;
+        final Throwable completedCleanupFailure = cleanupFailure;
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            if (completedFailure != null || completed == null) {
+                showError("Drive reconciliation could not complete; UNCERTAIN state remains protected",
+                        completedFailure == null
+                                ? new IllegalStateException("Reconciliation did not return a result.")
+                                : completedFailure);
+            } else {
+                switch (completed.outcome()) {
+                    case CONFIRMED_MATCH:
+                        String remote = "Remote photo matched exactly · remote …"
+                                + shortId(completed.record().remoteFileId()) + ". ";
+                        if (completedCleanupFailure == null
+                                && completedCleanup != null
+                                && completedCleanup.complete()) {
+                            statusText.setText(remote
+                                    + "Upload is confirmed and local image copies were removed.");
+                        } else {
+                            statusText.setText(remote
+                                    + "Upload is confirmed; local cleanup is incomplete but can be retried safely.");
+                        }
+                        break;
+                    case CONFIRMED_ABSENT_RETRY_SAFE:
+                        statusText.setText(
+                                "Two settled Drive checks confirmed the expected remote photo is absent. Retry is now enabled for the original stored destination.");
+                        break;
+                    case REMAIN_UNCERTAIN:
+                    default:
+                        statusText.setText("Upload remains UNCERTAIN: " + completed.detail());
+                        break;
+                }
+            }
+            refreshPhotoList();
+            renderSelectedPhoto();
+        });
+    }
+
     private void confirmDiscardSelected() {
         if (selectedPhotoId == null || workOrder == null) {
+            return;
+        }
+        if (UPLOAD_GATE.isBusy()) {
+            statusText.setText("Wait for the active Drive operation to finish before discarding a protected photo.");
+            renderSelectedPhoto();
             return;
         }
         if (PREPARATION_GATE.isBusy()) {
@@ -527,6 +878,11 @@ public final class PhotoCaptureActivity extends Activity {
     }
 
     private void discardSelected(String id) {
+        if (UPLOAD_GATE.isBusy()) {
+            statusText.setText("Drive operation is still running. Nothing was discarded.");
+            renderSelectedPhoto();
+            return;
+        }
         if (PREPARATION_GATE.isBusy()) {
             statusText.setText("Photo preparation is still running. Nothing was discarded.");
             renderSelectedPhoto();
@@ -553,6 +909,16 @@ public final class PhotoCaptureActivity extends Activity {
         return prepared != null && prepared.isFile() && prepared.length() > 0;
     }
 
+    private boolean hasAnyLocalCopy(PendingPhotoRecord record) {
+        try {
+            File original = photoStore.imageFile(record);
+            File prepared = photoPreparer.preparedFile(record.id());
+            return original.exists() || prepared.exists();
+        } catch (Exception ignored) {
+            return true;
+        }
+    }
+
     private File getPreparedFileOrNull(String id) {
         try {
             return photoPreparer.preparedFile(id);
@@ -570,9 +936,9 @@ public final class PhotoCaptureActivity extends Activity {
                     + " queued photo record(s) are missing usable protected image data. They were preserved for inspection.");
         } else if (!result.uncertainPhotoIds().isEmpty()) {
             statusText.setText(result.uncertainPhotoIds().size()
-                    + " upload result(s) are UNCERTAIN after interruption. Photos were preserved and automatic retry is blocked until remote state can be reconciled.");
+                    + " upload result(s) are UNCERTAIN after interruption. Select one and use Reconcile Uncertain Upload before retry.");
         } else {
-            statusText.setText("Temporary photo protection and local queue are ready.");
+            statusText.setText("Temporary photo protection, preparation, upload, reconciliation, and confirmed cleanup are ready.");
         }
     }
 
@@ -585,7 +951,7 @@ public final class PhotoCaptureActivity extends Activity {
                     + " queued photo record(s) are missing usable protected image data. They were preserved for inspection.");
         } else if (!result.uncertainPhotoIds().isEmpty()) {
             statusText.setText(result.uncertainPhotoIds().size()
-                    + " upload result(s) are UNCERTAIN. Automatic retry is blocked until remote state can be reconciled.");
+                    + " upload result(s) are UNCERTAIN. Select one and reconcile it before retry.");
         }
     }
 
@@ -613,7 +979,7 @@ public final class PhotoCaptureActivity extends Activity {
     }
 
     private String shortId(String id) {
-        return id.length() <= 8 ? id : id.substring(id.length() - 8);
+        return id == null ? "unknown" : (id.length() <= 8 ? id : id.substring(id.length() - 8));
     }
 
     private void showError(String prefix, Throwable error) {

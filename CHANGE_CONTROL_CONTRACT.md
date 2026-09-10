@@ -31,7 +31,7 @@ Typical examples:
 - job-list presentation;
 - upload-status presentation;
 - retry controls that do not change retry identity or storage semantics; and
-- normal feature additions that do not alter stored-data schemas, Drive permissions, or destination identity.
+- normal feature additions that do not alter stored-data schemas, remote-document permissions, or destination identity.
 
 Required process:
 
@@ -50,7 +50,7 @@ Typical examples:
 - local database or persisted-schema changes;
 - migrations;
 - deletion or cleanup automation;
-- Google account or Drive scope changes;
+- document-provider/account-selection or persisted Drive-tree permission changes;
 - master-folder selection semantics;
 - job-folder identity changes;
 - upload destination construction;
@@ -62,10 +62,10 @@ Required process:
 
 - use a dedicated branch and pull request;
 - create the full impact record described below;
-- use realistic fixtures and a safe Drive test folder/account context;
+- use realistic fixtures and a safe Drive test-folder/provider context;
 - identify exact rollback steps before implementation;
 - pass focused and complete automated tests;
-- pass affected data-preservation and Drive smoke checks; and
+- pass affected data-preservation and Drive/document-provider smoke checks; and
 - obtain explicit operator approval before merge.
 
 ## Classification rules
@@ -115,7 +115,7 @@ State:
 In addition to the Level 2 record, state:
 
 - required and optional data;
-- schema, identity, permission, or authentication changes;
+- schema, identity, permission, or platform-access changes;
 - master-folder and destination assumptions;
 - duplicate/idempotency behavior;
 - offline and stale-state behavior;
@@ -133,7 +133,7 @@ The exact code modules may evolve, but responsibilities must remain explicit:
 - camera code owns capture and camera lifecycle;
 - local storage owns protected originals and persisted queue/job state;
 - photo preparation owns non-destructive resize/compression/orientation work;
-- Drive integration owns authentication, folder creation, Drive IDs, upload, and confirmed remote results;
+- Drive integration owns platform/provider access, folder creation, stable remote identities, upload, and confirmed remote results;
 - UI code may request those actions and render state but must not duplicate their persistence or Drive logic.
 
 A helper may not silently take ownership from another module.
@@ -143,7 +143,7 @@ A helper may not silently take ownership from another module.
 - Inspect every changed file and function.
 - Explain every changed block for Level 2 and Level 3 work.
 - Remove unrelated changes.
-- A display-only request may not alter photo destination, capture persistence, Drive writes, retry semantics, or authentication.
+- A display-only request may not alter photo destination, capture persistence, Drive writes, retry semantics, or provider access.
 - A compression-quality request may not alter folder identity or deletion behavior.
 
 ## Verification matrix
@@ -166,9 +166,9 @@ A helper may not silently take ownership from another module.
 ### Level 3 change
 
 - focused and complete regression coverage;
-- safe Drive fixture validation;
+- safe Drive fixture validation when Drive behavior is affected;
 - all affected data-preservation checks;
-- `INTEGRATION_CONTRACT.md` reality gate;
+- affected `INTEGRATION_CONTRACT.md` reality-gate checks;
 - explicit pre-merge approval; and
 - post-publication/install verification when runtime delivery changed.
 

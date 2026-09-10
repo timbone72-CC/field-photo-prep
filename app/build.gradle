@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
+def stableTestKeystore = rootProject.file('ci/field-photo-prep-test.jks')
+
 android {
     namespace 'com.inandout.fieldphotoprep'
     compileSdk 36
@@ -10,10 +12,25 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 13
-        versionName '0.8-phase7a-persistent-upload-queue'
+        versionCode 15
+        versionName '0.10-phase7b-reconciliation-cleanup'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    signingConfigs {
+        stableTest {
+            storeFile stableTestKeystore
+            storePassword 'field-photo-prep-test'
+            keyAlias 'field-photo-prep-test'
+            keyPassword 'field-photo-prep-test'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.stableTest
+        }
     }
 
     compileOptions {
