@@ -105,7 +105,7 @@ public final class PhotoCaptureActivity extends Activity {
         root.addView(title);
 
         TextView phase = new TextView(this);
-        phase.setText("Phase 7B · Reconciliation + local cleanup");
+        phase.setText("Photos for selected work order");
         phase.setTextSize(14);
         root.addView(phase);
 
@@ -938,7 +938,7 @@ public final class PhotoCaptureActivity extends Activity {
             statusText.setText(result.uncertainPhotoIds().size()
                     + " upload result(s) are UNCERTAIN after interruption. Select one and use Reconcile Uncertain Upload before retry.");
         } else {
-            statusText.setText("Temporary photo protection, preparation, upload, reconciliation, and confirmed cleanup are ready.");
+            statusText.setText("Ready for photos. Select a photo below to prepare or upload it.");
         }
     }
 

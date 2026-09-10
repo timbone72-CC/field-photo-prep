@@ -112,7 +112,7 @@ public final class MainActivity extends Activity {
         root.addView(title);
 
         TextView phase = new TextView(this);
-        phase.setText("Phase 5 · Camera + temporary photo protection");
+        phase.setText("Address and work-order setup");
         phase.setTextSize(14);
         root.addView(phase);
 
@@ -139,7 +139,7 @@ public final class MainActivity extends Activity {
         addressControls.addView(refreshAddressButton);
 
         useCreateAddressButton = new Button(this);
-        useCreateAddressButton.setText("Use / Create Address");
+        useCreateAddressButton.setText("Use / Create Address Folder");
         useCreateAddressButton.setEnabled(false);
         useCreateAddressButton.setOnClickListener(v -> showAddressEntryDialog());
         addressControls.addView(useCreateAddressButton);
@@ -170,13 +170,13 @@ public final class MainActivity extends Activity {
         workOrderControls.addView(navigationRow);
 
         selectWorkOrderButton = new Button(this);
-        selectWorkOrderButton.setText("Select Work Order");
+        selectWorkOrderButton.setText("Select Existing Work Order");
         selectWorkOrderButton.setEnabled(false);
         selectWorkOrderButton.setOnClickListener(v -> showWorkOrderPicker());
         workOrderControls.addView(selectWorkOrderButton);
 
         workOrderInput = new EditText(this);
-        workOrderInput.setHint("Work order, e.g. Cut Grass");
+        workOrderInput.setHint("Work order name only — e.g. Cut Grass");
         workOrderInput.setSingleLine(true);
         workOrderControls.addView(workOrderInput);
 
@@ -185,7 +185,7 @@ public final class MainActivity extends Activity {
         workOrderControls.addView(dateButton);
 
         useCreateButton = new Button(this);
-        useCreateButton.setText("Use / Create Work Order");
+        useCreateButton.setText("Use / Create Dated Work Order");
         useCreateButton.setOnClickListener(v -> useOrCreateWorkOrder());
         workOrderControls.addView(useCreateButton);
 
@@ -538,7 +538,7 @@ public final class MainActivity extends Activity {
         }
 
         new AlertDialog.Builder(this)
-                .setTitle("Select work-order folder")
+                .setTitle("Select existing work-order folder")
                 .setItems(labels, (dialog, which) -> {
                     if (which >= 0 && which < visibleFolders.size()) {
                         selectWorkOrder(visibleFolders.get(which), "Work order selected");
@@ -554,8 +554,8 @@ public final class MainActivity extends Activity {
         }
         int count = screen == Screen.WORK_ORDERS ? visibleFolders.size() : 0;
         selectWorkOrderButton.setText(count == 0
-                ? "Select Work Order"
-                : "Select Work Order (" + count + ")");
+                ? "Select Existing Work Order"
+                : "Select Existing Work Order (" + count + ")");
     }
 
     private void chooseWorkOrderDate() {
