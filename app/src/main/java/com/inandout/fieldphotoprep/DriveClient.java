@@ -204,11 +204,12 @@ public final class DriveClient {
 
     private FolderQueryResult queryFolders(ContentResolver resolver, Uri childrenUri) throws IOException {
         List<DriveFolder> folders = new ArrayList<>();
+        boolean loading;
         try (Cursor cursor = resolver.query(childrenUri, PROJECTION, null, null, null)) {
             if (cursor == null) {
                 throw new IOException("The selected folder did not return a folder list.");
             }
-            boolean loading = isCursorLoading(cursor);
+            loading = isCursorLoading(cursor);
             int idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
             int nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
             int mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE);
