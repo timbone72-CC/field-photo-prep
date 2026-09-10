@@ -111,6 +111,14 @@ are `UNCERTAIN`, not `FAILED`, because Drive/provider state may already contain 
 
 The app does not attempt to delete a possibly-created remote document as error cleanup.
 
+## SAF streaming write rule
+
+The production writer opens the newly created document with exclusive mode `"w"`, then transfers the prepared JPEG through `ParcelFileDescriptor.AutoCloseOutputStream` and treats successful stream close as the provider write boundary.
+
+It deliberately does not require disk-style `fsync`. Android `DocumentsProvider` implementations may back exclusive read/write access with pipes or socket pairs, which is important for cloud providers. Any open, write, or close failure after creation begins remains `UNCERTAIN`.
+
+An Android emulator instrumentation test writes the prepared bytes through an actual pipe-backed `ParcelFileDescriptor` and verifies byte-for-byte output, proving the writer does not require a seekable on-disk descriptor.
+
 ## Confirmed success
 
 A result may become `UPLOADED` only when:
@@ -119,7 +127,7 @@ A result may become `UPLOADED` only when:
 2. exact destination preflight passed;
 3. provider returned a nonblank created document identity;
 4. all prepared JPEG bytes were written and the stream closed without error;
-5. the exact returned document can be re-read as an `image/jpeg` document with matching identity and nonzero size when the provider reports size; and
+5. the exact returned document can be re-read as an `image/jpeg` document with matching identity/name and nonzero size when the provider reports size; and
 6. the local queue successfully commits `UPLOADED` with that returned remote document ID.
 
 If remote work succeeds but local confirmation bookkeeping cannot be safely committed, the record must not be presented as uploaded. It remains in/returns to an uncertain protected state, with blind retry blocked.
@@ -148,7 +156,7 @@ The selected photo shows queue state and attempt count. The upload control is en
 
 ## Safe automated fixture
 
-Automated provider-flow tests use a fake provider-operations boundary, not live Google Drive. They must prove:
+Automated provider-flow tests use a fake provider-operations boundary, not live Google Drive. They prove:
 
 - exact stored work-order provider ID is the create parent;
 - deterministic filename is stable and unique across local photo IDs;
@@ -165,11 +173,37 @@ Automated provider-flow tests use a fake provider-operations boundary, not live 
 - one photo's failure does not alter another photo;
 - protected original and prepared copy survive all Phase 6B queue results.
 
-Existing camera, preparation, queue, and emulator image tests must remain passing.
+Existing camera, preparation, queue, and emulator image tests remain passing.
+
+## Automated verification result
+
+Exact tested Phase 6B branch head: `e0f6e44c42e04443182ce10954766b734749e015`.
+
+Android CI run: `34436497693`.
+
+CI job: `102742532125`.
+
+All required automated steps passed on that exact head:
+
+- complete JVM/unit suite, including Drive upload certainty classification, deterministic naming, queue integration, safe retry, destination preservation, and per-photo isolation;
+- debug APK build;
+- existing Android image/preparation instrumentation;
+- new Android pipe-backed SAF writer instrumentation with byte-for-byte verification;
+- app launch smoke;
+- debug APK packaging.
+
+Artifact:
+
+- ID: `10136434727`
+- digest: `sha256:8df440d10c8c10c413a56c16c3bf924a8447fe6c8e180116d4257de5077f6ee9`
+- versionCode: `14`
+- versionName: `0.9-phase6b-drive-upload`
+
+This is strong automated evidence for the local state machine, certainty boundary, exact-parent plumbing, and Android stream compatibility. It is not represented as proof of Google Drive's real DocumentsProvider behavior.
 
 ## Real Android Google Drive gate — deferred
 
-A physical Android phone is unavailable now, so Phase 6B may be implemented and heavily tested but may not be called ready for Level 3 merge approval yet.
+A physical Android phone is unavailable now, so Phase 6B is implemented and automated verification is complete, but it may not be called ready for Level 3 merge approval yet.
 
 When a phone is available, use the dedicated safe test hierarchy and prove:
 
