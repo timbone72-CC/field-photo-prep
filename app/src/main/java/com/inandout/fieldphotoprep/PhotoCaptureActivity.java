@@ -97,7 +97,7 @@ public final class PhotoCaptureActivity extends Activity {
         root.addView(title);
 
         TextView phase = new TextView(this);
-        phase.setText("Phase 6A · Photo preparation");
+        phase.setText("Phase 7A · Persistent upload queue");
         phase.setTextSize(14);
         root.addView(phase);
 
@@ -281,7 +281,7 @@ public final class PhotoCaptureActivity extends Activity {
             if (selectedPhotoId != null && findById(matching, selectedPhotoId) == null) {
                 selectedPhotoId = null;
             }
-            renderPhotoList(matching, scan.unusableWaitingPhotoIds());
+            renderPhotoList(matching, scan.unusableQueuedPhotoIds());
             renderScanWarningsIfNeeded(scan);
         } catch (Exception error) {
             showError("Could not read temporary photos", error);
@@ -290,17 +290,20 @@ public final class PhotoCaptureActivity extends Activity {
 
     private void renderPhotoList(
             List<PendingPhotoRecord> records,
-            List<String> unusableWaitingIds) {
+            List<String> unusableQueuedIds) {
         pendingList.removeAllViews();
-        pendingCountText.setText(records.size() + " temporary photo"
+        pendingCountText.setText(records.size() + " local photo record"
                 + (records.size() == 1 ? "" : "s") + " for this work order");
 
         for (PendingPhotoRecord record : records) {
             Button photoButton = new Button(this);
-            boolean unusable = unusableWaitingIds.contains(record.id());
+            boolean unusable = unusableQueuedIds.contains(record.id());
             boolean prepared = hasPreparedCopy(record.id());
             boolean preparing = PREPARATION_GATE.isPreparing(record.id());
-            String label = record.state().name()
+            String attempt = record.uploadAttemptCount() > 0
+                    ? " · attempt " + record.uploadAttemptCount()
+                    : "";
+            String label = record.state().name() + attempt
                     + (unusable ? " · IMAGE MISSING" : "")
                     + (preparing ? " · PREPARING" : prepared ? " · PREPARED" : "")
                     + "\n" + formatTime(record.createdAtEpochMs())
@@ -330,26 +333,61 @@ public final class PhotoCaptureActivity extends Activity {
                 && pendingCaptureId == null
                 && !preparationBusy);
 
-        selectedPhotoText.setText(selectedPhotoId == null
-                ? "Selected temporary photo: none"
-                : "Selected temporary photo: …" + shortId(selectedPhotoId));
         if (selectedPhotoId == null) {
+            selectedPhotoText.setText("Selected temporary photo: none");
             preparedPhotoText.setText("Prepared copy: none selected");
             prepareButton.setEnabled(false);
             discardButton.setEnabled(false);
             return;
         }
 
+        PendingPhotoRecord selected;
+        try {
+            selected = photoStore.getById(selectedPhotoId);
+        } catch (Exception error) {
+            showError("Could not read the selected photo state", error);
+            prepareButton.setEnabled(false);
+            discardButton.setEnabled(false);
+            return;
+        }
+        if (selected == null) {
+            selectedPhotoText.setText("Selected temporary photo: no longer available");
+            preparedPhotoText.setText("Prepared copy: unavailable");
+            prepareButton.setEnabled(false);
+            discardButton.setEnabled(false);
+            return;
+        }
+
+        String attempt = selected.uploadAttemptCount() > 0
+                ? " · attempt " + selected.uploadAttemptCount()
+                : "";
+        selectedPhotoText.setText("Selected temporary photo: …" + shortId(selectedPhotoId)
+                + " · " + selected.state().name() + attempt);
+
         if (PREPARATION_GATE.isPreparing(selectedPhotoId)) {
             preparedPhotoText.setText("Prepared copy: preparing in background…");
         } else {
             File prepared = getPreparedFileOrNull(selectedPhotoId);
-            preparedPhotoText.setText(prepared != null && prepared.isFile() && prepared.length() > 0
+            String preparedStatus = prepared != null && prepared.isFile() && prepared.length() > 0
                     ? "Prepared copy: " + formatBytes(prepared.length())
-                    : "Prepared copy: not created");
+                    : "Prepared copy: not created";
+            if (selected.state() == PendingPhotoRecord.State.UNCERTAIN) {
+                preparedStatus += "\nUpload result: UNCERTAIN — remote state must be reconciled before retry.";
+            } else if (selected.state() == PendingPhotoRecord.State.UPLOADED) {
+                preparedStatus += "\nUpload result: confirmed"
+                        + (selected.remoteFileId() == null
+                        ? ""
+                        : " · remote …" + shortId(selected.remoteFileId()));
+            } else if (selected.state() == PendingPhotoRecord.State.FAILED
+                    && selected.statusDetail() != null) {
+                preparedStatus += "\nLast upload attempt failed: " + selected.statusDetail();
+            }
+            preparedPhotoText.setText(preparedStatus);
         }
-        prepareButton.setEnabled(!preparationBusy);
-        discardButton.setEnabled(!preparationBusy);
+
+        prepareButton.setEnabled(!preparationBusy
+                && selected.state() == PendingPhotoRecord.State.WAITING);
+        discardButton.setEnabled(!preparationBusy && selected.canDiscardLocally());
     }
 
     private void prepareSelectedPhoto() {
@@ -371,7 +409,9 @@ public final class PhotoCaptureActivity extends Activity {
                 return;
             }
             if (record.state() != PendingPhotoRecord.State.WAITING) {
-                statusText.setText("Wait for capture to finish before preparing this photo.");
+                statusText.setText("Only a WAITING photo can be prepared. Current state: "
+                        + record.state().name() + ".");
+                renderSelectedPhoto();
                 return;
             }
             if (!photoStore.hasImageData(record)) {
@@ -458,6 +498,24 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
         String id = selectedPhotoId;
+        try {
+            PendingPhotoRecord record = photoStore.getById(id);
+            if (record == null) {
+                statusText.setText("The selected temporary photo no longer exists.");
+                refreshPhotoList();
+                return;
+            }
+            if (!record.canDiscardLocally()) {
+                statusText.setText("This photo is " + record.state().name()
+                        + ". It must be kept because upload/duplicate-protection evidence may still be needed.");
+                renderSelectedPhoto();
+                return;
+            }
+        } catch (Exception error) {
+            showError("Could not verify whether the selected photo is safe to discard", error);
+            return;
+        }
+
         new AlertDialog.Builder(this)
                 .setTitle("Discard temporary photo?")
                 .setMessage("Work order: " + workOrder.name()
@@ -507,11 +565,14 @@ public final class PhotoCaptureActivity extends Activity {
         if (!result.corruptMetadataFiles().isEmpty()) {
             statusText.setText(result.corruptMetadataFiles().size()
                     + " temporary photo metadata record(s) need inspection. Paired image files were preserved.");
-        } else if (!result.unusableWaitingPhotoIds().isEmpty()) {
-            statusText.setText(result.unusableWaitingPhotoIds().size()
-                    + " waiting photo record(s) are missing usable image data. They were not reported as safe uploads.");
+        } else if (!result.unusableQueuedPhotoIds().isEmpty()) {
+            statusText.setText(result.unusableQueuedPhotoIds().size()
+                    + " queued photo record(s) are missing usable protected image data. They were preserved for inspection.");
+        } else if (!result.uncertainPhotoIds().isEmpty()) {
+            statusText.setText(result.uncertainPhotoIds().size()
+                    + " upload result(s) are UNCERTAIN after interruption. Photos were preserved and automatic retry is blocked until remote state can be reconciled.");
         } else {
-            statusText.setText("Temporary photo protection ready.");
+            statusText.setText("Temporary photo protection and local queue are ready.");
         }
     }
 
@@ -519,9 +580,12 @@ public final class PhotoCaptureActivity extends Activity {
         if (!result.corruptMetadataFiles().isEmpty()) {
             statusText.setText(result.corruptMetadataFiles().size()
                     + " temporary photo metadata record(s) need inspection. Paired image files were preserved.");
-        } else if (!result.unusableWaitingPhotoIds().isEmpty()) {
-            statusText.setText(result.unusableWaitingPhotoIds().size()
-                    + " waiting photo record(s) are missing usable image data. They were preserved for inspection.");
+        } else if (!result.unusableQueuedPhotoIds().isEmpty()) {
+            statusText.setText(result.unusableQueuedPhotoIds().size()
+                    + " queued photo record(s) are missing usable protected image data. They were preserved for inspection.");
+        } else if (!result.uncertainPhotoIds().isEmpty()) {
+            statusText.setText(result.uncertainPhotoIds().size()
+                    + " upload result(s) are UNCERTAIN. Automatic retry is blocked until remote state can be reconciled.");
         }
     }
 
