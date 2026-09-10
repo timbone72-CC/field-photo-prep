@@ -56,6 +56,7 @@ public final class MainActivity extends Activity {
     private Button dateButton;
     private Button useCreateButton;
     private Button reuseEmptyButton;
+    private Button photosButton;
     private EditText workOrderInput;
     private ListView folderList;
     private ArrayAdapter<DriveFolder> adapter;
@@ -106,7 +107,7 @@ public final class MainActivity extends Activity {
         root.addView(title);
 
         TextView phase = new TextView(this);
-        phase.setText("Phase 3A · Empty folder reuse");
+        phase.setText("Phase 5 · Camera + temporary photo protection");
         phase.setTextSize(14);
         root.addView(phase);
 
@@ -180,6 +181,12 @@ public final class MainActivity extends Activity {
         currentWorkOrderText = new TextView(this);
         currentWorkOrderText.setPadding(0, dp(8), 0, dp(4));
         workOrderControls.addView(currentWorkOrderText);
+
+        photosButton = new Button(this);
+        photosButton.setText("Photos for Selected Work Order");
+        photosButton.setEnabled(false);
+        photosButton.setOnClickListener(v -> openPhotoCapture());
+        workOrderControls.addView(photosButton);
         root.addView(workOrderControls);
 
         listLabel = new TextView(this);
@@ -586,6 +593,25 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void openPhotoCapture() {
+        if (selectedAddress == null || selectedWorkOrder == null) {
+            showMessage("Select an exact work order before taking photos.");
+            return;
+        }
+
+        DriveFolder savedAddress = folderPrefs.getCurrentAddress();
+        DriveFolder savedWorkOrder = folderPrefs.getCurrentWorkOrder();
+        if (savedAddress == null
+                || savedWorkOrder == null
+                || !selectedAddress.id().equals(savedAddress.id())
+                || !selectedWorkOrder.id().equals(savedWorkOrder.id())) {
+            showMessage("The selected work-order identity changed. Choose the work order again before taking photos.");
+            return;
+        }
+
+        startActivity(new Intent(this, PhotoCaptureActivity.class));
+    }
+
     private boolean isStillOnAddress(String addressId) {
         return screen == Screen.WORK_ORDERS
                 && selectedAddress != null
@@ -687,6 +713,7 @@ public final class MainActivity extends Activity {
         dateButton.setEnabled(false);
         useCreateButton.setEnabled(false);
         reuseEmptyButton.setEnabled(false);
+        photosButton.setEnabled(false);
         folderList.setEnabled(false);
     }
 
@@ -699,6 +726,7 @@ public final class MainActivity extends Activity {
         if (screen == Screen.ADDRESSES) {
             chooseMasterButton.setEnabled(true);
             refreshAddressButton.setEnabled(canRead);
+            photosButton.setEnabled(false);
         } else {
             backButton.setEnabled(true);
             refreshWorkOrdersButton.setEnabled(canRead);
@@ -708,6 +736,7 @@ public final class MainActivity extends Activity {
             reuseEmptyButton.setEnabled(canRead && canWrite
                     && selectedWorkOrder != null
                     && !createBlockedUntilRefresh);
+            photosButton.setEnabled(selectedAddress != null && selectedWorkOrder != null);
         }
     }
 
