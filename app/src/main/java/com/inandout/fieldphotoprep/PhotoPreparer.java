@@ -58,8 +58,7 @@ public final class PhotoPreparer {
             } else {
                 scaled = Bitmap.createScaledBitmap(
                         oriented,
-                        targetDimensions.width(),
-                        targetDimensions.height(),
+                        targetDimensions.width(), targetDimensions.height(),
                         true);
                 if (scaled == null) {
                     throw new IOException("Could not resize the protected photo for upload.");
@@ -96,6 +95,19 @@ public final class PhotoPreparer {
         File file = new File(root, PhotoPreparationPolicy.preparedFileNameFor(photoId));
         ensureDirectChild(file);
         return file;
+    }
+
+    public void removePreparedCopyAfterConfirmedUpload(PendingPhotoRecord record) throws IOException {
+        if (record == null
+                || record.state() != PendingPhotoRecord.State.UPLOADED
+                || record.remoteFileId() == null) {
+            throw new IOException(
+                    "Prepared-copy cleanup requires durable confirmed uploaded state.");
+        }
+        File prepared = preparedFile(record.id());
+        if (prepared.exists() && !prepared.delete()) {
+            throw new IOException("Could not remove the confirmed upload's prepared local copy.");
+        }
     }
 
     private Bitmap decodeForPreparation(File original) throws IOException {
