@@ -2,19 +2,19 @@
 
 Date: 2026-09-10
 
-Status: **STAGED — automated verification PASS; physical camera gate pending**
+Status: **RESTAGED — first physical control gate FAIL; control fix automated verification PASS; retest pending**
 
 Branch: `feat/in-app-camerax-capture-shell`
 
 Rollback baseline: `0f25b5ee2dda19b316aca32dcf056ac804b78c7b`
 
-Exact automated-tested runtime head: `9f4bc9a2e45cd22be4bcb2730b2f8677190a3105`
+Exact repaired automated-tested runtime head: `b63ecf92468962df7894f8bf597566648e76a161`
 
-Android CI run: `34533037807`
+Android CI run: `34534165067`
 
-Internal APK artifact: `10174455137` (`field-photo-prep-internal-apk`)
+Internal APK artifact: `10174883327` (`field-photo-prep-internal-apk`)
 
-Artifact digest: `sha256:98e5a1ff3f9ae46ec55f36e36db753ab640e9ec5723f95ae4accf21d72236d20`
+Artifact digest: `sha256:e22345d7bfa5f8ed93fb2f053a54d3cb3960bbb8bb6688a70041c7ee3991fee3`
 
 ## User-facing problem
 
@@ -77,6 +77,19 @@ It does not write queue metadata, Drive content, Drive folder state, SAF grants,
 - no permanent in-app photo library is introduced;
 - still photos only; video remains out of scope.
 
+## Photo sizing boundary
+
+CameraX does not intentionally resize or compress the protected original in this slice. It captures a normal JPEG into the protected-original file.
+
+The existing preparation layer remains responsible for the upload-sized derivative:
+
+- maximum long edge: `2048` pixels;
+- JPEG quality: `85`;
+- smaller images are not upscaled;
+- the protected original remains unchanged until confirmed Drive success permits cleanup.
+
+The Drive upload coordinator uploads the prepared derivative, not the protected original.
+
 ## Dependency choice
 
 Use stable releases only for this field-facing slice:
@@ -88,19 +101,38 @@ CameraX 1.6 uses explicit application-level backend configuration here, so the e
 
 These were the current stable AndroidX releases when this record was created on 2026-09-10.
 
-## Primary risks
+## First physical-device result — FAIL
 
-1. Camera permission denial could leave an empty reservation if the return path is not finalized correctly.
-2. Activity/process interruption during capture could leave `CAPTURING` state; existing restart reconciliation must remain able to preserve non-empty data or remove only an empty reservation.
-3. The camera activity must never reconstruct destination identity from whatever work order is currently open.
-4. Back/cancel during an active file write must not race the parent into deleting an empty-looking reservation before CameraX finishes.
-5. Device-specific CameraX preview/orientation behavior cannot be called field-proven from CI alone.
+The first staged CameraX APK opened the new camera surface, but the operator could not take a photo because the camera-screen buttons did not behave as usable controls on the physical phone.
+
+This result is classified as a camera UI/control failure. It does not invalidate the protected-original, destination, preparation, upload, retry, or Drive evidence because no new remote behavior was exercised.
+
+Observed product issue:
+
+- `Take Photo` could be non-actionable while CameraX was still binding, with no useful tap feedback;
+- the first programmatic camera layout did not sufficiently isolate the bottom controls from the preview surface for the real-device gate.
+
+## Control repair
+
+Runtime commit `b63ecf92468962df7894f8bf597566648e76a161` changes only the in-app camera control surface:
+
+- the preview is isolated inside its own frame and is explicitly non-clickable/non-focusable;
+- the bottom control bar is fixed outside the preview touch surface and raised to the front;
+- both buttons receive large equal-width touch targets;
+- `Take Photo` is always a usable control rather than a silently disabled control;
+- tapping before CameraX is ready reports `Camera is still starting` instead of doing nothing;
+- successful binding reports `Ready — tap Take Photo`;
+- camera-start failure remains visible and leaves Cancel available;
+- capture failure re-enables Take Photo and Cancel rather than leaving the screen stuck;
+- active file save still blocks Cancel/Back to avoid racing the protected-original write.
+
+No Drive, queue, folder-identity, preparation, retry, or cleanup implementation changed in this repair.
 
 ## Automated verification
 
-PASS on exact runtime head `9f4bc9a2e45cd22be4bcb2730b2f8677190a3105`.
+PASS on exact repaired runtime head `b63ecf92468962df7894f8bf597566648e76a161`.
 
-Android CI run `34533037807` completed successfully with:
+Android CI run `34534165067` completed successfully with:
 
 - unit tests;
 - internal debug APK build;
@@ -108,8 +140,6 @@ Android CI run `34533037807` completed successfully with:
 - emulator instrumentation tests;
 - internal app launch smoke test; and
 - APK artifact packaging.
-
-The later documentation-only branch commits do not alter the tested runtime.
 
 Existing `PendingPhotoStoreTest` coverage remains the focused persistence boundary, especially:
 
@@ -119,24 +149,22 @@ Existing `PendingPhotoStoreTest` coverage remains the focused persistence bounda
 - `interruptedCaptureWithBytesIsPreservedAsWaiting`;
 - `destinationBindingDoesNotChangeWhenAnotherWorkOrderExists`.
 
-## Physical-device smoke check
+## Physical-device retest
 
 Before this behavior is called field-proven on the supported Android phone:
 
-1. open one disposable test work order;
-2. tap **Take Photo** and confirm Field Photo Prep shows its own live rear-camera preview rather than launching Samsung Camera;
-3. take one ordinary still photo with one shutter press and no Samsung OK/Retake confirmation;
-4. confirm the app returns to the same work order with the new non-empty photo already selected;
-5. confirm the photo remains recoverable across a close/reopen before upload;
-6. confirm capture works with network connectivity disabled;
-7. cancel one camera session before pressing the shutter and confirm no empty photo is kept;
-8. visually confirm usable orientation/content.
+1. install the repaired internal APK;
+2. open one disposable test work order;
+3. tap **Take Photo** and confirm Field Photo Prep shows its own live rear-camera preview;
+4. confirm the status reaches **Ready — tap Take Photo**;
+5. tap **Take Photo** once and confirm it captures rather than behaving as a dead control;
+6. confirm the app returns to the same work order with the new non-empty photo already selected.
 
-This is the smallest required CameraX device reality gate for this slice. It does not require a Drive upload because upload behavior is unchanged.
+Stop there for this retest. The remaining restart/offline/cancel/orientation checks follow only after the primary shutter control is proven usable.
 
 ## Merge state
 
-Do not merge this draft pull request until the physical-camera smoke gate passes. Do not add multi-shot capture to this slice.
+Do not merge this draft pull request until the repaired physical-camera smoke gate passes. Do not add multi-shot capture to this slice.
 
 ## Rollback
 
