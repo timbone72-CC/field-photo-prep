@@ -76,7 +76,7 @@ Use stable releases only for this field-facing slice:
 - AndroidX CameraX `1.6.2` (`camera-camera2`, `camera-lifecycle`, `camera-view`);
 - AndroidX Activity `1.13.0` for lifecycle ownership.
 
-CameraX 1.6 requires explicit application-level backend configuration, so the existing application class implements `CameraXConfig.Provider` and returns `Camera2Config.defaultConfig(this)`. Existing queue startup recovery in that class remains unchanged.
+CameraX 1.6 uses explicit application-level backend configuration here, so the existing application class implements `CameraXConfig.Provider` and returns `Camera2Config.defaultConfig()`. Existing queue startup recovery in that class remains unchanged.
 
 These were the current stable AndroidX releases when this record was created on 2026-09-10.
 
