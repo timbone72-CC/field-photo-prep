@@ -2,10 +2,18 @@ package com.inandout.fieldphotoprep;
 
 import android.app.Application;
 
+import androidx.camera.camera2.Camera2Config;
+import androidx.camera.core.CameraXConfig;
+
 import java.io.File;
 import java.io.IOException;
 
-public final class FieldPhotoPrepApplication extends Application {
+public final class FieldPhotoPrepApplication extends Application implements CameraXConfig.Provider {
+    @Override
+    public CameraXConfig getCameraXConfig() {
+        return Camera2Config.defaultConfig(this);
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
