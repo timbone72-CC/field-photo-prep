@@ -72,7 +72,7 @@ For a decision that could create a duplicate, authorize deletion, or authorize r
 4. if provider state remains stale, loading, inconsistent, or otherwise uncertain, fail closed with no destructive action and no absence-based create;
 5. ordinary read-only browsing may show currently available provider state, but a stronger verification boundary is required immediately before risky write decisions.
 
-The current hardened Android implementation uses repeated matching settled snapshots at those boundaries. A future implementation may improve the mechanism, but it may not weaken the fail-closed requirement without explicit Level 3 review.
+The Phase 3B and Phase 4 development branches implement repeated matching settled snapshots at those boundaries. They remain subject to their required real-device gates before merge. Future implementations may improve the mechanism, but may not weaken the fail-closed requirement without explicit Level 3 review.
 
 ## Work-order folder recycling contract
 
