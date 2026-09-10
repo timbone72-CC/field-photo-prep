@@ -16,7 +16,7 @@ Phase 3B only:
 - warn when any direct child is itself a folder because deleting that child folder also removes its contained descendants;
 - require explicit operator confirmation;
 - after confirmation, re-read the selected folder and child IDs and stop if the confirmed set changed;
-- delete only the direct children that were explicitly included in the confirmed snapshot;
+- delete only the direct children included in the confirmed snapshot;
 - fail fast on the first deletion failure;
 - verify the selected work-order folder contains zero direct children after deletion;
 - only after confirmed emptiness, rename that same work-order folder to the requested `Work Order - YYYY-MM-DD` name;
@@ -58,7 +58,7 @@ For this runtime, governed Drive folder identity maps to the document-provider I
 
 Destructive boundary:
 
-`persisted master tree URI → selected address document ID → selected old work-order document ID → direct-child ID snapshot → explicit operator confirmation → snapshot revalidation → child deletions → confirmed empty folder → rename → same work-order document ID with new name → persisted selected work-order state`
+`persisted master tree URI → selected address document ID → selected old work-order document ID → authoritative direct-child ID snapshot → explicit operator confirmation → authoritative snapshot revalidation → child deletions → confirmed empty folder → rename → same work-order document ID with new name → persisted selected work-order state`
 
 Visible folder names are display/context only. Delete and rename authorization comes from the exact selected identities plus explicit confirmation.
 
@@ -98,6 +98,29 @@ The confirmation is bound to the exact child-ID snapshot. After confirmation, th
 - If the app cannot read contents with certainty, stop.
 - No blind retry after a destructive failure or uncertain result.
 
+## Provider freshness hardening discovered during device testing
+
+Real-device testing exposed an important Android/Google Drive SAF behavior: Google Drive web showed two direct items inside the selected test work-order folder (`TEST FOLDER` plus a CSV), while the app initially received an empty child listing from the Android Drive document provider.
+
+No destructive action occurred. The old build stopped because Clear & Reuse considered the folder empty, but this proved that one provider query cannot be treated as authoritative proof of emptiness. The same issue could also affect Phase 3A simple empty-folder reuse.
+
+The branch was hardened so `DriveClient.listDirectChildren(...)` now:
+
+1. explicitly requests provider refresh for the selected folder URI and child-list URI;
+2. refuses destructive/rename decisions when the provider will not accept a refresh request;
+3. treats `DocumentsContract.EXTRA_LOADING` as non-authoritative;
+4. waits through bounded retries;
+5. requires two matching settled child-ID snapshots before returning a child listing;
+6. fails closed if fresh settled state cannot be confirmed.
+
+Both Phase 3A empty reuse and Phase 3B Clear & Reuse use this same hardened child-list path.
+
+## Large-display UI hardening
+
+The operator's Android display/text size caused the original work-order list to collapse below the Phase 3B controls, making the discovered folders unreachable even though the app reported them.
+
+The work-order screen now uses a scrollable control surface and a dedicated **Select Work Order** dialog. Work-order selection remains identity-based; the UI change only makes the selectable folders reachable on larger display/text settings.
+
 ## Automated coverage
 
 Focused automated coverage includes:
@@ -108,9 +131,10 @@ Focused automated coverage includes:
 - child snapshot count and child-folder count;
 - stable child-ID comparison independent of enumeration order;
 - changed child-ID set rejection;
+- provider-refresh plus settled-cursor authority requirement;
 - existing Phase 3A work-order eligibility/naming coverage.
 
-Real Google Drive SAF deletion/rename behavior is verified through the safe device gate rather than overclaiming from JVM mocks.
+Real Google Drive SAF deletion/rename behavior still requires the safe real-device gate; JVM tests are not represented as a substitute for that gate.
 
 ## Safe Drive fixture / reality gate
 
@@ -120,27 +144,25 @@ Use only:
 
 No live customer/job folder is a test target.
 
-### Pre-destructive hierarchy check
+### Evidence already observed
 
-During the first Phase 3B device setup, reinstall/reselection left the Android folder picker positioned inside a nested test folder and the operator accidentally selected a nested folder as the app master. No Phase 3B deletion was executed. The app's visible master/address labels exposed the mistake before destructive confirmation.
+- Correct master hierarchy was re-established and visibly confirmed as `Master folder: HNP Jobs` and `Address: FIELD PHOTO PREP TEST`.
+- A mistaken nested-master selection was exposed before any Phase 3B deletion and corrected.
+- The full-hierarchy confirmation was added as a direct response.
+- The Android Drive provider stale-listing condition was reproduced: Drive web showed two direct children while the pre-hardening app reported the selected folder empty.
+- No Phase 3B destructive confirmation was completed during that stale-listing state.
+- Large-display work-order selection was hardened after the operator could not reach the list.
 
-The operator then reselected the intended `HNP Jobs` master and reopened `FIELD PHOTO PREP TEST`. The app correctly displayed:
+### Remaining cancellation check
 
-- `Master folder: HNP Jobs`
-- `Address: FIELD PHOTO PREP TEST`
-
-As a safety hardening response, the Phase 3B confirmation was changed to display the full hierarchy itself before the destructive action is available. The Android version code was then bumped so this hardened build can install in place over the earlier Phase 3B test build without clearing the corrected master selection.
-
-### Cancellation check
-
-1. Ensure one selected old test work-order folder has disposable direct content.
+1. Keep disposable direct content in one selected old test work-order folder.
 2. Select that old folder and request a newer date for the same work-order text.
 3. Tap **Clear & Reuse Selected Folder**.
-4. Confirm the dialog shows correct master, address, old folder, direct-child count, and new folder.
-5. Tap **Cancel**.
+4. The hardened app must either show the correct authoritative child count or safely refuse because Drive state is not fresh/settled.
+5. If the confirmation appears, verify master, address, old folder, direct-child count, and new folder, then tap **Cancel**.
 6. Inspect Drive: old folder and every disposable child remain unchanged, and no new target folder exists.
 
-### Successful Clear & Reuse check
+### Remaining successful Clear & Reuse check
 
 1. Open the same controlled fixture and confirm disposable content only.
 2. Open Clear & Reuse and verify the full path/count again.
@@ -157,29 +179,23 @@ Attempt a safe deterministic provider deletion or rename failure only if it can 
 
 ## Automated verification
 
-Original Phase 3B runtime commit:
+Original Phase 3B runtime commit `0024d6c4b8d55593af2edd98f4ced1532f80486f` passed Android CI run `34116076640`.
 
-`0024d6c4b8d55593af2edd98f4ced1532f80486f`
+Hierarchy-warning runtime commit `4a978d4fcdfb9a3c3676494d7273eee46de9e6e5` passed Android CI run `34244198117`.
 
-passed Android CI run `34116076640`.
+Provider-freshness and large-display hardened runtime head:
 
-Hierarchy-warning runtime commit:
+`0a7071744791b470f1c0bd795d78934c8f28c87e`
 
-`4a978d4fcdfb9a3c3676494d7273eee46de9e6e5`
-
-passed Android CI run `34244198117`.
-
-Final in-place-update runtime head:
-
-`4d9dcdf08c4020871bf8e736e4e1dbaa576d62de`
-
-passed Android CI run `34244802654`:
+passed Android CI run `34302110486`:
 
 - unit tests passed;
 - debug APK build passed;
 - Android install/launch smoke test passed;
 - APK artifact packaged successfully.
 
-## Merge status
+## Current blocker and merge status
 
-Not authorized yet. Real-device cancellation/success evidence and explicit Level 3 operator approval are still required before merge.
+On 2026-09-09 the operator's primary Android phone stopped charging and became unavailable for testing. Development and automated verification can continue, but the remaining real Google Drive/Android reality gate cannot be honestly completed without an Android device.
+
+PR #8 therefore remains intentionally unmerged. When an Android device is available, resume at the known `HNP Jobs → FIELD PHOTO PREP TEST` fixture, finish the hardened freshness/cancel/success checks, then obtain explicit Level 3 operator approval before merge.
