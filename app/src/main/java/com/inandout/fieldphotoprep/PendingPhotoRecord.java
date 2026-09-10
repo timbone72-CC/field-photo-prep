@@ -14,7 +14,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         UPLOADED
     }
 
-    static final int CURRENT_SCHEMA_VERSION = 2;
+    static final int CURRENT_SCHEMA_VERSION = 3;
 
     private static final String KEY_SCHEMA_VERSION = "schemaVersion";
     private static final String KEY_ID = "id";
@@ -28,6 +28,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
     private static final String KEY_UPLOAD_ATTEMPT_COUNT = "uploadAttemptCount";
     private static final String KEY_LAST_ATTEMPT_AT = "lastAttemptAtEpochMs";
     private static final String KEY_STATUS_DETAIL = "statusDetail";
+    private static final String KEY_PROVISIONAL_REMOTE_FILE_ID = "provisionalRemoteFileId";
     private static final String KEY_REMOTE_FILE_ID = "remoteFileId";
 
     private final String id;
@@ -41,6 +42,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
     private final int uploadAttemptCount;
     private final long lastAttemptAtEpochMs;
     private final String statusDetail;
+    private final String provisionalRemoteFileId;
     private final String remoteFileId;
 
     public PendingPhotoRecord(
@@ -64,6 +66,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 0,
                 0L,
                 null,
+                null,
                 null);
     }
 
@@ -79,6 +82,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
             int uploadAttemptCount,
             long lastAttemptAtEpochMs,
             String statusDetail,
+            String provisionalRemoteFileId,
             String remoteFileId) {
         this.id = requireUuid(id);
         this.imageFileName = requireExpectedImageFileName(id, imageFileName);
@@ -94,6 +98,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         this.uploadAttemptCount = uploadAttemptCount;
         this.lastAttemptAtEpochMs = lastAttemptAtEpochMs;
         this.statusDetail = normalizeOptional(statusDetail);
+        this.provisionalRemoteFileId = normalizeOptional(provisionalRemoteFileId);
         this.remoteFileId = normalizeOptional(remoteFileId);
         validateQueueState();
     }
@@ -164,6 +169,10 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         return statusDetail;
     }
 
+    public String provisionalRemoteFileId() {
+        return provisionalRemoteFileId;
+    }
+
     public String remoteFileId() {
         return remoteFileId;
     }
@@ -189,7 +198,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 || (newState != State.CAPTURING && newState != State.WAITING)) {
             throw new IllegalStateException("Capture-state helper cannot change upload queue state.");
         }
-        return copy(newState, 0, 0L, null, null);
+        return copy(newState, 0, 0L, null, null, null);
     }
 
     public PendingPhotoRecord beginUploadAttempt(long nowEpochMs) {
@@ -202,15 +211,42 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         if (uploadAttemptCount == Integer.MAX_VALUE) {
             throw new IllegalStateException("Upload attempt count cannot be incremented safely.");
         }
-        return copy(State.UPLOADING, uploadAttemptCount + 1, nowEpochMs, null, null);
+        return copy(State.UPLOADING, uploadAttemptCount + 1, nowEpochMs, null, null, null);
+    }
+
+    public PendingPhotoRecord recordProvisionalRemoteFileId(String provisionalRemoteFileId) {
+        if (state != State.UPLOADING) {
+            throw new IllegalStateException("Only an in-flight upload can record provisional remote identity.");
+        }
+        String requiredId = requireText(
+                provisionalRemoteFileId,
+                "provisional remote file identity");
+        if (this.provisionalRemoteFileId != null) {
+            if (!this.provisionalRemoteFileId.equals(requiredId)) {
+                throw new IllegalStateException(
+                        "An upload cannot replace its provisional remote identity.");
+            }
+            return this;
+        }
+        return copy(
+                State.UPLOADING,
+                uploadAttemptCount,
+                lastAttemptAtEpochMs,
+                null,
+                requiredId,
+                null);
     }
 
     public PendingPhotoRecord markUploadFailed(String detail) {
         if (state != State.UPLOADING) {
             throw new IllegalStateException("Only an in-flight upload can be marked failed.");
         }
+        if (provisionalRemoteFileId != null) {
+            throw new IllegalStateException(
+                    "An upload with provisional remote identity cannot become retryable failure.");
+        }
         return copy(State.FAILED, uploadAttemptCount, lastAttemptAtEpochMs,
-                requireText(detail, "failure detail"), null);
+                requireText(detail, "failure detail"), null, null);
     }
 
     public PendingPhotoRecord markUploadUncertain(String detail) {
@@ -218,7 +254,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
             throw new IllegalStateException("Only an in-flight upload can become uncertain.");
         }
         return copy(State.UNCERTAIN, uploadAttemptCount, lastAttemptAtEpochMs,
-                requireText(detail, "uncertainty detail"), null);
+                requireText(detail, "uncertainty detail"), provisionalRemoteFileId, null);
     }
 
     public PendingPhotoRecord recoverInterruptedUpload() {
@@ -233,8 +269,15 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         if (state != State.UPLOADING && state != State.UNCERTAIN) {
             throw new IllegalStateException("Only an in-flight or uncertain upload can be confirmed.");
         }
+        String requiredId = requireText(
+                confirmedRemoteFileId,
+                "confirmed remote file identity");
+        if (provisionalRemoteFileId != null && !provisionalRemoteFileId.equals(requiredId)) {
+            throw new IllegalStateException(
+                    "Confirmed remote identity must match the recorded provisional identity.");
+        }
         return copy(State.UPLOADED, uploadAttemptCount, lastAttemptAtEpochMs,
-                null, requireText(confirmedRemoteFileId, "confirmed remote file identity"));
+                null, null, requiredId);
     }
 
     public Properties toProperties() {
@@ -251,6 +294,9 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         properties.setProperty(KEY_UPLOAD_ATTEMPT_COUNT, Integer.toString(uploadAttemptCount));
         properties.setProperty(KEY_LAST_ATTEMPT_AT, Long.toString(lastAttemptAtEpochMs));
         properties.setProperty(KEY_STATUS_DETAIL, statusDetail == null ? "" : statusDetail);
+        properties.setProperty(
+                KEY_PROVISIONAL_REMOTE_FILE_ID,
+                provisionalRemoteFileId == null ? "" : provisionalRemoteFileId);
         properties.setProperty(KEY_REMOTE_FILE_ID, remoteFileId == null ? "" : remoteFileId);
         return properties;
     }
@@ -266,7 +312,8 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
 
         if (schemaVersion == 1) {
             if (state != State.CAPTURING && state != State.WAITING) {
-                throw new IllegalArgumentException("Legacy pending-photo state is not valid for schema version 1.");
+                throw new IllegalArgumentException(
+                        "Legacy pending-photo state is not valid for schema version 1.");
             }
             return new PendingPhotoRecord(
                     id,
@@ -280,11 +327,15 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                     0,
                     0L,
                     null,
+                    null,
                     null);
         }
 
         int attemptCount = parseNonNegativeInt(properties, KEY_UPLOAD_ATTEMPT_COUNT);
         long lastAttemptAt = parseNonNegativeLong(properties, KEY_LAST_ATTEMPT_AT);
+        String provisionalRemoteFileId = schemaVersion >= 3
+                ? optionalProperty(properties, KEY_PROVISIONAL_REMOTE_FILE_ID)
+                : null;
         return new PendingPhotoRecord(
                 id,
                 imageFile,
@@ -297,6 +348,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 attemptCount,
                 lastAttemptAt,
                 optionalProperty(properties, KEY_STATUS_DETAIL),
+                provisionalRemoteFileId,
                 optionalProperty(properties, KEY_REMOTE_FILE_ID));
     }
 
@@ -319,6 +371,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
             int nextAttemptCount,
             long nextLastAttemptAt,
             String nextStatusDetail,
+            String nextProvisionalRemoteFileId,
             String nextRemoteFileId) {
         return new PendingPhotoRecord(
                 id,
@@ -332,6 +385,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 nextAttemptCount,
                 nextLastAttemptAt,
                 nextStatusDetail,
+                nextProvisionalRemoteFileId,
                 nextRemoteFileId);
     }
 
@@ -343,17 +397,20 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
             throw new IllegalArgumentException("lastAttemptAtEpochMs cannot be negative.");
         }
         if (uploadAttemptCount == 0 && lastAttemptAtEpochMs != 0L) {
-            throw new IllegalArgumentException("A photo with no upload attempts cannot have a last-attempt time.");
+            throw new IllegalArgumentException(
+                    "A photo with no upload attempts cannot have a last-attempt time.");
         }
         if (uploadAttemptCount > 0 && lastAttemptAtEpochMs <= 0L) {
-            throw new IllegalArgumentException("An attempted upload requires a positive last-attempt time.");
+            throw new IllegalArgumentException(
+                    "An attempted upload requires a positive last-attempt time.");
         }
 
         switch (state) {
             case CAPTURING:
             case WAITING:
                 if (uploadAttemptCount != 0 || lastAttemptAtEpochMs != 0L
-                        || statusDetail != null || remoteFileId != null) {
+                        || statusDetail != null || provisionalRemoteFileId != null
+                        || remoteFileId != null) {
                     throw new IllegalArgumentException(
                             "Capture/waiting state cannot contain upload-result bookkeeping.");
                 }
@@ -361,20 +418,27 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
             case UPLOADING:
                 if (uploadAttemptCount <= 0 || statusDetail != null || remoteFileId != null) {
                     throw new IllegalArgumentException(
-                            "Uploading state requires an attempt and no result bookkeeping yet.");
+                            "Uploading state requires an attempt and no confirmed result bookkeeping yet.");
                 }
                 break;
             case FAILED:
+                if (uploadAttemptCount <= 0 || statusDetail == null
+                        || provisionalRemoteFileId != null || remoteFileId != null) {
+                    throw new IllegalArgumentException(
+                            "Failed state requires attempt detail and no remote identity evidence.");
+                }
+                break;
             case UNCERTAIN:
                 if (uploadAttemptCount <= 0 || statusDetail == null || remoteFileId != null) {
                     throw new IllegalArgumentException(
-                            "Failed/uncertain state requires attempt detail and no confirmed remote identity.");
+                            "Uncertain state requires attempt detail and no confirmed remote identity.");
                 }
                 break;
             case UPLOADED:
-                if (uploadAttemptCount <= 0 || statusDetail != null || remoteFileId == null) {
+                if (uploadAttemptCount <= 0 || statusDetail != null
+                        || provisionalRemoteFileId != null || remoteFileId == null) {
                     throw new IllegalArgumentException(
-                            "Uploaded state requires a confirmed remote identity.");
+                            "Uploaded state requires one confirmed remote identity and no provisional identity.");
                 }
                 break;
             default:
@@ -393,8 +457,9 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         } catch (NumberFormatException error) {
             throw new IllegalArgumentException("Invalid pending-photo schema version.", error);
         }
-        if (version != 1 && version != CURRENT_SCHEMA_VERSION) {
-            throw new IllegalArgumentException("Unsupported pending-photo schema version: " + version);
+        if (version != 1 && version != 2 && version != CURRENT_SCHEMA_VERSION) {
+            throw new IllegalArgumentException(
+                    "Unsupported pending-photo schema version: " + version);
         }
         return version;
     }
@@ -425,7 +490,8 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         try {
             value = Integer.parseInt(requiredProperty(properties, key));
         } catch (NumberFormatException error) {
-            throw new IllegalArgumentException("Invalid pending-photo uploadAttemptCount.", error);
+            throw new IllegalArgumentException(
+                    "Invalid pending-photo uploadAttemptCount.", error);
         }
         if (value < 0) {
             throw new IllegalArgumentException("Invalid pending-photo uploadAttemptCount.");
@@ -438,7 +504,8 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         try {
             value = Long.parseLong(requiredProperty(properties, key));
         } catch (NumberFormatException error) {
-            throw new IllegalArgumentException("Invalid pending-photo lastAttemptAtEpochMs.", error);
+            throw new IllegalArgumentException(
+                    "Invalid pending-photo lastAttemptAtEpochMs.", error);
         }
         if (value < 0) {
             throw new IllegalArgumentException("Invalid pending-photo lastAttemptAtEpochMs.");
@@ -459,7 +526,8 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
     private static String requireExpectedImageFileName(String id, String imageFileName) {
         String expected = "photo-" + requireUuid(id) + ".jpg";
         if (!expected.equals(imageFileName)) {
-            throw new IllegalArgumentException("Pending-photo image filename does not match its id.");
+            throw new IllegalArgumentException(
+                    "Pending-photo image filename does not match its id.");
         }
         return expected;
     }
