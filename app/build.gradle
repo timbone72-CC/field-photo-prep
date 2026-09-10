@@ -12,8 +12,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 16
-        versionName '0.11-phase3b4-integration'
+        versionCode 17
+        versionName '0.12-field-release-hardening'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -29,6 +29,8 @@ android {
 
     buildTypes {
         debug {
+            applicationIdSuffix '.internal'
+            versionNameSuffix '-internal'
             signingConfig signingConfigs.stableTest
         }
     }
