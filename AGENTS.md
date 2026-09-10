@@ -10,7 +10,7 @@ Before changing runtime code, tests that define runtime behavior, Google Drive b
 2. `CHANGE_CONTROL_CONTRACT.md`
 3. relevant sections of `REGRESSION_CHECKLIST.md`
 4. `TESTING_CONTRACT.md`
-5. `INTEGRATION_CONTRACT.md` when the change touches Google Drive, authentication, folder identity, upload, retry, or future external handoffs
+5. `INTEGRATION_CONTRACT.md` when the change touches Google Drive, Android document-provider access, master-tree permissions, folder identity, upload, retry, or future external handoffs
 
 Documentation-only edits must still read the document being changed and the change-class rules below.
 
@@ -30,7 +30,7 @@ Record the problem, scope, owning files, protected behavior, focused tests, roll
 
 ### Level 3 — high risk
 
-Examples: stored-data schema changes or migrations, deletion, automatic writes, Google account or Drive permission changes, folder-identity changes, upload/retry semantics, any change that could send photos to the wrong folder, and deployment changes.
+Examples: stored-data schema changes or migrations, deletion, automatic writes, document-provider/account-selection or persisted Drive-tree permission changes, folder-identity changes, upload/retry semantics, any change that could send photos to the wrong folder, and deployment changes.
 
 Use a detailed impact record, realistic fixtures or a safe test environment, explicit rollback steps, focused tests, one final complete automated verification, affected smoke checks, and explicit operator approval before merge.
 
@@ -49,13 +49,13 @@ When uncertain between two levels, use the higher level.
 - Never delete, move, rename, overwrite, or change permissions on an existing Drive file or folder unless that exact behavior is approved and tested.
 - A failed upload must never be reported as successful.
 - A retry must never silently create a duplicate photo or redirect it to a different job folder.
-- A captured original must not be destroyed merely because compression, upload, sign-in, or Drive access fails.
+- A captured original must not be destroyed merely because compression, upload, document-provider access, or Drive availability fails.
 
 ## Ownership and narrow scope
 
 - Change the module that owns the behavior.
 - State which surfaces are read and which are written.
-- Preserve unrelated camera, local-photo, queue, folder, Drive, and account behavior.
+- Preserve unrelated camera, local-photo, queue, folder, Drive, and provider/account-selection behavior.
 - Report adjacent defects separately.
 - Do not turn a fix into cleanup, redesign, refactoring, renaming, relocation, or feature expansion without approval.
 
@@ -69,4 +69,4 @@ When uncertain between two levels, use the higher level.
 - Documentation-only changes require diff and contract review, not runtime tests.
 - Any required test failure stops commit/push/merge/publication/deployment automation for that change.
 
-Before calling a Drive-related change ready, satisfy the reality gate in `INTEGRATION_CONTRACT.md` using a safe test destination.
+Before calling a Drive-related change ready, satisfy the Android document-provider reality gate in `INTEGRATION_CONTRACT.md` using a safe test destination.
