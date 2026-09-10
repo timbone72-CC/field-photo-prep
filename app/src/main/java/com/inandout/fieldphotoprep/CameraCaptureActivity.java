@@ -6,7 +6,9 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.Surface;
+import android.view.View;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -36,6 +38,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private Button shutterButton;
     private Button cancelButton;
     private ImageCapture imageCapture;
+    private boolean cameraReady;
     private boolean captureInProgress;
 
     @Override
@@ -92,14 +95,24 @@ public final class CameraCaptureActivity extends ComponentActivity {
         workOrderText.setPadding(0, dp(4), 0, dp(8));
         root.addView(workOrderText);
 
-        previewView = new PreviewView(this);
-        previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
-        previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
-        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
+        FrameLayout previewFrame = new FrameLayout(this);
+        LinearLayout.LayoutParams previewFrameParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 0,
                 1f);
-        root.addView(previewView, previewParams);
+        root.addView(previewFrame, previewFrameParams);
+
+        previewView = new PreviewView(this);
+        previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
+        previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
+        previewView.setClickable(false);
+        previewView.setFocusable(false);
+        previewView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        previewFrame.addView(
+                previewView,
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT));
 
         statusText = new TextView(this);
         statusText.setText("Starting camera…");
@@ -110,37 +123,59 @@ public final class CameraCaptureActivity extends ComponentActivity {
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.HORIZONTAL);
         controls.setGravity(Gravity.CENTER);
+        controls.setPadding(0, dp(4), 0, 0);
+        controls.setClickable(true);
+        controls.setFocusable(true);
+        controls.setElevation(dp(8));
 
         cancelButton = new Button(this);
         cancelButton.setText("Cancel");
+        cancelButton.setMinHeight(dp(56));
         cancelButton.setOnClickListener(v -> cancelWithoutCapture());
-        controls.addView(cancelButton);
+        controls.addView(
+                cancelButton,
+                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
         shutterButton = new Button(this);
         shutterButton.setText("Take Photo");
-        shutterButton.setEnabled(false);
+        shutterButton.setMinHeight(dp(56));
         shutterButton.setOnClickListener(v -> capturePhoto());
-        controls.addView(shutterButton);
+        LinearLayout.LayoutParams shutterParams = new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f);
+        shutterParams.setMarginStart(dp(8));
+        controls.addView(shutterButton, shutterParams);
 
-        root.addView(controls);
+        root.addView(
+                controls,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+        controls.bringToFront();
+
         setContentView(root);
     }
 
     private void startCamera() {
+        cameraReady = false;
+        imageCapture = null;
+        statusText.setText("Starting camera…");
+
         final var providerFuture = ProcessCameraProvider.getInstance(this);
         providerFuture.addListener(() -> {
             try {
                 ProcessCameraProvider cameraProvider = providerFuture.get();
 
                 Preview preview = new Preview.Builder().build();
-                imageCapture = new ImageCapture.Builder()
+                ImageCapture boundImageCapture = new ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                         .build();
 
                 if (previewView.getDisplay() != null) {
-                    imageCapture.setTargetRotation(previewView.getDisplay().getRotation());
+                    boundImageCapture.setTargetRotation(previewView.getDisplay().getRotation());
                 } else {
-                    imageCapture.setTargetRotation(Surface.ROTATION_0);
+                    boundImageCapture.setTargetRotation(Surface.ROTATION_0);
                 }
 
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
@@ -149,18 +184,31 @@ public final class CameraCaptureActivity extends ComponentActivity {
                         this,
                         CameraSelector.DEFAULT_BACK_CAMERA,
                         preview,
-                        imageCapture);
+                        boundImageCapture);
 
-                statusText.setText("Ready");
-                shutterButton.setEnabled(true);
+                imageCapture = boundImageCapture;
+                cameraReady = true;
+                statusText.setText("Ready — tap Take Photo.");
             } catch (Exception error) {
-                finishWithError("Could not start the in-app camera: " + safeMessage(error));
+                cameraReady = false;
+                imageCapture = null;
+                statusText.setText("Camera could not start: " + safeMessage(error)
+                        + ". Tap Cancel to return without saving a photo.");
             }
         }, ContextCompat.getMainExecutor(this));
     }
 
     private void capturePhoto() {
-        if (captureInProgress || imageCapture == null || outputFile == null) {
+        if (captureInProgress) {
+            statusText.setText("Saving photo…");
+            return;
+        }
+        if (!cameraReady || imageCapture == null) {
+            statusText.setText("Camera is still starting. Wait for ‘Ready — tap Take Photo.’");
+            return;
+        }
+        if (outputFile == null) {
+            statusText.setText("The protected photo destination is unavailable. Cancel and reopen the camera.");
             return;
         }
 
@@ -195,7 +243,11 @@ public final class CameraCaptureActivity extends ComponentActivity {
 
                     @Override
                     public void onError(ImageCaptureException exception) {
-                        finishWithError("Camera could not save the photo: " + safeMessage(exception));
+                        captureInProgress = false;
+                        shutterButton.setEnabled(true);
+                        cancelButton.setEnabled(true);
+                        statusText.setText("Photo was not saved: " + safeMessage(exception)
+                                + ". You can try Take Photo again or Cancel.");
                     }
                 });
     }
