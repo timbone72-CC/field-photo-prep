@@ -225,6 +225,21 @@ public final class PendingPhotoStore {
         return uncertain;
     }
 
+    public PendingPhotoRecord resolveUncertainAsRetryableAbsence(String id, String detail)
+            throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        PendingPhotoRecord failed;
+        try {
+            failed = record.resolveUncertainAsRetryableAbsence(detail);
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            throw new IOException(
+                    "Could not release the uncertain upload for retry from the current evidence.",
+                    error);
+        }
+        writeRecord(failed);
+        return failed;
+    }
+
     /**
      * Persists confirmed-success bookkeeping only. This method performs no remote operation and the
      * caller must supply the remote identity returned/verified by a later Drive integration phase.
@@ -316,6 +331,18 @@ public final class PendingPhotoStore {
     public boolean hasImageData(PendingPhotoRecord record) throws IOException {
         File image = imageFile(record);
         return image.isFile() && image.length() > 0;
+    }
+
+    public void removeProtectedImageAfterConfirmedUpload(String id) throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        if (record.state() != PendingPhotoRecord.State.UPLOADED || record.remoteFileId() == null) {
+            throw new IOException(
+                    "Protected-original cleanup requires durable confirmed uploaded state.");
+        }
+        File image = imageFile(record);
+        if (image.exists() && !image.delete()) {
+            throw new IOException("Could not remove the confirmed upload's protected local original.");
+        }
     }
 
     public void discard(String id) throws IOException {

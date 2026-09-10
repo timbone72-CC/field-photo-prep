@@ -5,17 +5,58 @@ import java.io.IOException;
 import java.util.Objects;
 
 public final class PhotoUploadCoordinator {
+    public static final class ReconciliationResult {
+        private final DrivePhotoReconciler.Result.Outcome outcome;
+        private final PendingPhotoRecord record;
+        private final String detail;
+
+        ReconciliationResult(
+                DrivePhotoReconciler.Result.Outcome outcome,
+                PendingPhotoRecord record,
+                String detail) {
+            this.outcome = Objects.requireNonNull(outcome, "outcome");
+            this.record = Objects.requireNonNull(record, "record");
+            this.detail = detail == null || detail.isBlank()
+                    ? "Reconciliation completed without additional detail."
+                    : detail;
+        }
+
+        public DrivePhotoReconciler.Result.Outcome outcome() {
+            return outcome;
+        }
+
+        public PendingPhotoRecord record() {
+            return record;
+        }
+
+        public String detail() {
+            return detail;
+        }
+    }
+
     private final PendingPhotoStore photoStore;
     private final PhotoPreparer photoPreparer;
     private final DrivePhotoUploader driveUploader;
+    private final DrivePhotoReconciler driveReconciler;
+    private final ConfirmedPhotoCleanup confirmedPhotoCleanup;
 
     public PhotoUploadCoordinator(
             PendingPhotoStore photoStore,
             PhotoPreparer photoPreparer,
             DrivePhotoUploader driveUploader) {
+        this(photoStore, photoPreparer, driveUploader, null);
+    }
+
+    public PhotoUploadCoordinator(
+            PendingPhotoStore photoStore,
+            PhotoPreparer photoPreparer,
+            DrivePhotoUploader driveUploader,
+            DrivePhotoReconciler driveReconciler) {
         this.photoStore = Objects.requireNonNull(photoStore, "photoStore");
         this.photoPreparer = Objects.requireNonNull(photoPreparer, "photoPreparer");
         this.driveUploader = Objects.requireNonNull(driveUploader, "driveUploader");
+        this.driveReconciler = driveReconciler;
+        this.confirmedPhotoCleanup = new ConfirmedPhotoCleanup(photoStore, photoPreparer);
     }
 
     public PendingPhotoRecord upload(String photoId) throws IOException {
@@ -104,6 +145,50 @@ public final class PhotoUploadCoordinator {
                             + "The local photo and provisional remote identity were kept and retry is blocked until the result is reconciled.",
                     confirmationError);
         }
+    }
+
+    public ReconciliationResult reconcileUncertain(String photoId) throws IOException {
+        PendingPhotoRecord before = requireRecord(photoId);
+        if (before.state() != PendingPhotoRecord.State.UNCERTAIN) {
+            throw new IOException("Only an UNCERTAIN photo can be remotely reconciled.");
+        }
+        if (driveReconciler == null) {
+            throw new IOException("Remote reconciliation is not configured for this coordinator.");
+        }
+
+        File prepared = photoPreparer.preparedFile(photoId);
+        DrivePhotoReconciler.Result remoteResult = driveReconciler.reconcile(before, prepared);
+
+        switch (remoteResult.outcome()) {
+            case CONFIRMED_MATCH:
+                PendingPhotoRecord uploaded = photoStore.markUploadConfirmed(
+                        photoId,
+                        remoteResult.remoteFileId());
+                return new ReconciliationResult(
+                        remoteResult.outcome(),
+                        uploaded,
+                        remoteResult.detail());
+            case CONFIRMED_ABSENT_RETRY_SAFE:
+                PendingPhotoRecord retryable = photoStore.resolveUncertainAsRetryableAbsence(
+                        photoId,
+                        remoteResult.detail());
+                return new ReconciliationResult(
+                        remoteResult.outcome(),
+                        retryable,
+                        remoteResult.detail());
+            case REMAIN_UNCERTAIN:
+            default:
+                PendingPhotoRecord unchanged = requireRecord(photoId);
+                return new ReconciliationResult(
+                        DrivePhotoReconciler.Result.Outcome.REMAIN_UNCERTAIN,
+                        unchanged,
+                        remoteResult.detail());
+        }
+    }
+
+    public ConfirmedPhotoCleanup.Result cleanupConfirmedLocalData(String photoId)
+            throws IOException {
+        return confirmedPhotoCleanup.cleanup(photoId);
     }
 
     private void persistCreateBarrierUncertainty(String photoId) {
