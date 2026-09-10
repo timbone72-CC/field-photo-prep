@@ -181,6 +181,26 @@ public final class PendingPhotoStore {
         return uploading;
     }
 
+    /**
+     * Persists the exact provider identity returned by remote create before byte streaming begins.
+     * This is duplicate-protection evidence only; it does not mean the photo is uploaded.
+     */
+    public PendingPhotoRecord recordProvisionalRemoteFileId(
+            String id,
+            String provisionalRemoteFileId) throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        PendingPhotoRecord updated;
+        try {
+            updated = record.recordProvisionalRemoteFileId(provisionalRemoteFileId);
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            throw new IOException(
+                    "Could not persist provisional remote identity from the current state.",
+                    error);
+        }
+        writeRecord(updated);
+        return updated;
+    }
+
     public PendingPhotoRecord markUploadFailed(String id, String detail) throws IOException {
         PendingPhotoRecord record = requireRecord(id);
         PendingPhotoRecord failed;
