@@ -18,24 +18,12 @@ public final class PendingPhotoStartupRecoveryTest {
     public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
-    public void photoScreenStartupReconciliationMakesInterruptedUploadUncertain() throws Exception {
+    public void processStartupRecoveryMakesInterruptedUploadUncertain() throws Exception {
         File root = temporaryFolder.newFolder("startup-recovery");
-        PendingPhotoStore firstProcess = new PendingPhotoStore(
-                root,
-                () -> ID,
-                () -> 1_700_000_100_000L);
-        PendingPhotoRecord capturing = firstProcess.beginCapture(
-                new DriveFolder("address-provider-id", "Address"),
-                new DriveFolder("work-provider-id", "Cut Grass - 2026-09-09"));
-        try (FileOutputStream output = new FileOutputStream(firstProcess.imageFile(capturing))) {
-            output.write("protected-image".getBytes(StandardCharsets.UTF_8));
-            output.getFD().sync();
-        }
-        firstProcess.finishCaptureIfImageExists(ID);
-        firstProcess.beginUploadAttempt(ID);
+        PendingPhotoStore firstProcess = uploadingStore(root);
 
         PendingPhotoStore restarted = new PendingPhotoStore(root);
-        PendingPhotoStore.ScanResult settled = restarted.reconcileInterruptedCaptures();
+        PendingPhotoStore.ScanResult settled = QueueStartupRecovery.reconcile(restarted);
         PendingPhotoRecord recovered = restarted.getById(ID);
 
         assertEquals(PendingPhotoRecord.State.UNCERTAIN, recovered.state());
@@ -44,5 +32,36 @@ public final class PendingPhotoStartupRecoveryTest {
         assertEquals(1, recovered.uploadAttemptCount());
         assertEquals(1, settled.uncertainPhotoIds().size());
         assertTrue(restarted.hasImageData(recovered));
+    }
+
+    @Test
+    public void photoScreenCaptureReconciliationDoesNotMisclassifyLiveUploadingState() throws Exception {
+        File root = temporaryFolder.newFolder("screen-recreation");
+        PendingPhotoStore store = uploadingStore(root);
+
+        PendingPhotoStore.ScanResult settled = store.reconcileInterruptedCaptures();
+        PendingPhotoRecord stillUploading = store.getById(ID);
+
+        assertEquals(PendingPhotoRecord.State.UPLOADING, stillUploading.state());
+        assertEquals(0, settled.uncertainPhotoIds().size());
+        assertEquals("work-provider-id", stillUploading.workOrderId());
+        assertTrue(store.hasImageData(stillUploading));
+    }
+
+    private static PendingPhotoStore uploadingStore(File root) throws Exception {
+        PendingPhotoStore store = new PendingPhotoStore(
+                root,
+                () -> ID,
+                () -> 1_700_000_100_000L);
+        PendingPhotoRecord capturing = store.beginCapture(
+                new DriveFolder("address-provider-id", "Address"),
+                new DriveFolder("work-provider-id", "Cut Grass - 2026-09-09"));
+        try (FileOutputStream output = new FileOutputStream(store.imageFile(capturing))) {
+            output.write("protected-image".getBytes(StandardCharsets.UTF_8));
+            output.getFD().sync();
+        }
+        store.finishCaptureIfImageExists(ID);
+        store.beginUploadAttempt(ID);
+        return store;
     }
 }
