@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -29,6 +28,7 @@ public final class PhotoCaptureActivity extends Activity {
     private static final String STATE_PENDING_CAPTURE_ID = "pending_capture_id";
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, h:mm a");
+    private static final PhotoPreparationGate PREPARATION_GATE = new PhotoPreparationGate();
 
     private FolderPrefs folderPrefs;
     private PendingPhotoStore photoStore;
@@ -69,6 +69,10 @@ public final class PhotoCaptureActivity extends Activity {
         }
 
         reconcileAndRefresh();
+        if (PREPARATION_GATE.isBusy()) {
+            statusText.setText("A photo is being prepared in the background. Protected originals are locked until it finishes.");
+            renderSelectedPhoto();
+        }
     }
 
     @Override
@@ -165,6 +169,10 @@ public final class PhotoCaptureActivity extends Activity {
     private void beginCameraCapture() {
         if (address == null || workOrder == null) {
             statusText.setText("Choose an exact address and work order before taking photos.");
+            return;
+        }
+        if (PREPARATION_GATE.isBusy()) {
+            statusText.setText("Wait for photo preparation to finish before starting another capture.");
             return;
         }
         if (pendingCaptureId != null) {
@@ -291,9 +299,10 @@ public final class PhotoCaptureActivity extends Activity {
             Button photoButton = new Button(this);
             boolean unusable = unusableWaitingIds.contains(record.id());
             boolean prepared = hasPreparedCopy(record.id());
+            boolean preparing = PREPARATION_GATE.isPreparing(record.id());
             String label = record.state().name()
                     + (unusable ? " · IMAGE MISSING" : "")
-                    + (prepared ? " · PREPARED" : "")
+                    + (preparing ? " · PREPARING" : prepared ? " · PREPARED" : "")
                     + "\n" + formatTime(record.createdAtEpochMs())
                     + " · …" + shortId(record.id());
             photoButton.setText(label);
@@ -310,9 +319,17 @@ public final class PhotoCaptureActivity extends Activity {
         if (selectedPhotoText == null
                 || preparedPhotoText == null
                 || prepareButton == null
-                || discardButton == null) {
+                || discardButton == null
+                || takePhotoButton == null) {
             return;
         }
+
+        boolean preparationBusy = PREPARATION_GATE.isBusy();
+        takePhotoButton.setEnabled(address != null
+                && workOrder != null
+                && pendingCaptureId == null
+                && !preparationBusy);
+
         selectedPhotoText.setText(selectedPhotoId == null
                 ? "Selected temporary photo: none"
                 : "Selected temporary photo: …" + shortId(selectedPhotoId));
@@ -323,20 +340,31 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
 
-        File prepared = getPreparedFileOrNull(selectedPhotoId);
-        preparedPhotoText.setText(prepared != null && prepared.isFile() && prepared.length() > 0
-                ? "Prepared copy: " + formatBytes(prepared.length())
-                : "Prepared copy: not created");
-        prepareButton.setEnabled(true);
-        discardButton.setEnabled(true);
+        if (PREPARATION_GATE.isPreparing(selectedPhotoId)) {
+            preparedPhotoText.setText("Prepared copy: preparing in background…");
+        } else {
+            File prepared = getPreparedFileOrNull(selectedPhotoId);
+            preparedPhotoText.setText(prepared != null && prepared.isFile() && prepared.length() > 0
+                    ? "Prepared copy: " + formatBytes(prepared.length())
+                    : "Prepared copy: not created");
+        }
+        prepareButton.setEnabled(!preparationBusy);
+        discardButton.setEnabled(!preparationBusy);
     }
 
     private void prepareSelectedPhoto() {
-        if (selectedPhotoId == null) {
+        final String photoId = selectedPhotoId;
+        if (photoId == null) {
             return;
         }
+        if (PREPARATION_GATE.isBusy()) {
+            statusText.setText("A photo is already being prepared. Wait for it to finish before starting another.");
+            renderSelectedPhoto();
+            return;
+        }
+
         try {
-            PendingPhotoRecord record = photoStore.getById(selectedPhotoId);
+            PendingPhotoRecord record = photoStore.getById(photoId);
             if (record == null) {
                 statusText.setText("The selected temporary photo no longer exists.");
                 refreshPhotoList();
@@ -350,23 +378,83 @@ public final class PhotoCaptureActivity extends Activity {
                 statusText.setText("The protected original is missing or empty. Nothing was prepared.");
                 return;
             }
-
-            prepareButton.setEnabled(false);
-            PreparedPhotoResult result = photoPreparer.prepare(photoStore, record);
-            statusText.setText("Prepared for upload: "
-                    + formatBytes(result.originalBytes()) + " → "
-                    + formatBytes(result.preparedBytes()) + " · "
-                    + result.width() + "×" + result.height()
-                    + ". Protected original kept.");
-            refreshPhotoList();
         } catch (Exception error) {
-            showError("Could not prepare the selected photo; protected original was kept", error);
-            refreshPhotoList();
+            showError("Could not verify the selected photo before preparation", error);
+            return;
         }
+
+        if (!PREPARATION_GATE.tryBegin(photoId)) {
+            statusText.setText("A photo is already being prepared. Wait for it to finish before starting another.");
+            renderSelectedPhoto();
+            return;
+        }
+
+        statusText.setText("Preparing photo in the background… Protected original is locked and remains safe.");
+        renderSelectedPhoto();
+        refreshPhotoList();
+
+        Thread worker = new Thread(() -> preparePhotoInBackground(photoId),
+                "FieldPhotoPrep-prepare");
+        try {
+            worker.start();
+        } catch (RuntimeException | Error error) {
+            PREPARATION_GATE.finish(photoId);
+            showError("Could not start background photo preparation; protected original was kept", error);
+            renderSelectedPhoto();
+        }
+    }
+
+    private void preparePhotoInBackground(String photoId) {
+        PreparedPhotoResult result = null;
+        Throwable failure = null;
+        try {
+            PendingPhotoRecord record = photoStore.getById(photoId);
+            if (record == null) {
+                throw new IllegalStateException("The selected temporary photo no longer exists.");
+            }
+            if (record.state() != PendingPhotoRecord.State.WAITING) {
+                throw new IllegalStateException("The photo is no longer in waiting state.");
+            }
+            if (!photoStore.hasImageData(record)) {
+                throw new IllegalStateException("The protected original is missing or empty.");
+            }
+            result = photoPreparer.prepare(photoStore, record);
+        } catch (Throwable error) {
+            failure = error;
+        } finally {
+            PREPARATION_GATE.finish(photoId);
+        }
+
+        final PreparedPhotoResult completedResult = result;
+        final Throwable completedFailure = failure;
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            if (completedFailure == null && completedResult != null) {
+                statusText.setText("Prepared for upload: "
+                        + formatBytes(completedResult.originalBytes()) + " → "
+                        + formatBytes(completedResult.preparedBytes()) + " · "
+                        + completedResult.width() + "×" + completedResult.height()
+                        + ". Protected original kept.");
+            } else {
+                showError("Could not prepare the selected photo; protected original was kept",
+                        completedFailure == null
+                                ? new IllegalStateException("Photo preparation did not return a result.")
+                                : completedFailure);
+            }
+            refreshPhotoList();
+            renderSelectedPhoto();
+        });
     }
 
     private void confirmDiscardSelected() {
         if (selectedPhotoId == null || workOrder == null) {
+            return;
+        }
+        if (PREPARATION_GATE.isBusy()) {
+            statusText.setText("Wait for photo preparation to finish before discarding a protected photo.");
+            renderSelectedPhoto();
             return;
         }
         String id = selectedPhotoId;
@@ -381,6 +469,11 @@ public final class PhotoCaptureActivity extends Activity {
     }
 
     private void discardSelected(String id) {
+        if (PREPARATION_GATE.isBusy()) {
+            statusText.setText("Photo preparation is still running. Nothing was discarded.");
+            renderSelectedPhoto();
+            return;
+        }
         try {
             File prepared = photoPreparer.preparedFile(id);
             if (prepared.exists() && !prepared.delete()) {
@@ -460,7 +553,7 @@ public final class PhotoCaptureActivity extends Activity {
     }
 
     private void showError(String prefix, Throwable error) {
-        String detail = error.getMessage();
+        String detail = error == null ? null : error.getMessage();
         statusText.setText(prefix + (detail == null ? "." : ": " + detail));
     }
 
