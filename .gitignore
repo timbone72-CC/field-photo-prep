@@ -4,3 +4,6 @@ local.properties
 build/
 **/build/
 *.iml
+*.jks
+*.keystore
+!ci/field-photo-prep-test.jks
