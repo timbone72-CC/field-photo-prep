@@ -36,6 +36,7 @@ If implementation requires any of those Level 3 surfaces to change, this branch 
 
 - `app/src/main/java/com/inandout/fieldphotoprep/CameraCaptureActivity.java` — CameraX preview, runtime camera permission, shutter, capture lifecycle, and writing into the already-reserved protected-original file.
 - `app/src/main/java/com/inandout/fieldphotoprep/PhotoCaptureActivity.java` — reserve the existing capture record, launch the in-app camera activity, finalize the protected image, and auto-select a successful/non-empty return.
+- `app/src/main/java/com/inandout/fieldphotoprep/FieldPhotoPrepApplication.java` — provide CameraX 1.6 with the explicit Camera2 backend configuration while preserving existing queue startup recovery.
 - `app/src/main/AndroidManifest.xml` — declare camera permission and the new internal activity.
 - `app/build.gradle` — add stable AndroidX Activity and CameraX dependencies.
 
@@ -74,6 +75,8 @@ Use stable releases only for this field-facing slice:
 
 - AndroidX CameraX `1.6.2` (`camera-camera2`, `camera-lifecycle`, `camera-view`);
 - AndroidX Activity `1.13.0` for lifecycle ownership.
+
+CameraX 1.6 requires explicit application-level backend configuration, so the existing application class implements `CameraXConfig.Provider` and returns `Camera2Config.defaultConfig(this)`. Existing queue startup recovery in that class remains unchanged.
 
 These were the current stable AndroidX releases when this record was created on 2026-09-10.
 
