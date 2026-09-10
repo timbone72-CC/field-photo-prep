@@ -23,6 +23,18 @@ jobs:
         run: gradle test
       - name: Debug build
         run: gradle assembleDebug
+      - name: Verify stable test APK signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APKSIGNER="$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "${APKSIGNER}"
+          EXPECTED="2c0a9616fd819333ed98b33593fbe597e120e95936103c6b7a76270e985d3fba"
+          ACTUAL="$("${APKSIGNER}" verify --print-certs "${APK}" | awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print tolower($2); exit}')"
+          echo "Expected signer SHA-256: ${EXPECTED}"
+          echo "Actual signer SHA-256:   ${ACTUAL}"
+          test "${ACTUAL}" = "${EXPECTED}"
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
