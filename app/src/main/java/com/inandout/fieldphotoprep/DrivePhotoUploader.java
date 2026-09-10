@@ -56,17 +56,34 @@ public final class DrivePhotoUploader {
     }
 
     public static final class CreatedUpload {
+        private final String photoId;
+        private final String destinationId;
         private final String remoteFileId;
         private final String remoteDisplayName;
         private final long expectedBytes;
 
-        CreatedUpload(String remoteFileId, String remoteDisplayName, long expectedBytes) {
+        CreatedUpload(
+                String photoId,
+                String destinationId,
+                String remoteFileId,
+                String remoteDisplayName,
+                long expectedBytes) {
+            this.photoId = requireText(photoId, "created upload photo id");
+            this.destinationId = requireText(destinationId, "created upload destination id");
             this.remoteFileId = requireText(remoteFileId, "created remote file id");
             this.remoteDisplayName = requireText(remoteDisplayName, "created remote display name");
             if (expectedBytes <= 0) {
                 throw new IllegalArgumentException("Expected upload byte count must be positive.");
             }
             this.expectedBytes = expectedBytes;
+        }
+
+        String photoId() {
+            return photoId;
+        }
+
+        String destinationId() {
+            return destinationId;
         }
 
         public String remoteFileId() {
@@ -185,7 +202,12 @@ public final class DrivePhotoUploader {
                     null);
         }
 
-        return new CreatedUpload(created.id(), remoteName, expectedBytes);
+        return new CreatedUpload(
+                uploadingRecord.id(),
+                destinationId,
+                created.id(),
+                remoteName,
+                expectedBytes);
     }
 
     /**
@@ -206,9 +228,20 @@ public final class DrivePhotoUploader {
                     "The created Drive photo identity is unavailable. Remote state must be reconciled before retry.",
                     null);
         }
+        if (!createdUpload.photoId().equals(uploadingRecord.id())
+                || !createdUpload.destinationId().equals(uploadingRecord.workOrderId())) {
+            throw uncertainFailure(
+                    "The created Drive photo token does not belong to this photo and destination. Remote state must be reconciled before retry.",
+                    null);
+        }
         if (!createdUpload.remoteFileId().equals(uploadingRecord.provisionalRemoteFileId())) {
             throw uncertainFailure(
                     "The created Drive photo identity was not durably bound to this upload before writing. Remote state must be reconciled before retry.",
+                    null);
+        }
+        if (!createdUpload.remoteDisplayName().equals(remoteFileNameFor(uploadingRecord.id()))) {
+            throw uncertainFailure(
+                    "The created Drive photo name does not match this photo identity. Remote state must be reconciled before retry.",
                     null);
         }
         if (preparedFile == null || !preparedFile.isFile() || preparedFile.length() <= 0) {
