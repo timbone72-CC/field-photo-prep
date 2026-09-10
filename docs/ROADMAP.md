@@ -2,241 +2,193 @@
 
 ## Purpose
 
-Keep Field Photo Prep lean and field-focused. The app exists to get the right photos into the right Google Drive work-order folder with as little friction as possible.
+Keep Field Photo Prep lean and field-focused. The app exists to get the right photos into the right Google Drive work-order folder with as little friction as possible while protecting any photo that is not yet confirmed in Drive.
 
 Core finish-line workflow:
 
 **Choose/create address → choose/create/reuse dated work order → take photos → prepare them → send them safely to the exact Drive folder → remove unnecessary local copies after confirmed success.**
 
-This roadmap defines phase boundaries. It does not expand the approved product scope in `CONTRACT.md`. If implementation reveals a real workflow need, update the roadmap intentionally rather than quietly adding features.
+This roadmap defines phase boundaries. `CONTRACT.md`, `CHANGE_CONTROL_CONTRACT.md`, `TESTING_CONTRACT.md`, and `INTEGRATION_CONTRACT.md` remain authoritative for approved behavior and safety.
 
 ## Phase status
 
 ### Phase 1 — Master Folder Connection — COMPLETE
 
-Goal: connect the app to one approved master folder without building a general Drive browser.
-
-Delivered:
+Delivered and validated:
 - Android system folder picker;
 - persisted access to the selected master folder;
 - master-folder identity retained across restart;
 - refresh/list direct address folders.
 
-Validated on the operator phone with `HNP Jobs` and persisted restart behavior.
-
 ### Phase 2 — Work-Order Folders — COMPLETE
 
-Goal: select an address and establish the exact dated work occurrence beneath it.
-
-Delivered:
-- tap an existing address folder;
+Delivered and validated:
+- select an existing address folder;
 - list/refresh its work-order folders;
-- enter a human-readable work-order name;
-- choose a local calendar date;
+- enter a human-readable work-order name and date;
 - create `Work Order - YYYY-MM-DD` under the exact address;
 - reuse one exact existing match instead of creating a duplicate;
 - require operator choice when exact duplicates exist;
 - persist selected address/work-order identities.
 
-Validated with `HNP Jobs → FIELD PHOTO PREP TEST → Cut Grass - 2026-09-06`.
-
 ### Phase 3A — Empty Work-Order Folder Reuse — COMPLETE
 
-Goal: recycle an older same-work-order folder only when it is truly empty.
-
-Delivered:
-- operator selects the specific old work-order folder;
-- app verifies it is the same work-order type and an older date;
-- app revalidates the exact folder identity under the selected address;
-- app verifies the folder contains zero child items of any kind;
-- app renames that same folder to the new `Work Order - YYYY-MM-DD` name;
+Delivered and validated:
+- operator selects the exact old work-order folder;
+- app verifies same work-order type and older date;
+- provider identity and address parent are revalidated;
+- authoritative-enough zero-child state is required;
+- the same folder is renamed to the new dated work order;
 - folder identity and parent remain unchanged;
-- no deletion is permitted.
+- no deletion occurs.
 
-Merged after the positive empty-folder reuse and non-empty fail-closed device checks plus explicit Level 3 approval.
+### Phase 3B — Clear & Reuse — COMPLETE
 
-### Phase 3B — Clear & Reuse — IN PROGRESS — DEVICE GATE PASS / MERGE PENDING
+Delivered and validated:
+- explicit operator-selected destructive reuse for one non-empty old work-order folder;
+- full master/address/work-order hierarchy and direct-child count shown before confirmation;
+- child-folder warning where applicable;
+- confirmation bound to the exact child-identity snapshot;
+- provider freshness/loading uncertainty fails closed;
+- only confirmed direct children may be removed;
+- zero-child state is verified before rename;
+- same folder identity is retained after rename/reuse;
+- partial/uncertain destructive results block further writes until refresh/inspection.
 
-Goal: allow deliberate recycling of a non-empty old work-order folder when the operator explicitly chooses it.
+Real Samsung Galaxy A16 + Google Drive provider cancellation and successful Clear & Reuse gates passed on 2026-09-10.
 
-Scope:
-- operator selects one exact old work-order folder;
-- app shows the full master/address/work-order hierarchy and direct child-item count;
-- explicit confirmation is required;
-- remove only that selected folder's child items;
-- verify the folder is empty;
-- rename/reuse the same folder identity for the new work/date;
-- any delete, verification, or rename failure stops the workflow;
-- cloud-provider child listings must be fresh/settled before any empty/non-empty decision.
+The historical Phase 3B PR #8 was not force-merged after the later Phase 7 line advanced. Its validated behavior was ported onto current main through PR #20, revalidated in CI and with a proportional real-device smoke, and merged. PR #8 is closed as superseded.
 
-Current status:
-- runtime and automated verification are complete on PR #8;
-- real-device stale-provider hardening was validated on Samsung Galaxy A16 on 2026-09-10;
-- cancel and successful clear/reuse were both physically verified against Google Drive;
-- the device gate is PASS as recorded in `docs/DEVICE_REALITY_GATE_RECORD_2026-09-10.md`;
-- PR remains unmerged pending explicit Level 3 merge approval.
+### Phase 4 — Address Folder Creation — COMPLETE
 
-No automatic cleanup or bulk Drive management.
-
-### Phase 4 — Address Folder Creation — IN PROGRESS — DEVICE GATE PASS / MERGE PENDING
-
-Goal: create a missing property/address folder safely under the approved master folder.
-
-Scope:
-- enter/select address text;
-- refresh actual master-folder children before create;
+Delivered and validated:
+- enter an address folder name;
+- trim outer whitespace only;
+- require fresh/settled provider state before absence-based create;
 - one exact match → reuse;
-- multiple exact matches → operator choice;
-- no match → create exactly one address folder under the approved master;
-- persist returned folder identity;
-- never recycle address folders.
+- multiple exact matches → operator choice, no create;
+- no exact match → create one folder under the exact approved master;
+- verify returned provider identity before automatic selection;
+- persist exact address provider identity;
+- address folders are never recycled by work-order reuse.
 
-Current status:
-- runtime and automated Android CI verification are complete on PR #10;
-- physical create/reuse/restart behavior passed on Samsung Galaxy A16 with the real Google Drive provider on 2026-09-10;
-- device evidence is recorded in `docs/DEVICE_REALITY_GATE_RECORD_2026-09-10.md`;
-- PR remains unmerged pending explicit Level 3 merge approval.
+Real Samsung Galaxy A16 + Google Drive provider create/reuse/restart behavior passed on 2026-09-10.
 
-### Phase 5 — Camera + Temporary Photo Protection — IN PROGRESS — DEVICE GATE PASS / MERGE PENDING
+The historical Phase 4 PR #10 was not force-merged after the later Phase 7 line advanced. Its validated behavior was ported onto current main through PR #20, revalidated in CI and with a proportional real-device smoke, and merged. PR #10 is closed as superseded.
 
-Goal: take still photos inside the selected work occurrence without making the app a second photo library.
+### Phase 5 — Camera + Temporary Photo Protection — COMPLETE
 
-Scope:
-- launch camera for the selected work order;
-- capture still photos only;
-- bind each accepted photo to the exact selected work-order folder identity before camera launch;
-- retain an unconfirmed photo locally until Drive success or explicit discard;
-- survive app/process restart with unconfirmed photos;
-- camera capture must work without internet.
+Delivered and validated:
+- launch the system camera for the exact selected work occurrence;
+- bind the photo to the selected work-order provider identity before camera launch;
+- protect non-empty captured image data locally;
+- retain unconfirmed photos across app/process restart;
+- preserve destination binding across later navigation;
+- still-photo capture works on the physical Android path.
 
-Current status:
-- runtime and automated Android CI verification are complete on PR #11;
-- physical camera capture, restart survival, and immutable destination binding passed on Samsung Galaxy A16 on 2026-09-10;
-- device evidence is recorded in `docs/DEVICE_REALITY_GATE_RECORD_2026-09-10.md`;
-- PR remains unmerged pending explicit Level 3 merge approval.
+Samsung Galaxy A16 real-camera capture, restart survival, and immutable destination binding passed on 2026-09-10.
 
-No video, AI classification, OCR, watermarking, or permanent in-app gallery.
+### Phase 6A — Photo Preparation — COMPLETE
 
-### Phase 6A — Photo Preparation — IN PROGRESS — DEVICE GATE PASS / MERGE PENDING
-
-Goal: reduce upload size without weakening the protected original.
-
-Scope:
+Delivered and validated:
 - create a separate smaller prepared JPEG;
-- preserve correct orientation and field-documentation usability;
-- never overwrite/delete the protected original during preparation;
-- deterministic prepared identity from the immutable local photo UUID;
-- perform expensive preparation off the UI thread;
-- block conflicting local actions while preparation owns a photo.
+- preserve the protected original during preparation;
+- deterministic derivative identity from the local photo UUID;
+- preserve usable orientation/content;
+- perform preparation off the UI thread;
+- block conflicting local actions while preparation owns the photo.
 
-Current status:
-- runtime and complete Android CI/emulator image verification are complete on PR #12;
-- physical real-camera preparation, orientation, usability, and protected-original behavior passed on Samsung Galaxy A16 on 2026-09-10;
-- device evidence is recorded in `docs/DEVICE_REALITY_GATE_RECORD_2026-09-10.md`;
-- PR remains unmerged pending explicit Level 3 merge approval.
+Samsung Galaxy A16 real-camera preparation and visual usability passed on 2026-09-10.
 
-### Phase 6B — Drive Upload — IN PROGRESS — H4 PASS / MERGE PENDING
+### Phase 6B — Drive Upload — COMPLETE
 
-Goal: send one prepared photo to its exact bound Drive work-order destination and record confirmed remote identity safely.
+Delivered and validated:
+- upload only to the immutable work-order provider identity stored on the photo;
+- durable provisional remote identity before byte write;
+- create → persist provisional identity → write/verify barrier;
+- confirmed remote identity recorded only after provider-visible success;
+- ambiguous/interrupted outcome becomes non-blind-retry `UNCERTAIN`;
+- deterministic remote filename from local photo UUID.
 
-Scope:
-- upload only to the exact provider document identity already stored on the photo;
-- mark uploaded only after confirmed remote creation;
-- retain enough remote identity to avoid knowingly duplicating confirmed uploads;
-- preserve the recoverable local photo if upload fails or remote outcome is uncertain;
-- use the Android safe-folder/DocumentsProvider reality gate before merge.
+Physical Android + real Google Drive DocumentsProvider upload passed on Samsung Galaxy A16 on 2026-09-10. The unsafe ambiguity experiment was not manufactured when no deterministic safe method was available.
 
-Current status:
-- core Phase 6B Drive-upload runtime is implemented on the governed development line;
-- Phase 6B-H1 added durable `provisionalRemoteFileId` queue evidence while preserving confirmed `remoteFileId` as success-only;
-- Phase 6B-H2 implemented the create → persist provisional identity → write/verify barrier;
-- H2 automated verification passed on exact runtime/test head `8d23b061307725589aef69a31a00249744523406`;
-- Phase 6B-H4 physical Android + real Google Drive `DocumentsProvider` upload passed on Samsung Galaxy A16 on 2026-09-10;
-- the exact H4 evidence is recorded in `docs/DEVICE_REALITY_GATE_RECORD_2026-09-10.md`;
-- the ambiguity/interruption experiment was not safely inducible and was intentionally not manufactured;
-- Level 3 merge approval has not been granted and PR #17 remains draft/unmerged.
+### Phase 7A — Persistent Upload Queue State — COMPLETE
 
-### Phase 7A — Persistent Upload Queue State — IN PROGRESS
+Delivered and validated:
+- durable `WAITING`, `UPLOADING`, `FAILED`, `UNCERTAIN`, and `UPLOADED` bookkeeping;
+- immutable local photo identity and stored destination through transitions;
+- upload attempt count and timestamp;
+- stale in-flight work recovers to `UNCERTAIN` rather than blind retry;
+- confirmed-success state requires explicit remote identity;
+- per-photo state isolation and restart survival.
 
-Goal: establish durable local upload/retry bookkeeping before real remote upload is connected.
+### Phase 7B — Remote Retry, Reconciliation & Cleanup — COMPLETE
 
-Scope:
-- persistent `WAITING`, `UPLOADING`, `FAILED`, `UNCERTAIN`, and `UPLOADED` bookkeeping while preserving capture states;
-- immutable local photo identity and exact original destination through every transition;
-- attempt count and last-attempt timestamp;
-- failed state remains retryable;
-- interrupted/ambiguous in-flight state becomes `UNCERTAIN`, not blindly retryable;
-- confirmed-success bookkeeping requires explicit confirmed remote identity;
-- app/process restart survival;
-- one photo's transition cannot corrupt another;
-- no Drive upload/write in this subphase;
-- no automatic local image cleanup in this subphase.
+Delivered and validated:
+- conservative read-only `UNCERTAIN` reconciliation against the original immutable destination;
+- deterministic-name matching and SHA-256 comparison where required;
+- retry release only after authoritative-enough remote absence and no unresolved provisional identity;
+- confirmed-match promotion to `UPLOADED` without a second remote create;
+- automatic local original/prepared cleanup only after confirmed Drive success and durable bookkeeping;
+- cleanup failure remains separate from upload success;
+- no automatic retry scheduler or remote uncertain-content deletion/overwrite.
 
-Detailed implementation record: `docs/PHASE_7A_IMPLEMENTATION_RECORD_2026-09-09.md`.
+Samsung Galaxy A16 reality gate passed on 2026-09-10. Confirmed state and cleanup survived restart, and Drive copies remained intact and visually usable.
 
-### Phase 7B — Remote Retry, Reconciliation & Cleanup — IN PROGRESS — DEVICE REALITY GATE STAGED
+Stable test signing was added so test APK updates preserve app-private state across CI builds. The checked-in stable test key is explicitly non-production.
 
-Goal: finish weak/no-service behavior once real Drive upload exists.
+The complete Phase 5 → 7B stack was merged to main, followed by the controlled Phase 3B/4 integration in PR #20. The current main line therefore contains the full proven core workflow.
 
-Scope:
-- retry failed work to the original immutable destination;
-- reconcile uncertain remote results before another create/upload attempt;
-- never knowingly duplicate an already confirmed remote photo;
-- isolate failures between photos;
-- remove temporary local image data only after confirmed Drive success and safe local bookkeeping;
-- preserve lightweight remote identity/history needed for duplicate prevention.
+## Phase 8 — Field Workflow / Release Hardening — IN PROGRESS
 
-Current status:
-- Phase 7B design absorbed the completed Phase 6B-H4 real-provider evidence;
-- conservative read-only `UNCERTAIN` reconciliation is implemented;
-- retry release occurs only after authoritative-enough settled absence with no unresolved provisional identity;
-- exact remote candidates may be confirmed by SHA-256 against the prepared local JPEG without creating another remote copy;
-- confirmed local cleanup removes original/prepared image files while retaining `UPLOADED` metadata and confirmed provider identity;
-- no automatic retry scheduler, remote uncertain-content deletion/overwrite, database/framework expansion, or new runtime dependency was added;
-- exact final runtime/test head: `f25868dd768dcdddb11ac4d6ab3879a7cde85d2c`;
-- exact final Android CI run `34512362110`, job `102989361359`: **PASS**;
-- exact artifact ID `10166488011`, SHA-256 `544a834c701e16f650cd2738d2ccd76be4a9aa031900974f0027f65a265689c5`;
-- implementation record: `docs/PHASE_7B_IMPLEMENTATION_RECORD_2026-09-10.md`;
-- straight-line physical gate: `docs/PHASE_7B_DEVICE_REALITY_GATE_PLAN_2026-09-10.md`;
-- runtime is frozen pending the Samsung Galaxy A16 reality gate;
-- no Level 3 merge approval has been granted.
+Goal: turn the proven core into a practical first field release without expanding the product unnecessarily.
 
-If a real ambiguous upload still cannot be induced safely, the device gate must record that limitation rather than manufacture an unsafe failure. Phase 7B automated reconciliation evidence remains valid but is not represented as proof of Google Drive provider reality.
+Detailed plan:
 
-### Phase 8 — Field Workflow / Release Hardening — PENDING
+`docs/PHASE_8_FIELD_WORKFLOW_RELEASE_HARDENING_PLAN_2026-09-10.md`
 
-Goal: prove the minimal app works reliably in everyday field use on more than one Android phone.
+### Phase 8A — Field workflow polish — IN PROGRESS
 
-Scope:
-- full operator workflow on the primary phone;
-- same workflow on the son's Android phone with his own account access to the shared master folder;
-- fix only real friction discovered in field testing;
-- simplify/remove unnecessary UI where practical;
-- validate restart, weak-network, permission-loss, duplicate prevention, and wrong-destination guards;
-- prepare a normal install/update path for continued use.
+Use observed A16 friction only:
+- remove stale developer phase labels from normal screens;
+- clearly separate selecting an existing work order from creating/reusing a dated work order;
+- make the work-order name field explicitly name-only so it does not look like a search field;
+- simplify implementation-heavy photo-screen top copy;
+- keep all Drive, identity, queue, camera, retry, and cleanup semantics unchanged.
 
-Feature expansion stays out unless field use proves it is necessary.
+The external Samsung camera OK/Retake screen remains accepted for the first release. Removing it reliably would likely require an in-app camera subsystem such as CameraX and is deferred unless field use proves that cost worthwhile.
+
+### Phase 8B — Normal install/update/release path — PENDING
+
+- keep the stable test key non-production;
+- define a secure release-signing path without committing private release key material;
+- make version progression intentional;
+- build one release-candidate APK with recorded identity/checksum;
+- prove update behavior on the primary phone without unexpected state loss;
+- document rollback.
+
+No Play Store publication is assumed.
+
+### Phase 8C — Second Android phone/shared-master reality check — PENDING
+
+On another supported Android phone using that operator's own Google Drive access to the shared approved master:
+- install normally;
+- select the intended Drive provider/account and approved shared master;
+- reopen a safe existing address/work order without duplicates;
+- capture/prepare/upload one disposable photo;
+- verify the Drive destination and visual result;
+- restart and confirm safe confirmed state;
+- prove the app does not assume provider IDs are portable between phones/accounts.
 
 ## Phase development staging rule
 
-The governed phase-staging process is recorded in:
+The governed process is recorded in:
 
 `docs/PHASE_STAGING_DOCTRINE.md`
 
-Default development cycle:
+Default cycle:
 
 **Build everything that can be honestly proven without the phone → stage at the next genuine device-dependent boundary → run the smallest required phone reality gate → accept the evidence → adjust only where reality requires it → continue the next phase as far as possible → stage again.**
-
-For the Phase 6 → Phase 7 transition specifically:
-
-- complete and consolidate the outstanding Phase 6 device evidence first;
-- use that evidence to finalize or adjust Phase 7B assumptions;
-- do not preserve a pre-phone Phase 7 assumption when real provider behavior contradicts it;
-- do not stop Phase 7 after every small implementation slice for a phone check that is not yet necessary;
-- push Phase 7 to the next point where proceeding further would require guessing about real Android/Google Drive behavior;
-- at that point, freeze the tested runtime, record exact CI/artifact evidence, perform a proportional lean/checkpoint review, and stage the next straight-line device gate.
-
-Phase 7B has now reached that staged boundary on exact runtime `f25868dd768dcdddb11ac4d6ab3879a7cde85d2c`.
 
 ## Lean architecture baseline
 
@@ -244,7 +196,7 @@ The accepted lean-architecture audit baseline is recorded in:
 
 `docs/LEAN_ARCHITECTURE_BASELINE_2026-09-10.md`
 
-The audit found the H2 app lean and near the appropriate minimum architecture for its field workflow. After H4, the deferred candidates were revisited during Phase 7B design and no broad cleanup/refactor was justified. Phase 7B retained the lightweight queue/persistence architecture and added only the narrow reconciliation and confirmed-cleanup helpers required by the real workflow.
+The app remains intentionally small: no database framework, DI framework, reactive stack, background worker framework, in-app camera subsystem, or permanent photo gallery has been added without a demonstrated need.
 
 ## Product boundary
 
@@ -254,17 +206,17 @@ Keep out unless separately approved:
 - Free Map Router integration;
 - route planning;
 - automatic sharing changes;
-- general Drive cleanup or file manager behavior;
+- general Drive cleanup or file-manager behavior;
 - video;
 - background location tracking;
 - OCR;
 - AI photo classification;
-- separate numeric work-order IDs without a demonstrated ambiguity;
+- separate numeric work-order IDs without demonstrated ambiguity;
 - deeper folder nesting beyond master → address → dated work order → photos.
 
 ## Roadmap maintenance rule
 
-- Completed phases should be marked `COMPLETE` only after their required automated and real-device gates pass and the governed change is merged.
-- Active work should be marked `IN PROGRESS`.
-- New phases or phase splits are allowed when they reduce risk or clarify ownership, but they must be recorded here before the implementation sequence drifts.
-- The roadmap guides sequencing; `CONTRACT.md`, `CHANGE_CONTROL_CONTRACT.md`, `TESTING_CONTRACT.md`, and `INTEGRATION_CONTRACT.md` remain authoritative for approved behavior, risk, tests, and Drive safety.
+- mark a phase `COMPLETE` only after required automated and real-device gates pass and the governed change is merged;
+- keep active work `IN PROGRESS`;
+- split phases when doing so reduces risk or clarifies ownership;
+- update this roadmap intentionally when evidence changes sequencing rather than allowing implementation to drift silently.
