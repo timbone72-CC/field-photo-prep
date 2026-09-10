@@ -10,8 +10,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 12
-        versionName '0.7.1-phase6a-background-preparation'
+        versionCode 13
+        versionName '0.8-phase7a-persistent-upload-queue'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
