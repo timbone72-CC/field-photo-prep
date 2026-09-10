@@ -333,6 +333,18 @@ public final class PendingPhotoStore {
         return image.isFile() && image.length() > 0;
     }
 
+    public void removeProtectedImageAfterConfirmedUpload(String id) throws IOException {
+        PendingPhotoRecord record = requireRecord(id);
+        if (record.state() != PendingPhotoRecord.State.UPLOADED || record.remoteFileId() == null) {
+            throw new IOException(
+                    "Protected-original cleanup requires durable confirmed uploaded state.");
+        }
+        File image = imageFile(record);
+        if (image.exists() && !image.delete()) {
+            throw new IOException("Could not remove the confirmed upload's protected local original.");
+        }
+    }
+
     public void discard(String id) throws IOException {
         PendingPhotoRecord record = requireRecord(id);
         if (!record.canDiscardLocally()) {
