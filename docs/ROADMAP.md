@@ -179,6 +179,8 @@ Scope:
 - remove temporary local image data only after confirmed Drive success and safe local bookkeeping;
 - preserve lightweight remote identity/history needed for duplicate prevention.
 
+Phase 7B implementation details are intentionally not frozen before the Phase 6 physical-device evidence exists. After the Phase 6 gates are completed, use the real Android/Google Drive provider evidence to adjust Phase 7B assumptions as needed, then build Phase 7 as far as can be honestly proven without another phone dependency. Stage again only when the next implementation decision materially requires real-device/provider evidence.
+
 ### Phase 8 — Field Workflow / Release Hardening — PENDING
 
 Goal: prove the minimal app works reliably in everyday field use on more than one Android phone.
@@ -192,6 +194,27 @@ Scope:
 - prepare a normal install/update path for continued use.
 
 Feature expansion stays out unless field use proves it is necessary.
+
+## Phase development staging rule
+
+The governed phase-staging process is recorded in:
+
+`docs/PHASE_STAGING_DOCTRINE.md`
+
+Default development cycle:
+
+**Build everything that can be honestly proven without the phone → stage at the next genuine device-dependent boundary → run the smallest required phone reality gate → accept the evidence → adjust only where reality requires it → continue the next phase as far as possible → stage again.**
+
+For the Phase 6 → Phase 7 transition specifically:
+
+- complete and consolidate the outstanding Phase 6 device evidence first;
+- use that evidence to finalize or adjust Phase 7B assumptions;
+- do not preserve a pre-phone Phase 7 assumption when real provider behavior contradicts it;
+- do not stop Phase 7 after every small implementation slice for a phone check that is not yet necessary;
+- push Phase 7 to the next point where proceeding further would require guessing about real Android/Google Drive behavior;
+- at that point, freeze the tested runtime, record exact CI/artifact evidence, perform a proportional lean/checkpoint review, and stage the next straight-line device gate.
+
+This rule is intended to prevent fragmented implementation, repeated Bash/approval loops, and unnecessary device testing while still stopping before unverified platform behavior becomes architecture.
 
 ## Lean architecture baseline
 
