@@ -31,9 +31,38 @@ public final class PhotoUploadCoordinator {
         }
 
         PendingPhotoRecord uploading = photoStore.beginUploadAttempt(photoId);
+        final DrivePhotoUploader.CreatedUpload created;
+        try {
+            created = driveUploader.create(uploading, prepared);
+        } catch (DrivePhotoUploader.UploadException error) {
+            persistDriveFailure(photoId, error);
+            throw new IOException(error.getMessage(), error);
+        } catch (RuntimeException error) {
+            persistUnexpectedUncertainty(photoId, error);
+            throw new IOException(
+                    "Upload stopped with an unexpected provider result. Remote state must be reconciled before retry.",
+                    error);
+        }
+
+        final PendingPhotoRecord uploadingWithProvisional;
+        try {
+            uploadingWithProvisional = photoStore.recordProvisionalRemoteFileId(
+                    photoId,
+                    created.remoteFileId());
+        } catch (IOException persistenceError) {
+            persistCreateBarrierUncertainty(photoId);
+            throw new IOException(
+                    "Drive created a photo identity, but that identity could not be durably recorded before writing. "
+                            + "No photo bytes were intentionally written; retry is blocked until the remote result is reconciled.",
+                    persistenceError);
+        }
+
         final DrivePhotoUploader.UploadResult remoteResult;
         try {
-            remoteResult = driveUploader.upload(uploading, prepared);
+            remoteResult = driveUploader.writeAndVerify(
+                    uploadingWithProvisional,
+                    created,
+                    prepared);
         } catch (DrivePhotoUploader.UploadException error) {
             persistDriveFailure(photoId, error);
             throw new IOException(error.getMessage(), error);
@@ -64,16 +93,31 @@ public final class PhotoUploadCoordinator {
                 try {
                     photoStore.markUploadUncertain(
                             photoId,
-                            "Drive returned a remote photo identity, but local confirmation bookkeeping failed. "
+                            "Drive verified the created photo, but local confirmation bookkeeping failed. "
                                     + "Remote state must be reconciled before retry.");
                 } catch (IOException ignored) {
                     // Leaving UPLOADING is still fail-closed; process startup converts it to UNCERTAIN.
                 }
             }
             throw new IOException(
-                    "Drive returned a photo identity, but local confirmation could not be committed safely. "
-                            + "The local photo was kept and retry is blocked until the result is reconciled.",
+                    "Drive returned a verified photo identity, but local confirmation could not be committed safely. "
+                            + "The local photo and provisional remote identity were kept and retry is blocked until the result is reconciled.",
                     confirmationError);
+        }
+    }
+
+    private void persistCreateBarrierUncertainty(String photoId) {
+        try {
+            PendingPhotoRecord current = photoStore.getById(photoId);
+            if (current != null && current.state() == PendingPhotoRecord.State.UPLOADING) {
+                photoStore.markUploadUncertain(
+                        photoId,
+                        "Drive created a photo identity, but provisional identity bookkeeping did not complete safely. "
+                                + "Remote state must be reconciled before retry.");
+            }
+        } catch (IOException ignored) {
+            // If queue persistence itself is unavailable, keeping UPLOADING is still fail-closed.
+            // Process-start recovery later converts a readable UPLOADING record to UNCERTAIN.
         }
     }
 
