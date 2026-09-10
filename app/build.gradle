@@ -10,10 +10,10 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 10
-        versionName '0.6-phase5-camera-temp-protection'
+        versionCode 11
+        versionName '0.7-phase6a-photo-preparation'
 
-        testInstrumentationRunner 'android.test.InstrumentationTestRunner'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
     compileOptions {
@@ -24,5 +24,11 @@ android {
 
 dependencies {
     implementation 'androidx.core:core:1.17.0'
+    implementation 'androidx.exifinterface:exifinterface:1.4.1'
+
     testImplementation 'junit:junit:4.13.2'
+
+    androidTestImplementation 'androidx.test:core:1.6.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
 }
