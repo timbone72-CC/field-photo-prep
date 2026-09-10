@@ -40,11 +40,11 @@ Delivered:
 
 Validated with `HNP Jobs → FIELD PHOTO PREP TEST → Cut Grass - 2026-09-06`.
 
-### Phase 3A — Empty Work-Order Folder Reuse — IN PROGRESS
+### Phase 3A — Empty Work-Order Folder Reuse — COMPLETE
 
 Goal: recycle an older same-work-order folder only when it is truly empty.
 
-Scope:
+Delivered:
 - operator selects the specific old work-order folder;
 - app verifies it is the same work-order type and an older date;
 - app revalidates the exact folder identity under the selected address;
@@ -53,27 +53,31 @@ Scope:
 - folder identity and parent remain unchanged;
 - no deletion is permitted.
 
-Required gate:
-- empty-folder positive reuse test;
-- non-empty fail-closed test;
-- explicit Level 3 merge approval.
+Merged after the positive empty-folder reuse and non-empty fail-closed device checks plus explicit Level 3 approval.
 
-### Phase 3B — Clear & Reuse — PENDING
+### Phase 3B — Clear & Reuse — IN PROGRESS — DEVICE GATE BLOCKED
 
 Goal: allow deliberate recycling of a non-empty old work-order folder when the operator explicitly chooses it.
 
 Scope:
 - operator selects one exact old work-order folder;
-- app shows the old folder name and direct child-item count;
+- app shows the full master/address/work-order hierarchy and direct child-item count;
 - explicit confirmation is required;
 - remove only that selected folder's child items;
 - verify the folder is empty;
 - rename/reuse the same folder identity for the new work/date;
-- any delete, verification, or rename failure stops the workflow.
+- any delete, verification, or rename failure stops the workflow;
+- cloud-provider child listings must be fresh/settled before any empty/non-empty decision.
+
+Current status:
+- runtime and automated verification are complete on PR #8;
+- real-device testing exposed stale Android/Google Drive child listings and the branch was hardened to fail closed unless fresh settled state is confirmed;
+- large-display work-order selection was hardened;
+- remaining real-device confirmation/cancel/success checks are deferred because the operator's Android phone is temporarily unavailable.
 
 No automatic cleanup or bulk Drive management.
 
-### Phase 4 — Address Folder Creation — PENDING
+### Phase 4 — Address Folder Creation — NEXT
 
 Goal: create a missing property/address folder safely under the approved master folder.
 
