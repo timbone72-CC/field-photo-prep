@@ -192,6 +192,31 @@ public final class DrivePhotoUploader {
                 .substring("photo-".length());
     }
 
+    static long writePreparedToDescriptor(ParcelFileDescriptor descriptor, File source)
+            throws IOException {
+        if (descriptor == null) {
+            throw new IOException("Document provider did not open the created photo for writing.");
+        }
+        if (source == null || !source.isFile() || source.length() <= 0) {
+            descriptor.close();
+            throw new IOException("Prepared photo source is missing or empty.");
+        }
+
+        long written = 0L;
+        byte[] buffer = new byte[64 * 1024];
+        try (FileInputStream input = new FileInputStream(source);
+             ParcelFileDescriptor.AutoCloseOutputStream output =
+                     new ParcelFileDescriptor.AutoCloseOutputStream(descriptor)) {
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+                written += count;
+            }
+            output.flush();
+        }
+        return written;
+    }
+
     private static UploadException safeFailure(String message, Throwable cause) {
         return new UploadException(message, cause, false);
     }
@@ -281,30 +306,13 @@ public final class DrivePhotoUploader {
         public long writeDocument(String documentId, File source) throws IOException {
             ensureTreeUri();
             Uri documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId);
-            long written = 0L;
-            byte[] buffer = new byte[64 * 1024];
-
-            ParcelFileDescriptor descriptor;
+            final ParcelFileDescriptor descriptor;
             try {
                 descriptor = resolver.openFileDescriptor(documentUri, "w");
             } catch (SecurityException error) {
                 throw new IOException("Drive access was denied while opening the photo for writing.", error);
             }
-            if (descriptor == null) {
-                throw new IOException("Document provider did not open the created photo for writing.");
-            }
-
-            try (FileInputStream input = new FileInputStream(source);
-                 ParcelFileDescriptor.AutoCloseOutputStream output =
-                         new ParcelFileDescriptor.AutoCloseOutputStream(descriptor)) {
-                int count;
-                while ((count = input.read(buffer)) != -1) {
-                    output.write(buffer, 0, count);
-                    written += count;
-                }
-                output.flush();
-            }
-            return written;
+            return writePreparedToDescriptor(descriptor, source);
         }
 
         private void ensureTreeUri() throws IOException {
