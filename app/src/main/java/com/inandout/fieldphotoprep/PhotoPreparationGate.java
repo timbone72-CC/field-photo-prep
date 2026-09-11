@@ -3,36 +3,52 @@ package com.inandout.fieldphotoprep;
 /**
  * Process-local ownership guard for photo preparation.
  *
- * Only one protected photo may be prepared at a time. This prevents duplicate preparation
- * work and gives destructive local actions a single place to check before touching the same
- * protected original. Process death clears the guard together with the worker thread.
+ * Every instance shares one process-wide owner. This lets existing manual preparation controls
+ * and the automatic preparation queue coordinate without allowing two full image decode/compress
+ * operations to run at the same time. Process death clears the guard with the worker threads.
  */
 public final class PhotoPreparationGate {
-    private String activePhotoId;
+    private static String activePhotoId;
 
-    public synchronized boolean tryBegin(String photoId) {
+    public boolean tryBegin(String photoId) {
         requirePhotoId(photoId);
-        if (activePhotoId != null) {
-            return false;
+        synchronized (PhotoPreparationGate.class) {
+            if (activePhotoId != null) {
+                return false;
+            }
+            activePhotoId = photoId;
+            return true;
         }
-        activePhotoId = photoId;
-        return true;
     }
 
-    public synchronized boolean isBusy() {
-        return activePhotoId != null;
+    public boolean isBusy() {
+        synchronized (PhotoPreparationGate.class) {
+            return activePhotoId != null;
+        }
     }
 
-    public synchronized boolean isPreparing(String photoId) {
-        return photoId != null && photoId.equals(activePhotoId);
+    public boolean isPreparing(String photoId) {
+        synchronized (PhotoPreparationGate.class) {
+            return photoId != null && photoId.equals(activePhotoId);
+        }
     }
 
-    public synchronized String activePhotoId() {
-        return activePhotoId;
+    public String activePhotoId() {
+        synchronized (PhotoPreparationGate.class) {
+            return activePhotoId;
+        }
     }
 
-    public synchronized void finish(String photoId) {
-        if (photoId != null && photoId.equals(activePhotoId)) {
+    public void finish(String photoId) {
+        synchronized (PhotoPreparationGate.class) {
+            if (photoId != null && photoId.equals(activePhotoId)) {
+                activePhotoId = null;
+            }
+        }
+    }
+
+    static void resetForTests() {
+        synchronized (PhotoPreparationGate.class) {
             activePhotoId = null;
         }
     }

@@ -2,18 +2,12 @@ package com.inandout.fieldphotoprep;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
-import android.content.ClipData;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-
-import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.time.Instant;
@@ -210,21 +204,12 @@ public final class PhotoCaptureActivity extends Activity {
 
         pendingCaptureId = record.id();
         try {
-            Uri outputUri = FileProvider.getUriForFile(
-                    this,
-                    getPackageName() + ".fileprovider",
-                    photoStore.imageFile(record));
-            Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri);
-            cameraIntent.setClipData(ClipData.newRawUri("Field Photo Prep capture", outputUri));
-            cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            statusText.setText("Opening camera for " + workOrder.name() + "…");
+            Intent cameraIntent = new Intent(this, CameraCaptureActivity.class);
+            cameraIntent.putExtra(CameraCaptureActivity.EXTRA_CAPTURE_ID, record.id());
+            statusText.setText("Opening in-app camera for " + workOrder.name() + "…");
             startActivityForResult(cameraIntent, REQUEST_CAPTURE_PHOTO);
-        } catch (ActivityNotFoundException error) {
-            finishFailedCameraLaunch("No camera app is available", error);
         } catch (Exception error) {
-            finishFailedCameraLaunch("Could not open the camera safely", error);
+            finishFailedCameraLaunch("Could not open the in-app camera safely", error);
         }
     }
 
@@ -251,24 +236,67 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
 
-        String captureId = pendingCaptureId;
+        String initialCaptureId = pendingCaptureId;
         pendingCaptureId = null;
-        if (captureId == null) {
-            statusText.setText("Camera returned without a tracked capture. Existing temporary photos were left unchanged.");
+        if (initialCaptureId == null) {
+            statusText.setText("Camera returned without a tracked session. Existing temporary photos were left unchanged.");
             refreshPhotoList();
             return;
         }
 
+        String cameraError = data == null
+                ? null
+                : data.getStringExtra(CameraCaptureActivity.EXTRA_ERROR_MESSAGE);
+        String lastCaptureId = data == null
+                ? null
+                : data.getStringExtra(CameraCaptureActivity.EXTRA_LAST_CAPTURE_ID);
+        int capturedCount = data == null
+                ? 0
+                : data.getIntExtra(CameraCaptureActivity.EXTRA_CAPTURED_COUNT, 0);
+
         try {
-            PendingPhotoRecord preserved = photoStore.finishCaptureIfImageExists(captureId);
-            if (preserved == null) {
-                statusText.setText(resultCode == RESULT_OK
-                        ? "Camera returned without usable image data. No empty photo was kept."
-                        : "Camera cancelled. No photo data was saved.");
+            PendingPhotoRecord selectedFromSession = null;
+            if (lastCaptureId != null) {
+                selectedFromSession = photoStore.getById(lastCaptureId);
+                if (selectedFromSession != null
+                        && selectedFromSession.state() == PendingPhotoRecord.State.CAPTURING) {
+                    selectedFromSession = photoStore.finishCaptureIfImageExists(lastCaptureId);
+                }
+                if (selectedFromSession != null
+                        && (address == null
+                        || workOrder == null
+                        || !address.id().equals(selectedFromSession.addressId())
+                        || !workOrder.id().equals(selectedFromSession.workOrderId()))) {
+                    throw new IllegalStateException(
+                            "The camera session returned a photo for a different stored destination.");
+                }
+            }
+
+            if (selectedFromSession == null) {
+                PendingPhotoRecord initial = photoStore.getById(initialCaptureId);
+                if (initial != null && initial.state() == PendingPhotoRecord.State.CAPTURING) {
+                    initial = photoStore.finishCaptureIfImageExists(initialCaptureId);
+                }
+                if (initial != null && initial.state() != PendingPhotoRecord.State.CAPTURING) {
+                    selectedFromSession = initial;
+                }
+            }
+
+            if (selectedFromSession != null) {
+                selectedPhotoId = selectedFromSession.id();
+                int count = capturedCount > 0 ? capturedCount : 1;
+                String summary = count + " photo" + (count == 1 ? "" : "s")
+                        + " captured and protected locally. Last photo selected.";
+                if (cameraError != null && !cameraError.trim().isEmpty()) {
+                    summary += " Camera note: " + cameraError;
+                }
+                statusText.setText(summary);
+            } else if (cameraError != null && !cameraError.trim().isEmpty()) {
+                statusText.setText(cameraError);
             } else if (resultCode == RESULT_OK) {
-                statusText.setText("Photo protected locally and waiting for preparation/upload.");
+                statusText.setText("Camera session finished without a selectable photo. Existing local photo data was left unchanged.");
             } else {
-                statusText.setText("Camera did not report success, but image data exists, so the photo was preserved.");
+                statusText.setText("Camera closed. No photo data was saved.");
             }
         } catch (Exception error) {
             showError("Camera returned, but the protected photo state needs inspection", error);

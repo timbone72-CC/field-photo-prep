@@ -124,6 +124,7 @@ public final class PendingPhotoStore {
         }
         PendingPhotoRecord waiting = record.withState(PendingPhotoRecord.State.WAITING);
         writeRecord(waiting);
+        PhotoCaptureCompletionBus.publishPhotoWaiting(waiting.id());
         return waiting;
     }
 
@@ -138,7 +139,9 @@ public final class PendingPhotoStore {
                 continue;
             }
             if (hasImageData(record)) {
-                writeRecord(record.withState(PendingPhotoRecord.State.WAITING));
+                PendingPhotoRecord waiting = record.withState(PendingPhotoRecord.State.WAITING);
+                writeRecord(waiting);
+                PhotoCaptureCompletionBus.publishPhotoWaiting(waiting.id());
             } else {
                 removeEmptyReservation(record);
             }
