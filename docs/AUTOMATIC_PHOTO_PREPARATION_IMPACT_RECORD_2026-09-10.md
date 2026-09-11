@@ -2,7 +2,7 @@
 
 Date: 2026-09-10
 
-Status: IN PROGRESS
+Status: DEVICE TEST READY
 
 Branch: `feat/automatic-photo-preparation`
 
@@ -98,7 +98,7 @@ It does not modify the protected original, queue state, Drive content, Drive fol
 
 ## Focused verification
 
-Automated coverage must prove:
+Automated coverage proves:
 
 - successful `WAITING` transition emits one completion event;
 - empty/cancelled capture emits no preparation event;
@@ -107,22 +107,42 @@ Automated coverage must prove:
 - repeated enqueue of the same photo does not prepare it twice;
 - multiple queued photo IDs are processed serially;
 - startup/backlog scan queues a valid `WAITING` photo that lacks a prepared copy;
-- actual Android preparation still creates a valid derivative constrained to the existing 2048px policy while preserving the original.
+- actual Android preparation creates a valid derivative constrained to the existing 2048px policy while preserving the original.
 
-The final runtime head must pass the complete Android CI suite once before physical testing.
+## Automated verification
+
+PASS on exact runtime commit `75073387f9bf479c13f708e3d8a011189191ce1e`.
+
+Android CI run `34551100116` completed successfully with:
+
+- complete JVM unit tests;
+- internal debug APK build;
+- stable test-signer verification;
+- Android instrumented image/preparation tests;
+- internal app launch smoke test; and
+- APK artifact packaging.
+
+Artifact `10180954286` was produced from the exact runtime commit above.
+
+This documentation-only status commit follows the verified runtime and does not change executable behavior.
 
 ## Physical-device gate
 
 Using a disposable work order:
 
-1. open the CameraX multi-shot camera;
-2. take at least three photos without leaving the camera;
-3. confirm the shutter remains responsive while prior photos prepare in the background;
-4. press **Done** once;
-5. confirm the work-order photo list contains all three protected originals;
-6. confirm each photo receives a prepared copy without pressing **Prepare Selected Photo for Upload**;
-7. inspect at least one prepared result and confirm it is materially smaller while the protected original remains available;
-8. no Drive upload is required for this slice.
+1. install the verified internal APK;
+2. open the CameraX multi-shot camera;
+3. take at least three photos without leaving the camera;
+4. confirm the shutter remains responsive while prior photos prepare in the background;
+5. press **Done** once;
+6. confirm the work-order photo list contains all three protected originals;
+7. confirm each photo receives a prepared copy without pressing **Prepare Selected Photo for Upload**;
+8. inspect at least one prepared result and confirm it is materially smaller while the protected original remains available;
+9. no Drive upload is required for this slice.
+
+## Merge state
+
+Keep this pull request draft and unmerged until the physical-device gate passes.
 
 ## Rollback
 
