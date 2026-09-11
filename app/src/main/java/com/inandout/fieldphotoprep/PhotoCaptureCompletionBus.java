@@ -30,7 +30,7 @@ public final class PhotoCaptureCompletionBus {
         }
         try {
             current.onPhotoWaiting(photoId);
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException | Error ignored) {
             // Capture is already durable. Preparation can be recovered from WAITING state later.
         }
     }
