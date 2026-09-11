@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -14,16 +15,21 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
 public final class PhotoCaptureActivity extends Activity {
     private static final int REQUEST_CAPTURE_PHOTO = 2001;
     private static final String STATE_PENDING_CAPTURE_ID = "pending_capture_id";
+    private static final String STATE_BATCH_SELECTION_IDS = "batch_selection_ids";
+    private static final String BATCH_UPLOAD_GATE_ID = "__selected_batch_upload__";
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, h:mm a");
     private static final PhotoPreparationGate PREPARATION_GATE = new PhotoPreparationGate();
     private static final PhotoUploadGate UPLOAD_GATE = new PhotoUploadGate();
+
+    private final LinkedHashSet<String> batchSelectedPhotoIds = new LinkedHashSet<>();
 
     private FolderPrefs folderPrefs;
     private PendingPhotoStore photoStore;
@@ -32,13 +38,18 @@ public final class PhotoCaptureActivity extends Activity {
     private DriveFolder workOrder;
     private String pendingCaptureId;
     private String selectedPhotoId;
+    private volatile String activeBatchPhotoId;
 
     private TextView statusText;
     private TextView pendingCountText;
+    private TextView batchSelectionText;
     private TextView selectedPhotoText;
     private TextView preparedPhotoText;
     private LinearLayout pendingList;
     private Button takePhotoButton;
+    private Button selectAllReadyButton;
+    private Button clearSelectionButton;
+    private Button uploadBatchButton;
     private Button prepareButton;
     private Button uploadButton;
     private Button reconcileButton;
@@ -54,12 +65,20 @@ public final class PhotoCaptureActivity extends Activity {
         workOrder = folderPrefs.getCurrentWorkOrder();
         if (savedInstanceState != null) {
             pendingCaptureId = savedInstanceState.getString(STATE_PENDING_CAPTURE_ID);
+            ArrayList<String> restoredSelection =
+                    savedInstanceState.getStringArrayList(STATE_BATCH_SELECTION_IDS);
+            if (restoredSelection != null) {
+                batchSelectedPhotoIds.addAll(restoredSelection);
+            }
         }
         buildUi();
 
         if (address == null || workOrder == null) {
             statusText.setText("Choose an exact address and work order before taking photos.");
             takePhotoButton.setEnabled(false);
+            selectAllReadyButton.setEnabled(false);
+            clearSelectionButton.setEnabled(false);
+            uploadBatchButton.setEnabled(false);
             prepareButton.setEnabled(false);
             uploadButton.setEnabled(false);
             reconcileButton.setEnabled(false);
@@ -72,7 +91,7 @@ public final class PhotoCaptureActivity extends Activity {
             statusText.setText("A photo is being prepared in the background. Protected originals are locked until it finishes.");
             renderSelectedPhoto();
         } else if (UPLOAD_GATE.isBusy()) {
-            statusText.setText("A Drive upload or reconciliation check is already running. Wait for its queue result.");
+            statusText.setText("A Drive upload, selected batch, or reconciliation check is already running. Wait for its queue result.");
             renderSelectedPhoto();
         }
     }
@@ -82,6 +101,11 @@ public final class PhotoCaptureActivity extends Activity {
         super.onSaveInstanceState(outState);
         if (pendingCaptureId != null) {
             outState.putString(STATE_PENDING_CAPTURE_ID, pendingCaptureId);
+        }
+        if (!batchSelectedPhotoIds.isEmpty()) {
+            outState.putStringArrayList(
+                    STATE_BATCH_SELECTION_IDS,
+                    new ArrayList<>(batchSelectedPhotoIds));
         }
     }
 
@@ -135,8 +159,41 @@ public final class PhotoCaptureActivity extends Activity {
         pendingCountText.setPadding(0, dp(16), 0, dp(6));
         root.addView(pendingCountText);
 
+        batchSelectionText = new TextView(this);
+        batchSelectionText.setTextSize(16);
+        batchSelectionText.setPadding(0, 0, 0, dp(6));
+        root.addView(batchSelectionText);
+
+        LinearLayout batchControls = new LinearLayout(this);
+        batchControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        selectAllReadyButton = new Button(this);
+        selectAllReadyButton.setText("Select All Ready");
+        selectAllReadyButton.setOnClickListener(v -> selectAllReadyPhotos());
+        batchControls.addView(
+                selectAllReadyButton,
+                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        clearSelectionButton = new Button(this);
+        clearSelectionButton.setText("Clear Selection");
+        clearSelectionButton.setOnClickListener(v -> clearBatchSelection());
+        LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f);
+        clearParams.setMarginStart(dp(8));
+        batchControls.addView(clearSelectionButton, clearParams);
+        root.addView(batchControls);
+
+        uploadBatchButton = new Button(this);
+        uploadBatchButton.setText("Upload Selected (0)");
+        uploadBatchButton.setEnabled(false);
+        uploadBatchButton.setOnClickListener(v -> uploadSelectedBatch());
+        root.addView(uploadBatchButton);
+
         pendingList = new LinearLayout(this);
         pendingList.setOrientation(LinearLayout.VERTICAL);
+        pendingList.setPadding(0, dp(8), 0, 0);
         root.addView(pendingList);
 
         selectedPhotoText = new TextView(this);
@@ -154,7 +211,7 @@ public final class PhotoCaptureActivity extends Activity {
         root.addView(prepareButton);
 
         uploadButton = new Button(this);
-        uploadButton.setText("Upload Selected Prepared Photo");
+        uploadButton.setText("Upload This Prepared Photo");
         uploadButton.setEnabled(false);
         uploadButton.setOnClickListener(v -> uploadSelectedPhoto());
         root.addView(uploadButton);
@@ -177,6 +234,7 @@ public final class PhotoCaptureActivity extends Activity {
         root.addView(backButton);
 
         setContentView(scroll);
+        updateBatchSelectionUi();
         renderSelectedPhoto();
     }
 
@@ -359,11 +417,27 @@ public final class PhotoCaptureActivity extends Activity {
             if (selectedPhotoId != null && findById(matching, selectedPhotoId) == null) {
                 selectedPhotoId = null;
             }
+            if (!UPLOAD_GATE.isBusy()) {
+                pruneBatchSelection(matching, scan.unusableQueuedPhotoIds());
+            }
             renderPhotoList(matching, scan.unusableQueuedPhotoIds());
             renderScanWarningsIfNeeded(scan);
         } catch (Exception error) {
             showError("Could not read temporary photos", error);
         }
+    }
+
+    private void pruneBatchSelection(
+            List<PendingPhotoRecord> records,
+            List<String> unusableQueuedIds) {
+        batchSelectedPhotoIds.removeIf(photoId -> {
+            PendingPhotoRecord record = findById(records, photoId);
+            if (record == null) {
+                return true;
+            }
+            boolean unusable = unusableQueuedIds.contains(photoId);
+            return !isBatchUploadEligible(record, unusable, hasPreparedCopy(photoId));
+        });
     }
 
     private void renderPhotoList(
@@ -373,12 +447,36 @@ public final class PhotoCaptureActivity extends Activity {
         pendingCountText.setText(records.size() + " local photo record"
                 + (records.size() == 1 ? "" : "s") + " for this work order");
 
+        boolean controlsBusy = PREPARATION_GATE.isBusy() || UPLOAD_GATE.isBusy();
         for (PendingPhotoRecord record : records) {
-            Button photoButton = new Button(this);
             boolean unusable = unusableQueuedIds.contains(record.id());
             boolean prepared = hasPreparedCopy(record.id());
             boolean preparing = PREPARATION_GATE.isPreparing(record.id());
-            boolean remoteBusy = UPLOAD_GATE.isUploading(record.id());
+            boolean remoteBusy = isPhotoRemoteBusy(record.id());
+            boolean batchEligible = isBatchUploadEligible(record, unusable, prepared);
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+
+            CheckBox batchCheckBox = new CheckBox(this);
+            batchCheckBox.setText("Send");
+            batchCheckBox.setChecked(batchSelectedPhotoIds.contains(record.id()));
+            batchCheckBox.setEnabled(batchEligible && !controlsBusy);
+            batchCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    batchSelectedPhotoIds.add(record.id());
+                } else {
+                    batchSelectedPhotoIds.remove(record.id());
+                }
+                updateBatchSelectionUi();
+            });
+            row.addView(
+                    batchCheckBox,
+                    new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT));
+
+            Button photoButton = new Button(this);
             String attempt = record.uploadAttemptCount() > 0
                     ? " · attempt " + record.uploadAttemptCount()
                     : "";
@@ -397,9 +495,354 @@ public final class PhotoCaptureActivity extends Activity {
                 selectedPhotoId = record.id();
                 renderSelectedPhoto();
             });
-            pendingList.addView(photoButton);
+            LinearLayout.LayoutParams photoParams = new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f);
+            photoParams.setMarginStart(dp(6));
+            row.addView(photoButton, photoParams);
+            pendingList.addView(row);
         }
+        updateBatchSelectionUi();
         renderSelectedPhoto();
+    }
+
+    private boolean isBatchUploadEligible(
+            PendingPhotoRecord record,
+            boolean unusable,
+            boolean prepared) {
+        return record != null
+                && !unusable
+                && prepared
+                && record.canBeginUploadAttempt();
+    }
+
+    private boolean isPhotoRemoteBusy(String photoId) {
+        if (UPLOAD_GATE.isUploading(photoId)) {
+            return true;
+        }
+        return BATCH_UPLOAD_GATE_ID.equals(UPLOAD_GATE.activePhotoId())
+                && photoId != null
+                && photoId.equals(activeBatchPhotoId);
+    }
+
+    private void updateBatchSelectionUi() {
+        if (batchSelectionText == null
+                || selectAllReadyButton == null
+                || clearSelectionButton == null
+                || uploadBatchButton == null) {
+            return;
+        }
+        int selectedCount = batchSelectedPhotoIds.size();
+        boolean remoteBusy = UPLOAD_GATE.isBusy();
+        boolean preparationBusy = PREPARATION_GATE.isBusy();
+        boolean batchRunning = BATCH_UPLOAD_GATE_ID.equals(UPLOAD_GATE.activePhotoId());
+
+        String text = selectedCount + " selected for batch upload";
+        if (batchRunning) {
+            text += activeBatchPhotoId == null
+                    ? " · starting"
+                    : " · sending …" + shortId(activeBatchPhotoId);
+        }
+        batchSelectionText.setText(text);
+        uploadBatchButton.setText("Upload Selected (" + selectedCount + ")");
+        selectAllReadyButton.setEnabled(workOrder != null && !remoteBusy && !preparationBusy);
+        clearSelectionButton.setEnabled(selectedCount > 0 && !remoteBusy);
+        uploadBatchButton.setEnabled(selectedCount > 0 && !remoteBusy && !preparationBusy);
+    }
+
+    private void selectAllReadyPhotos() {
+        if (workOrder == null || UPLOAD_GATE.isBusy() || PREPARATION_GATE.isBusy()) {
+            return;
+        }
+        try {
+            PendingPhotoStore.ScanResult scan = photoStore.scan();
+            batchSelectedPhotoIds.clear();
+            for (PendingPhotoRecord record : scan.records()) {
+                if (!workOrder.id().equals(record.workOrderId())) {
+                    continue;
+                }
+                boolean unusable = scan.unusableQueuedPhotoIds().contains(record.id());
+                if (isBatchUploadEligible(record, unusable, hasPreparedCopy(record.id()))) {
+                    batchSelectedPhotoIds.add(record.id());
+                }
+            }
+            statusText.setText(batchSelectedPhotoIds.size() + " ready photo"
+                    + (batchSelectedPhotoIds.size() == 1 ? "" : "s")
+                    + " selected. You can uncheck any photo before uploading.");
+            refreshPhotoList();
+        } catch (Exception error) {
+            showError("Could not select the ready photos safely", error);
+        }
+    }
+
+    private void clearBatchSelection() {
+        if (UPLOAD_GATE.isBusy()) {
+            statusText.setText("Wait for the active Drive operation to finish before changing this batch.");
+            return;
+        }
+        batchSelectedPhotoIds.clear();
+        statusText.setText("Batch selection cleared. No photo or Drive state changed.");
+        refreshPhotoList();
+    }
+
+    private void uploadSelectedBatch() {
+        if (batchSelectedPhotoIds.isEmpty()) {
+            return;
+        }
+        if (PREPARATION_GATE.isBusy()) {
+            statusText.setText("Wait for photo preparation to finish before starting the selected upload batch.");
+            updateBatchSelectionUi();
+            return;
+        }
+        if (UPLOAD_GATE.isBusy()) {
+            statusText.setText("A Drive upload, batch, or reconciliation check is already in progress.");
+            updateBatchSelectionUi();
+            return;
+        }
+
+        final List<String> snapshot;
+        try {
+            snapshot = validatedBatchSnapshot();
+        } catch (Exception error) {
+            showError("Could not verify the selected batch before upload", error);
+            return;
+        }
+
+        if (snapshot.size() != batchSelectedPhotoIds.size()) {
+            batchSelectedPhotoIds.clear();
+            batchSelectedPhotoIds.addAll(snapshot);
+            statusText.setText("The ready-photo selection changed before upload. Review the updated "
+                    + snapshot.size() + " selected photo"
+                    + (snapshot.size() == 1 ? "" : "s")
+                    + " and tap Upload Selected again.");
+            refreshPhotoList();
+            return;
+        }
+        if (snapshot.isEmpty()) {
+            statusText.setText("None of the selected photos are ready for a normal upload attempt.");
+            refreshPhotoList();
+            return;
+        }
+
+        if (!UPLOAD_GATE.tryBegin(BATCH_UPLOAD_GATE_ID)) {
+            statusText.setText("A Drive operation is already in progress.");
+            updateBatchSelectionUi();
+            return;
+        }
+
+        activeBatchPhotoId = null;
+        statusText.setText("Starting selected batch: " + snapshot.size()
+                + " photo" + (snapshot.size() == 1 ? "" : "s")
+                + ", one Drive upload at a time…");
+        updateBatchSelectionUi();
+        refreshPhotoList();
+
+        Thread worker = new Thread(
+                () -> uploadBatchInBackground(snapshot),
+                "FieldPhotoPrep-batch-upload");
+        try {
+            worker.start();
+        } catch (RuntimeException | Error error) {
+            activeBatchPhotoId = null;
+            UPLOAD_GATE.finish(BATCH_UPLOAD_GATE_ID);
+            showError("Could not start the selected upload batch; no new batch attempt was started", error);
+            refreshPhotoList();
+        }
+    }
+
+    private List<String> validatedBatchSnapshot() throws Exception {
+        List<String> ready = new ArrayList<>();
+        for (String photoId : batchSelectedPhotoIds) {
+            PendingPhotoRecord record = photoStore.getById(photoId);
+            if (record == null) {
+                continue;
+            }
+            if (address == null
+                    || workOrder == null
+                    || !address.id().equals(record.addressId())
+                    || !workOrder.id().equals(record.workOrderId())) {
+                continue;
+            }
+            if (!record.canBeginUploadAttempt()) {
+                continue;
+            }
+            if (!photoStore.hasImageData(record)) {
+                continue;
+            }
+            File prepared = photoPreparer.preparedFile(photoId);
+            if (!prepared.isFile() || prepared.length() <= 0) {
+                continue;
+            }
+            ready.add(photoId);
+        }
+        return ready;
+    }
+
+    private void uploadBatchInBackground(List<String> photoIds) {
+        PhotoBatchUploadRunner.BatchResult batchResult = null;
+        Throwable batchFailure = null;
+        try {
+            DrivePhotoUploader uploader = new DrivePhotoUploader(
+                    getContentResolver(),
+                    folderPrefs.getMasterTreeUri());
+            PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
+                    photoStore,
+                    photoPreparer,
+                    uploader);
+            PhotoBatchUploadRunner runner = new PhotoBatchUploadRunner();
+            final int[] position = {0};
+            batchResult = runner.run(photoIds, photoId -> {
+                position[0]++;
+                activeBatchPhotoId = photoId;
+                int currentPosition = position[0];
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+                    statusText.setText("Uploading selected photo " + currentPosition + " of "
+                            + photoIds.size() + " to its stored work-order destination…");
+                    refreshPhotoList();
+                });
+                return attemptOneBatchPhoto(coordinator, photoId);
+            });
+        } catch (Throwable error) {
+            batchFailure = error;
+        } finally {
+            activeBatchPhotoId = null;
+            UPLOAD_GATE.finish(BATCH_UPLOAD_GATE_ID);
+        }
+
+        final PhotoBatchUploadRunner.BatchResult completedBatch = batchResult;
+        final Throwable completedFailure = batchFailure;
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            if (completedFailure != null || completedBatch == null) {
+                showError(
+                        "Selected batch stopped because its result could not be verified safely. Remaining photos were not intentionally started",
+                        completedFailure == null
+                                ? new IllegalStateException("Batch did not return a result.")
+                                : completedFailure);
+            } else {
+                batchSelectedPhotoIds.removeAll(completedBatch.confirmedPhotoIds());
+                statusText.setText(formatBatchResult(completedBatch));
+            }
+            refreshPhotoList();
+        });
+    }
+
+    private PhotoBatchUploadRunner.AttemptResult attemptOneBatchPhoto(
+            PhotoUploadCoordinator coordinator,
+            String photoId) {
+        try {
+            PendingPhotoRecord completed = coordinator.upload(photoId);
+            if (completed.state() != PendingPhotoRecord.State.UPLOADED) {
+                return PhotoBatchUploadRunner.AttemptResult.stopUnverified(
+                        "Upload returned without confirmed UPLOADED state.");
+            }
+            return PhotoBatchUploadRunner.AttemptResult.confirmed(
+                    cleanupConfirmedBatchPhoto(coordinator, photoId));
+        } catch (Throwable error) {
+            final PendingPhotoRecord current;
+            try {
+                current = photoStore.getById(photoId);
+            } catch (Exception stateError) {
+                return PhotoBatchUploadRunner.AttemptResult.stopUnverified(
+                        "Upload stopped and the photo's queue state could not be reread safely. "
+                                + "No later selected photo was attempted.");
+            }
+
+            if (current == null) {
+                return PhotoBatchUploadRunner.AttemptResult.stopUnverified(
+                        "Upload stopped and the active photo record is no longer readable. "
+                                + "No later selected photo was attempted.");
+            }
+
+            String detail = errorDetail(error, "Upload did not complete safely.");
+            switch (current.state()) {
+                case UPLOADED:
+                    return PhotoBatchUploadRunner.AttemptResult.confirmed(
+                            cleanupConfirmedBatchPhoto(coordinator, photoId));
+                case FAILED:
+                case WAITING:
+                    return PhotoBatchUploadRunner.AttemptResult.safeFailure(detail);
+                case UNCERTAIN:
+                    return PhotoBatchUploadRunner.AttemptResult.stopUncertain(
+                            detail + " Remote state is UNCERTAIN; reconcile this photo before retry.");
+                case UPLOADING:
+                    return PhotoBatchUploadRunner.AttemptResult.stopUncertain(
+                            detail + " Queue state still shows UPLOADING, so remote safety is not proven. "
+                                    + "No later selected photo was attempted.");
+                case CAPTURING:
+                default:
+                    return PhotoBatchUploadRunner.AttemptResult.stopUnverified(
+                            detail + " The active photo is in an unexpected state; no later selected photo was attempted.");
+            }
+        }
+    }
+
+    private boolean cleanupConfirmedBatchPhoto(
+            PhotoUploadCoordinator coordinator,
+            String photoId) {
+        try {
+            ConfirmedPhotoCleanup.Result cleanup = coordinator.cleanupConfirmedLocalData(photoId);
+            return cleanup != null && cleanup.complete();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private String formatBatchResult(PhotoBatchUploadRunner.BatchResult result) {
+        StringBuilder summary = new StringBuilder();
+        summary.append("Batch finished: ")
+                .append(result.confirmedCount())
+                .append(" of ")
+                .append(result.selectedCount())
+                .append(" selected photo")
+                .append(result.selectedCount() == 1 ? "" : "s")
+                .append(" confirmed in Drive.");
+
+        if (result.safeFailureCount() > 0) {
+            summary.append(" ")
+                    .append(result.safeFailureCount())
+                    .append(" retry-safe failure")
+                    .append(result.safeFailureCount() == 1 ? " was" : "s were")
+                    .append(" kept locally.");
+        }
+        if (result.cleanupPendingCount() > 0) {
+            summary.append(" ")
+                    .append(result.cleanupPendingCount())
+                    .append(" confirmed upload")
+                    .append(result.cleanupPendingCount() == 1 ? " has" : "s have")
+                    .append(" local cleanup pending.");
+        }
+        if (result.stoppedEarly()) {
+            summary.append(" Batch stopped at photo …")
+                    .append(shortId(result.stoppedPhotoId()))
+                    .append(result.stopOutcome() == PhotoBatchUploadRunner.Outcome.STOP_UNCERTAIN
+                            ? " because remote state is uncertain."
+                            : " because the active result could not be verified safely.");
+            if (result.unattemptedCount() > 0) {
+                summary.append(" ")
+                        .append(result.unattemptedCount())
+                        .append(" later selected photo")
+                        .append(result.unattemptedCount() == 1 ? " was" : "s were")
+                        .append(" not attempted.");
+            }
+            if (result.stopDetail() != null) {
+                summary.append(" ").append(result.stopDetail());
+            }
+        }
+        return summary.toString();
+    }
+
+    private String errorDetail(Throwable error, String fallback) {
+        if (error == null || error.getMessage() == null || error.getMessage().trim().isEmpty()) {
+            return fallback;
+        }
+        return error.getMessage();
     }
 
     private void renderSelectedPhoto() {
@@ -415,6 +858,7 @@ public final class PhotoCaptureActivity extends Activity {
 
         boolean preparationBusy = PREPARATION_GATE.isBusy();
         boolean remoteBusy = UPLOAD_GATE.isBusy();
+        updateBatchSelectionUi();
         takePhotoButton.setEnabled(address != null
                 && workOrder != null
                 && pendingCaptureId == null
@@ -460,7 +904,7 @@ public final class PhotoCaptureActivity extends Activity {
         File prepared = getPreparedFileOrNull(selectedPhotoId);
         boolean hasPrepared = prepared != null && prepared.isFile() && prepared.length() > 0;
         boolean hasLocalCopy = hasAnyLocalCopy(selected);
-        if (UPLOAD_GATE.isUploading(selectedPhotoId)) {
+        if (isPhotoRemoteBusy(selectedPhotoId)) {
             if (selected.state() == PendingPhotoRecord.State.UNCERTAIN) {
                 preparedPhotoText.setText("Prepared copy: "
                         + (hasPrepared ? formatBytes(prepared.length()) : "unavailable")
@@ -922,6 +1366,7 @@ public final class PhotoCaptureActivity extends Activity {
                 throw new IllegalStateException("Could not remove the prepared copy. Protected original was left unchanged.");
             }
             photoStore.discard(id);
+            batchSelectedPhotoIds.remove(id);
             if (id.equals(selectedPhotoId)) {
                 selectedPhotoId = null;
             }
@@ -966,7 +1411,7 @@ public final class PhotoCaptureActivity extends Activity {
             statusText.setText(result.uncertainPhotoIds().size()
                     + " upload result(s) are UNCERTAIN after interruption. Select one and use Reconcile Uncertain Upload before retry.");
         } else {
-            statusText.setText("Ready for photos. Select a photo below to prepare or upload it.");
+            statusText.setText("Ready for photos. Use the Send boxes to build a batch or tap a photo for individual details.");
         }
     }
 
