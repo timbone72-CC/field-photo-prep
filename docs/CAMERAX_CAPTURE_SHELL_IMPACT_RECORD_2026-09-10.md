@@ -2,7 +2,7 @@
 
 Date: 2026-09-10
 
-Status: **RESTAGED — first physical control gate FAIL; control fix automated verification PASS; retest pending**
+Status: **PHYSICAL DEVICE PASS — superseded by integrated multi-shot camera workflow**
 
 Branch: `feat/in-app-camerax-capture-shell`
 
@@ -149,22 +149,21 @@ Existing `PendingPhotoStoreTest` coverage remains the focused persistence bounda
 - `interruptedCaptureWithBytesIsPreservedAsWaiting`;
 - `destinationBindingDoesNotChangeWhenAnotherWorkOrderExists`.
 
-## Physical-device retest
+## Physical-device retest — PASS
 
-Before this behavior is called field-proven on the supported Android phone:
+The repaired CameraX shell passed the supported Samsung-phone smoke gate on 2026-09-10/11:
 
-1. install the repaired internal APK;
-2. open one disposable test work order;
-3. tap **Take Photo** and confirm Field Photo Prep shows its own live rear-camera preview;
-4. confirm the status reaches **Ready — tap Take Photo**;
-5. tap **Take Photo** once and confirm it captures rather than behaving as a dead control;
-6. confirm the app returns to the same work order with the new non-empty photo already selected.
+1. Field Photo Prep opened its own live rear-camera preview for the selected disposable work order.
+2. The camera reached the ready state.
+3. **Take Photo** behaved as an active control and captured successfully.
+4. The app returned to the same work-order photo screen with the new non-empty protected photo selected.
+5. No Samsung/system-camera accept/reselect loop was required.
 
-Stop there for this retest. The remaining restart/offline/cancel/orientation checks follow only after the primary shutter control is proven usable.
+The one-shot return behavior in this slice was intentionally temporary and was subsequently superseded by the separately governed multi-shot session.
 
 ## Merge state
 
-Do not merge this draft pull request until the repaired physical-camera smoke gate passes. Do not add multi-shot capture to this slice.
+Physical gate passed. This original stacked PR is superseded by consolidated PR #25, which contains this exact camera work plus the physically proven multi-shot and automatic-preparation follow-ons directly against `main`.
 
 ## Rollback
 
