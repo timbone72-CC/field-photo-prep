@@ -2,7 +2,7 @@
 
 Date: 2026-09-10
 
-Status: STAGED — AUTOMATED PASS, PHYSICAL DEVICE GATE PENDING
+Status: **PHYSICAL DEVICE PASS — superseded by consolidated camera integration PR**
 
 Branch: `feat/in-app-camerax-multishot-session`
 
@@ -104,23 +104,26 @@ Android CI run `34549789161` completed successfully with:
 
 The focused repeated-capture test proves three sequential captures receive distinct local UUIDs and image files while retaining the same exact address/work-order stored destination identity and independent `WAITING` state.
 
-## Physical-device gate
+## Physical-device gate — PASS
 
-Use one disposable work order and verify:
+The supported Samsung-phone gate passed on 2026-09-10/11:
 
-1. camera controls are clearly separated from Android's system navigation area;
-2. press Take Photo three times without returning to the work-order screen between shots;
-3. photo count advances after each successful shot;
-4. press Done once;
-5. app returns to the original work-order photo screen only after Done;
-6. three separate protected photo records exist for the same work order;
-7. the last captured photo is selected on return.
+1. Camera controls were clearly separated from Android's system navigation area.
+2. Multiple **Take Photo** presses succeeded without returning to the work-order screen between shots.
+3. The on-screen photo count advanced with successful captures.
+4. **Done** returned to the original work-order photo screen once, after the session was complete.
+5. Separate protected photo records were retained for the same work order.
+6. The last captured photo was selected on return.
 
-Stop there. Preparation/upload behavior is unchanged and does not need to be re-proven for this Level 2 camera-session slice.
+This established the intended field workflow:
+
+`open work order → camera → Take → Take → Take → Done`
+
+Preparation/upload behavior remained outside this slice and was subsequently automated in the separately governed automatic-preparation follow-on.
 
 ## Merge state
 
-PR #24 remains draft. Do not merge until the physical multi-shot/control-placement gate passes.
+Physical gate passed. PR #24 is superseded by consolidated PR #25, which contains this exact multi-shot behavior plus the CameraX shell and automatic-preparation follow-on directly against `main`.
 
 ## Rollback
 
