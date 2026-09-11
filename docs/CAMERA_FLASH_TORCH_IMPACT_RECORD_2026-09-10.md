@@ -2,11 +2,19 @@
 
 Date: 2026-09-10
 
-Status: IN PROGRESS
+Status: STAGED — AUTOMATED PASS, PHYSICAL DEVICE GATE PENDING
 
 Branch: `feat/camera-flash-torch-controls`
 
 Base: `2a66e80378e5c3853a111121104e532df1bf6a03`
+
+Exact automated-tested runtime head: `15a74ba2fab5f3799093824ec372d20b15a8fe08`
+
+Android CI run: `34554155260`
+
+APK artifact: `10181991210` (`field-photo-prep-internal-apk`)
+
+Artifact digest: `sha256:bb7de0960ebaf44366c1993e57a06ae36a658dac4aa4c8d0377d5e5cc4311980`
 
 ## User-facing problem
 
@@ -49,12 +57,36 @@ No local photo metadata, Drive metadata, queue state, prepared file, or remote s
 - leaving the camera does not intentionally leave the torch enabled;
 - flash defaults to Auto and torch defaults to Off on a fresh session.
 
-## Focused verification
+## Automated verification
 
-- flash mode cycles Auto → On → Off → Auto;
-- app compiles against CameraX lighting APIs;
-- complete Android CI passes on the final runtime head;
-- physical Samsung phone gate confirms Flash Auto/On/Off and Torch On/Off are usable without breaking repeated capture.
+PASS on exact runtime head `15a74ba2fab5f3799093824ec372d20b15a8fe08`.
+
+Android CI run `34554155260` completed successfully with:
+
+- complete JVM/unit tests including the Flash Auto → On → Off → Auto cycle;
+- internal debug APK build;
+- stable test-signer verification;
+- Android emulator instrumentation and internal launch smoke; and
+- APK artifact packaging.
+
+No executable changes follow that runtime head in the camera branch; later status updates are documentation-only.
+
+## Physical-device gate
+
+On the operator's Samsung phone, using a disposable work order:
+
+1. open the in-app camera and confirm the fresh-session controls show **Flash: Auto** and **Torch: Off**;
+2. turn **Torch: On** and confirm the phone light stays on continuously, then turn it **Off** and confirm the light stops;
+3. cycle Flash to **On**, take one photo, and confirm the capture flash fires;
+4. cycle Flash to **Off**, take one photo, and confirm no capture flash fires;
+5. return Flash to **Auto** and confirm repeated capture still works normally;
+6. tap **Done** and confirm the torch is not intentionally left on after leaving the camera.
+
+The combined child APK on `feat/selectable-batch-upload` may be used for this gate because it contains this exact camera runtime plus downstream batch-upload UI; camera behavior itself is unchanged there.
+
+## Merge state
+
+Keep PR #26 draft/unmerged until the physical lighting gate passes.
 
 ## Rollback
 
