@@ -2,11 +2,11 @@
 
 Date: 2026-09-10
 
-Status: STAGED — AUTOMATED PASS, PHYSICAL CAMERA + SAFE DRIVE GATES PENDING
+Status: STAGED — AUTOMATED PASS, CAMERA LIGHTING PASS, SAFE DRIVE BATCH GATE PENDING
 
 Branch: `feat/selectable-batch-upload`
 
-Parent camera-lighting branch: `feat/camera-flash-torch-controls`
+Parent camera-lighting feature: merged to `main` on 2026-09-11 at `b95ca83b62112d9a9e361b7e85ca3121efa82e1a`
 
 Main rollback baseline before the combined staged work: `2a66e80378e5c3853a111121104e532df1bf6a03`
 
@@ -192,15 +192,11 @@ Existing per-photo coordinator behavior remains the safety boundary for each rem
 
 ## Camera-lighting dependency gate
 
-The combined APK also includes the parent Flash/Torch feature. Before using the same build for the Drive batch gate on the operator's Samsung phone, confirm the parent camera-lighting behavior:
+**PASS on the operator's Samsung phone on 2026-09-11.**
 
-1. fresh camera session shows **Flash: Auto** and **Torch: Off**;
-2. Torch can be turned On and Off;
-3. Flash On fires for a capture and Flash Off does not;
-4. returning Flash to Auto preserves repeated capture;
-5. leaving with **Done** does not intentionally leave the torch enabled.
+The operator tested each lighting control in the combined staged APK and reported that they work: Flash Auto, Flash On, Flash Off, Torch On, and Torch Off. The parent camera-lighting feature was then merged into `main` as PR #26.
 
-The parent camera feature is Level 2; this dependency check must not be conflated with the Level 3 Drive approval.
+No further camera-lighting retest is required for this batch PR unless executable camera code changes again.
 
 ## Protected behavior
 
@@ -215,10 +211,10 @@ The parent camera feature is Level 2; this dependency check must not be conflate
 
 ## Rollback
 
-Remove the batch-selection/orchestration UI and runner, returning to the parent camera-lighting branch. Existing queue records, protected originals, prepared copies, confirmed remote identities, and Drive content remain valid because no new queue schema is introduced.
+Remove the batch-selection/orchestration UI and runner, returning to current `main`, which already contains the proven camera-lighting feature. Existing queue records, protected originals, prepared copies, confirmed remote identities, and Drive content remain valid because no new queue schema is introduced.
 
 ## Approval state
 
-Implementation is authorized. Automated verification is PASS. Physical camera-lighting and real-Drive subset gates remain pending.
+Implementation is authorized. Automated verification is PASS. Camera-lighting physical verification is PASS. The disposable real-Drive subset gate remains pending.
 
-PR #27 must remain draft/unmerged until the applicable device evidence is recorded and the operator gives explicit Level 3 pre-merge approval.
+PR #27 must remain draft/unmerged until the real-Drive batch evidence is recorded and the operator gives explicit Level 3 pre-merge approval.
