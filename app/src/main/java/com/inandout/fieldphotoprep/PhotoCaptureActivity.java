@@ -236,10 +236,10 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
 
-        String captureId = pendingCaptureId;
+        String initialCaptureId = pendingCaptureId;
         pendingCaptureId = null;
-        if (captureId == null) {
-            statusText.setText("Camera returned without a tracked capture. Existing temporary photos were left unchanged.");
+        if (initialCaptureId == null) {
+            statusText.setText("Camera returned without a tracked session. Existing temporary photos were left unchanged.");
             refreshPhotoList();
             return;
         }
@@ -247,26 +247,56 @@ public final class PhotoCaptureActivity extends Activity {
         String cameraError = data == null
                 ? null
                 : data.getStringExtra(CameraCaptureActivity.EXTRA_ERROR_MESSAGE);
+        String lastCaptureId = data == null
+                ? null
+                : data.getStringExtra(CameraCaptureActivity.EXTRA_LAST_CAPTURE_ID);
+        int capturedCount = data == null
+                ? 0
+                : data.getIntExtra(CameraCaptureActivity.EXTRA_CAPTURED_COUNT, 0);
+
         try {
-            PendingPhotoRecord preserved = photoStore.finishCaptureIfImageExists(captureId);
-            if (preserved == null) {
+            PendingPhotoRecord selectedFromSession = null;
+            if (lastCaptureId != null) {
+                selectedFromSession = photoStore.getById(lastCaptureId);
+                if (selectedFromSession != null
+                        && selectedFromSession.state() == PendingPhotoRecord.State.CAPTURING) {
+                    selectedFromSession = photoStore.finishCaptureIfImageExists(lastCaptureId);
+                }
+                if (selectedFromSession != null
+                        && (address == null
+                        || workOrder == null
+                        || !address.id().equals(selectedFromSession.addressId())
+                        || !workOrder.id().equals(selectedFromSession.workOrderId()))) {
+                    throw new IllegalStateException(
+                            "The camera session returned a photo for a different stored destination.");
+                }
+            }
+
+            if (selectedFromSession == null) {
+                PendingPhotoRecord initial = photoStore.getById(initialCaptureId);
+                if (initial != null && initial.state() == PendingPhotoRecord.State.CAPTURING) {
+                    initial = photoStore.finishCaptureIfImageExists(initialCaptureId);
+                }
+                if (initial != null && initial.state() != PendingPhotoRecord.State.CAPTURING) {
+                    selectedFromSession = initial;
+                }
+            }
+
+            if (selectedFromSession != null) {
+                selectedPhotoId = selectedFromSession.id();
+                int count = capturedCount > 0 ? capturedCount : 1;
+                String summary = count + " photo" + (count == 1 ? "" : "s")
+                        + " captured and protected locally. Last photo selected.";
                 if (cameraError != null && !cameraError.trim().isEmpty()) {
-                    statusText.setText(cameraError);
-                } else {
-                    statusText.setText(resultCode == RESULT_OK
-                            ? "Camera returned without usable image data. No empty photo was kept."
-                            : "Camera cancelled. No photo data was saved.");
+                    summary += " Camera note: " + cameraError;
                 }
+                statusText.setText(summary);
+            } else if (cameraError != null && !cameraError.trim().isEmpty()) {
+                statusText.setText(cameraError);
+            } else if (resultCode == RESULT_OK) {
+                statusText.setText("Camera session finished without a selectable photo. Existing local photo data was left unchanged.");
             } else {
-                selectedPhotoId = preserved.id();
-                if (resultCode == RESULT_OK) {
-                    statusText.setText("Photo captured, protected locally, and selected.");
-                } else if (cameraError != null && !cameraError.trim().isEmpty()) {
-                    statusText.setText(cameraError
-                            + " Non-empty image data exists, so the photo was preserved and selected.");
-                } else {
-                    statusText.setText("Camera did not report success, but image data exists, so the photo was preserved and selected.");
-                }
+                statusText.setText("Camera closed. No photo data was saved.");
             }
         } catch (Exception error) {
             showError("Camera returned, but the protected photo state needs inspection", error);
