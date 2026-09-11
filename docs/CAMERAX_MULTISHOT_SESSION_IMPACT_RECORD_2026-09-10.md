@@ -2,13 +2,21 @@
 
 Date: 2026-09-10
 
-Status: IN PROGRESS
+Status: STAGED — AUTOMATED PASS, PHYSICAL DEVICE GATE PENDING
 
 Branch: `feat/in-app-camerax-multishot-session`
 
 Parent CameraX shell head: `11235778813383044ca74dca2b56d6803c13b014`
 
 Rollback point for this slice: `11235778813383044ca74dca2b56d6803c13b014`
+
+Exact automated-tested runtime/test head: `5647229173ef732522b312caacdadd256df8e0bc`
+
+Android CI run: `34549789161`
+
+APK artifact ID: `10180466451`
+
+Artifact digest: `sha256:5c975c9af38bb03939b10d97f847b48cc75c8e16a241482377609ea255cbb9e3`
 
 ## User-facing problem
 
@@ -41,7 +49,7 @@ No queue schema, Drive permission, SAF tree grant, folder identity, upload desti
 
 - `CameraCaptureActivity.java` — multi-shot session state, per-shot reservation/finalization, Done behavior, photo count, safe system-bar insets.
 - `PhotoCaptureActivity.java` — consume a multi-shot result and select the last successfully captured photo without re-finalizing already completed shots.
-- `PendingPhotoStoreTest.java` — focused repeated-capture identity/isolation coverage.
+- `MultiShotCaptureStoreTest.java` — focused repeated-capture identity/isolation coverage.
 
 ## Read surfaces
 
@@ -81,11 +89,20 @@ No Drive write occurs from the camera session.
 
 Because target SDK 36 uses edge-to-edge system-bar behavior, the camera root applies Android system-bar insets at runtime. This gives the camera UI safe top/bottom spacing on devices with gesture navigation or three-button navigation without hard-coding one phone model's navigation-bar height.
 
-## Focused verification
+## Automated verification
 
-- existing `PendingPhotoStoreTest` capture/restart/identity tests must remain green;
-- add focused repeated-capture coverage proving two sequential captures receive distinct local IDs while keeping the same exact address/work-order destination identity;
-- final runtime head must pass the complete Android CI suite once.
+PASS on exact head `5647229173ef732522b312caacdadd256df8e0bc`.
+
+Android CI run `34549789161` completed successfully with:
+
+- complete JVM/unit tests, including the new three-shot identity/isolation test;
+- internal debug APK build;
+- stable test-signer verification;
+- emulator instrumentation tests;
+- internal app launch smoke test; and
+- APK artifact packaging.
+
+The focused repeated-capture test proves three sequential captures receive distinct local UUIDs and image files while retaining the same exact address/work-order stored destination identity and independent `WAITING` state.
 
 ## Physical-device gate
 
@@ -100,6 +117,10 @@ Use one disposable work order and verify:
 7. the last captured photo is selected on return.
 
 Stop there. Preparation/upload behavior is unchanged and does not need to be re-proven for this Level 2 camera-session slice.
+
+## Merge state
+
+PR #24 remains draft. Do not merge until the physical multi-shot/control-placement gate passes.
 
 ## Rollback
 
