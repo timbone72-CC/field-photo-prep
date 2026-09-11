@@ -2,7 +2,7 @@
 
 Date: 2026-09-10
 
-Status: PHYSICAL DEVICE PASS — READY TO MERGE
+Status: PHYSICAL DEVICE PASS — MERGED
 
 Branch: `feat/camera-flash-torch-controls`
 
@@ -87,8 +87,8 @@ The existing multi-shot camera/session behavior had already passed its physical-
 
 ## Merge state
 
-The required Level 2 automated and physical-device evidence is complete. PR #26 may be merged. No additional operator approval is required because the approved scope did not change.
+PR #26 was merged into `main` on 2026-09-11 at merge commit `b95ca83b62112d9a9e361b7e85ca3121efa82e1a`.
 
 ## Rollback
 
-Return to base `2a66e80378e5c3853a111121104e532df1bf6a03`. Existing photos, queue records, prepared copies, and Drive data remain untouched.
+Return to the pre-lighting main baseline if a rollback is needed. Existing photos, queue records, prepared copies, and Drive data remain untouched by this camera-only slice.
