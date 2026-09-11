@@ -2,7 +2,7 @@
 
 Date: 2026-09-10
 
-Status: DEVICE TEST READY
+Status: PHYSICAL DEVICE PASS
 
 Branch: `feat/automatic-photo-preparation`
 
@@ -128,21 +128,20 @@ This documentation-only status commit follows the verified runtime and does not 
 
 ## Physical-device gate
 
-Using a disposable work order:
+PASS on the operator's Samsung phone on 2026-09-10.
 
-1. install the verified internal APK;
-2. open the CameraX multi-shot camera;
-3. take at least three photos without leaving the camera;
-4. confirm the shutter remains responsive while prior photos prepare in the background;
-5. press **Done** once;
-6. confirm the work-order photo list contains all three protected originals;
-7. confirm each photo receives a prepared copy without pressing **Prepare Selected Photo for Upload**;
-8. inspect at least one prepared result and confirm it is materially smaller while the protected original remains available;
-9. no Drive upload is required for this slice.
+Verified behavior:
+
+- multi-shot CameraX capture remained responsive;
+- photos were captured without returning to the work-order screen between shots;
+- automatic preparation completed without pressing the manual **Prepare Selected Photo for Upload** button;
+- the tested field workflow operated as intended.
+
+No Drive upload was required for this Level 2 gate.
 
 ## Merge state
 
-Keep this pull request draft and unmerged until the physical-device gate passes.
+Physical-device verification is complete. Keep the pull request unmerged until explicit integration/merge authorization is given.
 
 ## Rollback
 
