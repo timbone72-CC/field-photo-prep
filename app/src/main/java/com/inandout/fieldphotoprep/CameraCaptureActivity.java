@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.ComponentActivity;
+import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
@@ -37,6 +38,8 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private static final String STATE_LAST_CAPTURE_ID = "last_capture_id";
     private static final String STATE_CAPTURED_COUNT = "captured_count";
     private static final String STATE_SESSION_BLOCKED = "session_blocked";
+    private static final String STATE_FLASH_MODE = "flash_mode";
+    private static final String STATE_TORCH_ENABLED = "torch_enabled";
 
     private PendingPhotoStore photoStore;
     private DriveFolder sessionAddress;
@@ -52,7 +55,14 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private TextView countText;
     private Button shutterButton;
     private Button doneButton;
+    private Button flashButton;
+    private Button torchButton;
     private ImageCapture imageCapture;
+    private Camera camera;
+    private CameraFlashMode flashMode = CameraFlashMode.AUTO;
+    private boolean torchEnabled;
+    private boolean hasFlashUnit;
+    private boolean torchChangeInProgress;
     private boolean cameraReady;
     private boolean captureInProgress;
     private boolean sessionBlocked;
@@ -69,6 +79,15 @@ public final class CameraCaptureActivity extends ComponentActivity {
             lastCapturedPhotoId = savedInstanceState.getString(STATE_LAST_CAPTURE_ID);
             capturedCount = savedInstanceState.getInt(STATE_CAPTURED_COUNT, 0);
             sessionBlocked = savedInstanceState.getBoolean(STATE_SESSION_BLOCKED, false);
+            String savedFlashMode = savedInstanceState.getString(STATE_FLASH_MODE);
+            if (savedFlashMode != null) {
+                try {
+                    flashMode = CameraFlashMode.valueOf(savedFlashMode);
+                } catch (IllegalArgumentException ignored) {
+                    flashMode = CameraFlashMode.AUTO;
+                }
+            }
+            torchEnabled = savedInstanceState.getBoolean(STATE_TORCH_ENABLED, false);
         } else {
             activeCaptureId = initialCaptureId;
         }
@@ -105,6 +124,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
 
         buildUi(sessionWorkOrder.name());
         updateCountUi();
+        updateLightingUi();
 
         if (sessionBlocked) {
             statusText.setText("This camera session needs inspection. Tap Done to return without taking another photo.");
@@ -132,6 +152,8 @@ public final class CameraCaptureActivity extends ComponentActivity {
         }
         outState.putInt(STATE_CAPTURED_COUNT, capturedCount);
         outState.putBoolean(STATE_SESSION_BLOCKED, sessionBlocked);
+        outState.putString(STATE_FLASH_MODE, flashMode.name());
+        outState.putBoolean(STATE_TORCH_ENABLED, torchEnabled);
     }
 
     private PendingPhotoRecord resolveSessionTemplate() throws Exception {
@@ -186,8 +208,31 @@ public final class CameraCaptureActivity extends ComponentActivity {
 
         countText = new TextView(this);
         countText.setTextSize(16);
-        countText.setPadding(0, 0, 0, dp(8));
+        countText.setPadding(0, 0, 0, dp(6));
         root.addView(countText);
+
+        LinearLayout lightingControls = new LinearLayout(this);
+        lightingControls.setOrientation(LinearLayout.HORIZONTAL);
+        lightingControls.setGravity(Gravity.CENTER);
+        lightingControls.setPadding(0, 0, 0, dp(8));
+
+        flashButton = new Button(this);
+        flashButton.setMinHeight(dp(48));
+        flashButton.setOnClickListener(v -> cycleFlashMode());
+        lightingControls.addView(
+                flashButton,
+                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        torchButton = new Button(this);
+        torchButton.setMinHeight(dp(48));
+        torchButton.setOnClickListener(v -> toggleTorch());
+        LinearLayout.LayoutParams torchParams = new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f);
+        torchParams.setMarginStart(dp(8));
+        lightingControls.addView(torchButton, torchParams);
+        root.addView(lightingControls);
 
         FrameLayout previewFrame = new FrameLayout(this);
         LinearLayout.LayoutParams previewFrameParams = new LinearLayout.LayoutParams(
@@ -255,6 +300,9 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private void startCamera() {
         cameraReady = false;
         imageCapture = null;
+        camera = null;
+        hasFlashUnit = false;
+        torchChangeInProgress = false;
         statusText.setText("Starting camera…");
         updateControlState();
 
@@ -266,6 +314,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
                 Preview preview = new Preview.Builder().build();
                 ImageCapture boundImageCapture = new ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .setFlashMode(toImageCaptureFlashMode(flashMode))
                         .build();
 
                 if (previewView.getDisplay() != null) {
@@ -276,13 +325,22 @@ public final class CameraCaptureActivity extends ComponentActivity {
 
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
                 cameraProvider.unbindAll();
-                cameraProvider.bindToLifecycle(
+                Camera boundCamera = cameraProvider.bindToLifecycle(
                         this,
                         CameraSelector.DEFAULT_BACK_CAMERA,
                         preview,
                         boundImageCapture);
 
                 imageCapture = boundImageCapture;
+                camera = boundCamera;
+                hasFlashUnit = boundCamera.getCameraInfo().hasFlashUnit();
+                if (!hasFlashUnit) {
+                    torchEnabled = false;
+                } else if (torchEnabled) {
+                    boolean restoreTorch = torchEnabled;
+                    torchEnabled = false;
+                    requestTorchState(restoreTorch, false);
+                }
                 cameraReady = true;
                 statusText.setText(capturedCount == 0
                         ? "Ready — tap Take Photo."
@@ -291,11 +349,87 @@ public final class CameraCaptureActivity extends ComponentActivity {
             } catch (Exception error) {
                 cameraReady = false;
                 imageCapture = null;
+                camera = null;
+                hasFlashUnit = false;
+                torchEnabled = false;
                 statusText.setText("Camera could not start: " + safeMessage(error)
                         + ". Tap Done to return without taking another photo.");
                 updateControlState();
             }
         }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void cycleFlashMode() {
+        if (!cameraReady || imageCapture == null || !hasFlashUnit || captureInProgress) {
+            return;
+        }
+        flashMode = flashMode.next();
+        imageCapture.setFlashMode(toImageCaptureFlashMode(flashMode));
+        updateLightingUi();
+        statusText.setText(flashMode.buttonLabel() + ".");
+    }
+
+    private void toggleTorch() {
+        if (!cameraReady || camera == null || !hasFlashUnit || captureInProgress || torchChangeInProgress) {
+            return;
+        }
+        requestTorchState(!torchEnabled, true);
+    }
+
+    private void requestTorchState(boolean requested, boolean announce) {
+        if (camera == null || !hasFlashUnit) {
+            torchEnabled = false;
+            updateLightingUi();
+            return;
+        }
+
+        final boolean previous = torchEnabled;
+        torchEnabled = requested;
+        torchChangeInProgress = true;
+        updateLightingUi();
+        updateControlState();
+
+        final var torchFuture = camera.getCameraControl().enableTorch(requested);
+        torchFuture.addListener(() -> {
+            try {
+                torchFuture.get();
+                if (announce) {
+                    statusText.setText(requested ? "Torch on." : "Torch off.");
+                }
+            } catch (Exception error) {
+                torchEnabled = previous;
+                statusText.setText("Torch could not change: " + safeMessage(error));
+            } finally {
+                torchChangeInProgress = false;
+                updateLightingUi();
+                updateControlState();
+            }
+        }, ContextCompat.getMainExecutor(this));
+    }
+
+    private int toImageCaptureFlashMode(CameraFlashMode mode) {
+        switch (mode) {
+            case ON:
+                return ImageCapture.FLASH_MODE_ON;
+            case OFF:
+                return ImageCapture.FLASH_MODE_OFF;
+            case AUTO:
+            default:
+                return ImageCapture.FLASH_MODE_AUTO;
+        }
+    }
+
+    private void updateLightingUi() {
+        if (flashButton == null || torchButton == null) {
+            return;
+        }
+        if (cameraReady && !hasFlashUnit) {
+            flashButton.setText("Flash: Unavailable");
+            torchButton.setText("Torch: Unavailable");
+        } else {
+            flashButton.setText(flashMode.buttonLabel());
+            torchButton.setText(torchEnabled ? "Torch: On" : "Torch: Off");
+        }
     }
 
     private void capturePhoto() {
@@ -309,6 +443,10 @@ public final class CameraCaptureActivity extends ComponentActivity {
         }
         if (!cameraReady || imageCapture == null) {
             statusText.setText("Camera is still starting. Wait for the Ready message.");
+            return;
+        }
+        if (torchChangeInProgress) {
+            statusText.setText("Wait for the torch setting to finish changing.");
             return;
         }
 
@@ -449,6 +587,18 @@ public final class CameraCaptureActivity extends ComponentActivity {
             statusText.setText("Saving photo… wait for it to finish before leaving the camera.");
             return;
         }
+        if (torchChangeInProgress) {
+            statusText.setText("Wait for the torch setting to finish changing before leaving the camera.");
+            return;
+        }
+
+        if (camera != null && hasFlashUnit && torchEnabled) {
+            try {
+                camera.getCameraControl().enableTorch(false);
+            } catch (RuntimeException ignored) {
+                // Lifecycle shutdown will also release the camera. Photo state is independent of torch cleanup.
+            }
+        }
 
         try {
             PendingPhotoRecord preserved = finalizeUnusedOrInterruptedReservation();
@@ -504,8 +654,26 @@ public final class CameraCaptureActivity extends ComponentActivity {
         if (shutterButton == null || doneButton == null) {
             return;
         }
-        shutterButton.setEnabled(cameraReady && !captureInProgress && !sessionBlocked);
-        doneButton.setEnabled(!captureInProgress);
+        shutterButton.setEnabled(cameraReady
+                && !captureInProgress
+                && !sessionBlocked
+                && !torchChangeInProgress);
+        doneButton.setEnabled(!captureInProgress && !torchChangeInProgress);
+        if (flashButton != null) {
+            flashButton.setEnabled(cameraReady
+                    && hasFlashUnit
+                    && !captureInProgress
+                    && !sessionBlocked
+                    && !torchChangeInProgress);
+        }
+        if (torchButton != null) {
+            torchButton.setEnabled(cameraReady
+                    && hasFlashUnit
+                    && !captureInProgress
+                    && !sessionBlocked
+                    && !torchChangeInProgress);
+        }
+        updateLightingUi();
     }
 
     @Override
@@ -531,6 +699,13 @@ public final class CameraCaptureActivity extends ComponentActivity {
     }
 
     private void finishWithError(String message) {
+        if (camera != null && hasFlashUnit && torchEnabled) {
+            try {
+                camera.getCameraControl().enableTorch(false);
+            } catch (RuntimeException ignored) {
+                // Best-effort torch shutdown; protected photo state remains authoritative.
+            }
+        }
         Intent result = new Intent();
         result.putExtra(EXTRA_ERROR_MESSAGE,
                 message == null || message.trim().isEmpty() ? "Camera operation failed." : message);
