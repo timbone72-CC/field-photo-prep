@@ -2,7 +2,7 @@
 
 Date: 2026-09-10
 
-Status: STAGED — AUTOMATED PASS, PHYSICAL DEVICE GATE PENDING
+Status: PHYSICAL DEVICE PASS — READY TO MERGE
 
 Branch: `feat/camera-flash-torch-controls`
 
@@ -69,24 +69,25 @@ Android CI run `34554155260` completed successfully with:
 - Android emulator instrumentation and internal launch smoke; and
 - APK artifact packaging.
 
-No executable changes follow that runtime head in this branch; this status update is documentation-only.
+No executable changes follow that runtime head in this branch; later contract/status updates are documentation-only.
 
-## Physical-device gate
+## Physical-device result
 
-On the operator's Samsung phone, using a disposable work order:
+**PASS on the operator's Samsung phone on 2026-09-11.**
 
-1. open the in-app camera and confirm the fresh-session controls show **Flash: Auto** and **Torch: Off**;
-2. turn **Torch: On** and confirm the phone light stays on continuously, then turn it **Off** and confirm the light stops;
-3. cycle Flash to **On**, take one photo, and confirm the capture flash fires;
-4. cycle Flash to **Off**, take one photo, and confirm no capture flash fires;
-5. return Flash to **Auto** and confirm repeated capture still works normally;
-6. tap **Done** and confirm the torch is not intentionally left on after leaving the camera.
+The operator tested each lighting control in the combined staged APK and reported that they work. This closes the device-specific control boundary for:
 
-The combined child APK on `feat/selectable-batch-upload` may be used for this gate because it contains this exact camera runtime plus downstream batch-upload UI; camera behavior itself is unchanged there.
+- Flash **Auto**;
+- Flash **On**;
+- Flash **Off**;
+- Torch **On**; and
+- Torch **Off**.
+
+The existing multi-shot camera/session behavior had already passed its physical-device gate on the same supported Android device. No new photo identity, persistence, preparation, or Drive behavior was introduced by this lighting slice.
 
 ## Merge state
 
-Keep PR #26 draft/unmerged until the physical lighting gate passes.
+The required Level 2 automated and physical-device evidence is complete. PR #26 may be merged. No additional operator approval is required because the approved scope did not change.
 
 ## Rollback
 
