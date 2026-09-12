@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FieldPhotoPrep" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/fpp_primary</item>
+        <item name="colorOnPrimary">@color/fpp_on_primary</item>
+        <item name="colorPrimaryContainer">@color/fpp_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/fpp_on_primary_container</item>
+        <item name="android:colorBackground">@color/fpp_background</item>
+        <item name="colorSurface">@color/fpp_surface</item>
+        <item name="colorOnSurface">@color/fpp_on_surface</item>
+        <item name="colorSurfaceVariant">@color/fpp_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/fpp_on_surface_variant</item>
+        <item name="colorOutline">@color/fpp_outline</item>
+        <item name="colorError">@color/fpp_error</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/fpp_background</item>
+        <item name="android:navigationBarColor">@color/fpp_background</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>
