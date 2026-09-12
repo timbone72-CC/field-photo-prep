@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="fpp_primary">#3558D4</color>
+    <color name="fpp_on_primary">#FFFFFF</color>
+    <color name="fpp_primary_container">#DEE5FF</color>
+    <color name="fpp_on_primary_container">#102463</color>
+
+    <color name="fpp_background">#F7F8FC</color>
+    <color name="fpp_on_background">#191B23</color>
+    <color name="fpp_surface">#FFFFFF</color>
+    <color name="fpp_on_surface">#191B23</color>
+    <color name="fpp_surface_variant">#EEF1F7</color>
+    <color name="fpp_on_surface_variant">#5B6170</color>
+    <color name="fpp_outline">#D6DAE5</color>
+
+    <color name="fpp_success">#247A3E</color>
+    <color name="fpp_success_container">#DDF4E3</color>
+    <color name="fpp_warning">#9A5A00</color>
+    <color name="fpp_warning_container">#FFF0D6</color>
+    <color name="fpp_error">#B3261E</color>
+    <color name="fpp_error_container">#F9DEDC</color>
+</resources>
