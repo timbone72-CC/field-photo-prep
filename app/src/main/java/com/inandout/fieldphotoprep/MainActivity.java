@@ -5,6 +5,9 @@ import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.content.UriPermission;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -16,6 +19,10 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -43,6 +50,8 @@ public final class MainActivity extends Activity {
     private LocalDate selectedDate = LocalDate.now();
     private boolean createBlockedUntilRefresh;
 
+    private TextView screenTitleText;
+    private TextView screenSubtitleText;
     private TextView statusText;
     private TextView masterText;
     private TextView listLabel;
@@ -50,6 +59,7 @@ public final class MainActivity extends Activity {
     private TextView currentWorkOrderText;
     private LinearLayout addressControls;
     private LinearLayout workOrderControls;
+    private LinearLayout maintenanceSection;
     private ScrollView workOrderScroll;
     private Button chooseMasterButton;
     private Button refreshAddressButton;
@@ -76,12 +86,12 @@ public final class MainActivity extends Activity {
 
         Uri savedTree = folderPrefs.getMasterTreeUri();
         if (savedTree == null) {
-            statusText.setText("Choose the master Drive folder to begin.");
+            statusText.setText("Connect the Google Drive master folder to begin.");
         } else if (hasPersistedReadPermission(savedTree)) {
-            statusText.setText("Master folder ready.");
+            statusText.setText("Drive is connected. Refreshing addresses…");
             refreshAddressFolders();
         } else {
-            statusText.setText("Master folder access expired. Choose it again.");
+            statusText.setText("Drive access expired. Connect the master folder again.");
         }
     }
 
@@ -102,135 +112,227 @@ public final class MainActivity extends Activity {
 
     private void buildUi() {
         int pad = dp(16);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
+        LinearLayout root = FieldUi.vertical(this);
+        root.setPadding(pad, dp(10), pad, dp(12));
+        FieldUi.applyPageBackground(root);
 
-        TextView title = new TextView(this);
-        title.setText("Field Photo Prep");
-        title.setTextSize(24);
-        root.addView(title);
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(android.view.Gravity.CENTER_VERTICAL);
 
-        TextView phase = new TextView(this);
-        phase.setText("Address and work-order setup");
-        phase.setTextSize(14);
-        root.addView(phase);
+        backButton = FieldUi.textButton(this, "Back");
+        backButton.setOnClickListener(v -> showAddressScreen(true));
+        FieldUi.setButtonIcon((MaterialButton) backButton, R.drawable.ic_arrow_back_24);
+        backButton.setVisibility(View.GONE);
+        LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        backParams.setMarginEnd(dp(6));
+        header.addView(backButton, backParams);
 
-        statusText = new TextView(this);
-        statusText.setPadding(0, dp(12), 0, dp(8));
+        LinearLayout titleGroup = FieldUi.vertical(this);
+        screenTitleText = FieldUi.screenTitle(this, "Field Photo Prep");
+        screenSubtitleText = FieldUi.screenSubtitle(this, "Choose a property");
+        titleGroup.addView(screenTitleText);
+        titleGroup.addView(screenSubtitleText);
+        header.addView(titleGroup, new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        root.addView(header);
+
+        statusText = FieldUi.statusText(this);
         root.addView(statusText);
 
-        masterText = new TextView(this);
-        masterText.setPadding(0, dp(8), 0, dp(8));
-        root.addView(masterText);
+        addressControls = FieldUi.vertical(this);
 
-        addressControls = new LinearLayout(this);
-        addressControls.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout driveContent = FieldUi.vertical(this);
+        TextView driveTitle = FieldUi.body(this, "Google Drive");
+        driveTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        driveTitle.setTextSize(16);
+        driveContent.addView(driveTitle);
 
-        chooseMasterButton = new Button(this);
-        chooseMasterButton.setText("Choose Master Folder");
+        masterText = FieldUi.muted(this, "Not connected");
+        masterText.setPadding(0, dp(4), 0, dp(12));
+        driveContent.addView(masterText);
+
+        LinearLayout driveButtons = new LinearLayout(this);
+        driveButtons.setOrientation(LinearLayout.HORIZONTAL);
+
+        chooseMasterButton = FieldUi.secondaryButton(this, "Connect Drive");
         chooseMasterButton.setOnClickListener(v -> chooseMasterFolder());
-        addressControls.addView(chooseMasterButton);
+        driveButtons.addView(chooseMasterButton, new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        refreshAddressButton = new Button(this);
-        refreshAddressButton.setText("Refresh Address Folders");
+        refreshAddressButton = FieldUi.textButton(this, "Refresh");
         refreshAddressButton.setEnabled(false);
         refreshAddressButton.setOnClickListener(v -> refreshAddressFolders());
-        addressControls.addView(refreshAddressButton);
+        FieldUi.setButtonIcon((MaterialButton) refreshAddressButton, R.drawable.ic_refresh_24);
+        LinearLayout.LayoutParams refreshParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        refreshParams.setMarginStart(dp(8));
+        driveButtons.addView(refreshAddressButton, refreshParams);
+        driveContent.addView(driveButtons);
 
-        useCreateAddressButton = new Button(this);
-        useCreateAddressButton.setText("Use / Create Address Folder");
+        MaterialCardView driveCard = FieldUi.paddedCard(this, driveContent);
+        addressControls.addView(driveCard, FieldUi.cardParams(this));
+
+        useCreateAddressButton = FieldUi.primaryButton(this, "New Address");
         useCreateAddressButton.setEnabled(false);
         useCreateAddressButton.setOnClickListener(v -> showAddressEntryDialog());
+        FieldUi.setButtonIcon((MaterialButton) useCreateAddressButton, R.drawable.ic_add_24);
         addressControls.addView(useCreateAddressButton);
         root.addView(addressControls);
 
-        workOrderControls = new LinearLayout(this);
-        workOrderControls.setOrientation(LinearLayout.VERTICAL);
+        workOrderControls = FieldUi.vertical(this);
 
-        addressText = new TextView(this);
-        addressText.setTextSize(18);
-        addressText.setPadding(0, dp(4), 0, dp(8));
+        addressText = FieldUi.muted(this, "");
+        addressText.setPadding(dp(2), 0, 0, dp(8));
         workOrderControls.addView(addressText);
 
-        LinearLayout navigationRow = new LinearLayout(this);
-        navigationRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout selectedContent = FieldUi.vertical(this);
+        TextView selectedHeading = FieldUi.muted(this, "SELECTED WORK ORDER");
+        selectedHeading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        selectedContent.addView(selectedHeading);
 
-        backButton = new Button(this);
-        backButton.setText("Back to Addresses");
-        backButton.setOnClickListener(v -> showAddressScreen(true));
-        navigationRow.addView(backButton, new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        currentWorkOrderText = FieldUi.body(this, "No work order selected");
+        currentWorkOrderText.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        currentWorkOrderText.setTextSize(17);
+        currentWorkOrderText.setPadding(0, dp(4), 0, dp(12));
+        selectedContent.addView(currentWorkOrderText);
 
-        refreshWorkOrdersButton = new Button(this);
-        refreshWorkOrdersButton.setText("Refresh Work Orders");
-        refreshWorkOrdersButton.setOnClickListener(v -> refreshWorkOrderFolders());
-        navigationRow.addView(refreshWorkOrdersButton, new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        workOrderControls.addView(navigationRow);
-
-        selectWorkOrderButton = new Button(this);
-        selectWorkOrderButton.setText("Select Existing Work Order");
-        selectWorkOrderButton.setEnabled(false);
-        selectWorkOrderButton.setOnClickListener(v -> showWorkOrderPicker());
-        workOrderControls.addView(selectWorkOrderButton);
-
-        workOrderInput = new EditText(this);
-        workOrderInput.setHint("Work order name only — e.g. Cut Grass");
-        workOrderInput.setSingleLine(true);
-        workOrderControls.addView(workOrderInput);
-
-        dateButton = new Button(this);
-        dateButton.setOnClickListener(v -> chooseWorkOrderDate());
-        workOrderControls.addView(dateButton);
-
-        useCreateButton = new Button(this);
-        useCreateButton.setText("Use / Create Dated Work Order");
-        useCreateButton.setOnClickListener(v -> useOrCreateWorkOrder());
-        workOrderControls.addView(useCreateButton);
-
-        reuseEmptyButton = new Button(this);
-        reuseEmptyButton.setText("Reuse Selected Empty Folder");
-        reuseEmptyButton.setOnClickListener(v -> reuseSelectedEmptyFolder());
-        workOrderControls.addView(reuseEmptyButton);
-
-        clearReuseButton = new Button(this);
-        clearReuseButton.setText("Clear & Reuse Selected Folder");
-        clearReuseButton.setOnClickListener(v -> prepareClearAndReuse());
-        workOrderControls.addView(clearReuseButton);
-
-        currentWorkOrderText = new TextView(this);
-        currentWorkOrderText.setPadding(0, dp(8), 0, dp(4));
-        workOrderControls.addView(currentWorkOrderText);
-
-        photosButton = new Button(this);
-        photosButton.setText("Photos for Selected Work Order");
+        photosButton = FieldUi.primaryButton(this, "Open Photos");
         photosButton.setEnabled(false);
         photosButton.setOnClickListener(v -> openPhotoCapture());
-        workOrderControls.addView(photosButton);
+        selectedContent.addView(photosButton);
+        workOrderControls.addView(FieldUi.paddedCard(this, selectedContent), FieldUi.cardParams(this));
+
+        LinearLayout createContent = FieldUi.vertical(this);
+        TextView createHeading = FieldUi.body(this, "New dated work order");
+        createHeading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        createHeading.setTextSize(16);
+        createContent.addView(createHeading);
+        TextView createHelp = FieldUi.muted(this, "Enter the work type and choose the service date.");
+        createHelp.setPadding(0, dp(3), 0, dp(12));
+        createContent.addView(createHelp);
+
+        TextInputLayout workOrderInputLayout = FieldUi.input(this, "Work order name — e.g. Cut Grass");
+        workOrderInput = (EditText) workOrderInputLayout.getEditText();
+        createContent.addView(workOrderInputLayout);
+
+        dateButton = FieldUi.secondaryButton(this, "Date");
+        dateButton.setOnClickListener(v -> chooseWorkOrderDate());
+        LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        dateParams.topMargin = dp(10);
+        createContent.addView(dateButton, dateParams);
+
+        useCreateButton = FieldUi.primaryButton(this, "Use / Create Work Order");
+        useCreateButton.setOnClickListener(v -> useOrCreateWorkOrder());
+        LinearLayout.LayoutParams createParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        createParams.topMargin = dp(8);
+        createContent.addView(useCreateButton, createParams);
+        workOrderControls.addView(FieldUi.paddedCard(this, createContent), FieldUi.cardParams(this));
+
+        LinearLayout manageContent = FieldUi.vertical(this);
+        TextView manageHeading = FieldUi.body(this, "Work-order tools");
+        manageHeading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        manageContent.addView(manageHeading);
+        TextView manageHelp = FieldUi.muted(this,
+                "Selection and folder reuse tools are kept here so normal field work stays simple.");
+        manageHelp.setPadding(0, dp(3), 0, dp(10));
+        manageContent.addView(manageHelp);
+
+        selectWorkOrderButton = FieldUi.secondaryButton(this, "Select Existing Work Order");
+        selectWorkOrderButton.setEnabled(false);
+        selectWorkOrderButton.setOnClickListener(v -> showWorkOrderPicker());
+        manageContent.addView(selectWorkOrderButton);
+
+        MaterialButton manageButton = FieldUi.textButton(this, "Manage selected folder");
+        manageContent.addView(manageButton);
+
+        maintenanceSection = FieldUi.vertical(this);
+        maintenanceSection.setVisibility(View.GONE);
+
+        reuseEmptyButton = FieldUi.secondaryButton(this, "Reuse Selected Empty Folder");
+        reuseEmptyButton.setOnClickListener(v -> reuseSelectedEmptyFolder());
+        maintenanceSection.addView(reuseEmptyButton);
+
+        clearReuseButton = FieldUi.dangerButton(this, "Clear & Reuse Selected Folder");
+        clearReuseButton.setOnClickListener(v -> prepareClearAndReuse());
+        LinearLayout.LayoutParams dangerParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        dangerParams.topMargin = dp(8);
+        maintenanceSection.addView(clearReuseButton, dangerParams);
+        manageContent.addView(maintenanceSection);
+
+        manageButton.setOnClickListener(v -> maintenanceSection.setVisibility(
+                maintenanceSection.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
+
+        refreshWorkOrdersButton = FieldUi.textButton(this, "Refresh work orders");
+        refreshWorkOrdersButton.setOnClickListener(v -> refreshWorkOrderFolders());
+        FieldUi.setButtonIcon((MaterialButton) refreshWorkOrdersButton, R.drawable.ic_refresh_24);
+        manageContent.addView(refreshWorkOrdersButton);
+
+        workOrderControls.addView(FieldUi.paddedCard(this, manageContent), FieldUi.cardParams(this));
 
         workOrderScroll = new ScrollView(this);
-        workOrderScroll.setFillViewport(true);
+        workOrderScroll.setFillViewport(false);
         workOrderScroll.setVisibility(View.GONE);
         workOrderScroll.addView(workOrderControls, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(workOrderScroll, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 0.95f));
 
-        listLabel = new TextView(this);
-        listLabel.setTextSize(16);
-        listLabel.setPadding(0, dp(16), 0, dp(4));
+        listLabel = FieldUi.sectionTitle(this, "Addresses");
         root.addView(listLabel);
 
         folderList = new ListView(this);
+        folderList.setDivider(new ColorDrawable(Color.TRANSPARENT));
+        folderList.setDividerHeight(dp(10));
+        folderList.setClipToPadding(false);
+        folderList.setPadding(0, 0, 0, dp(12));
         adapter = new ArrayAdapter<DriveFolder>(this, android.R.layout.simple_list_item_1, visibleFolders) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
-                TextView view = (TextView) super.getView(position, convertView, parent);
                 DriveFolder folder = getItem(position);
-                view.setText(folder == null ? "" : folderLabel(folder));
-                return view;
+                MaterialCardView card = FieldUi.card(MainActivity.this);
+                LinearLayout content = FieldUi.vertical(MainActivity.this);
+                int cardPad = dp(16);
+                content.setPadding(cardPad, dp(13), cardPad, dp(13));
+
+                TextView name = FieldUi.body(MainActivity.this,
+                        folder == null ? "" : folder.name());
+                name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                name.setTextSize(16);
+                content.addView(name);
+
+                String meta;
+                if (folder == null) {
+                    meta = "";
+                } else if (screen == Screen.ADDRESSES) {
+                    meta = "Tap to view work orders";
+                } else if (selectedWorkOrder != null && selectedWorkOrder.id().equals(folder.id())) {
+                    meta = "Selected work order";
+                    card.setCardBackgroundColor(FieldUi.color(
+                            MainActivity.this, R.color.fpp_primary_container));
+                    card.setStrokeColor(FieldUi.color(
+                            MainActivity.this, R.color.fpp_primary));
+                } else {
+                    meta = "Tap to select";
+                }
+                if (folder != null && hasDuplicateVisibleName(folder.name())) {
+                    meta += "  •  ID …" + shortId(folder.id());
+                }
+                TextView metaText = FieldUi.muted(MainActivity.this, meta);
+                metaText.setPadding(0, dp(4), 0, 0);
+                content.addView(metaText);
+                card.addView(content);
+                return card;
             }
         };
         folderList.setAdapter(adapter);
@@ -243,7 +345,7 @@ public final class MainActivity extends Activity {
             }
         });
         root.addView(folderList, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.05f));
 
         setContentView(root);
         updateDateButton();
@@ -461,9 +563,13 @@ public final class MainActivity extends Activity {
         screen = Screen.WORK_ORDERS;
         addressControls.setVisibility(View.GONE);
         workOrderScroll.setVisibility(View.VISIBLE);
-        listLabel.setVisibility(View.GONE);
-        folderList.setVisibility(View.GONE);
-        addressText.setText("Address: " + address.name());
+        listLabel.setVisibility(View.VISIBLE);
+        folderList.setVisibility(View.VISIBLE);
+        listLabel.setText("Existing work orders");
+        backButton.setVisibility(View.VISIBLE);
+        screenTitleText.setText(address.name());
+        screenSubtitleText.setText("Work orders");
+        addressText.setText("Select an existing work order below or create a new dated one.");
         renderCurrentWorkOrder();
         renderWorkOrderPickerButton();
         refreshWorkOrderFolders();
@@ -478,7 +584,13 @@ public final class MainActivity extends Activity {
         workOrderScroll.setVisibility(View.GONE);
         listLabel.setVisibility(View.VISIBLE);
         folderList.setVisibility(View.VISIBLE);
-        listLabel.setText("Address folders");
+        listLabel.setText("Addresses");
+        backButton.setVisibility(View.GONE);
+        screenTitleText.setText("Field Photo Prep");
+        screenSubtitleText.setText("Choose a property");
+        if (maintenanceSection != null) {
+            maintenanceSection.setVisibility(View.GONE);
+        }
         visibleFolders.clear();
         if (adapter != null) {
             adapter.notifyDataSetChanged();
@@ -1149,6 +1261,9 @@ public final class MainActivity extends Activity {
         selectedWorkOrder = folder;
         folderPrefs.setCurrentWorkOrder(folder);
         renderCurrentWorkOrder();
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
         statusText.setText(message + ": " + folder.name());
         setNotBusy();
     }
@@ -1174,8 +1289,8 @@ public final class MainActivity extends Activity {
             return;
         }
         currentWorkOrderText.setText(selectedWorkOrder == null
-                ? "Selected work order: none"
-                : "Selected work order: " + selectedWorkOrder.name());
+                ? "No work order selected"
+                : selectedWorkOrder.name());
     }
 
     private String folderLabel(DriveFolder folder) {
@@ -1221,8 +1336,8 @@ public final class MainActivity extends Activity {
         DriveFolder master = folderPrefs == null ? null : folderPrefs.getMasterFolder();
         if (masterText != null) {
             masterText.setText(master == null
-                    ? "Master folder: not selected"
-                    : "Master folder: " + master.name());
+                    ? "Not connected — choose the approved master folder."
+                    : "Connected to " + master.name());
         }
         if (refreshAddressButton != null) {
             Uri treeUri = folderPrefs == null ? null : folderPrefs.getMasterTreeUri();
