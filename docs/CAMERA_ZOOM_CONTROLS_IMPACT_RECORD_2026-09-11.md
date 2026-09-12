@@ -2,11 +2,23 @@
 
 Date: 2026-09-11
 
-Status: IMPLEMENTED — AUTOMATED AND DEVICE VERIFICATION PENDING
+Status: STAGED — AUTOMATED PASS, DEVICE VERIFICATION PENDING
 
 Branch: `feat/camera-zoom-controls`
 
 Rollback baseline: `2d161b464c4f4b9acde9c53daad5675d3012f07c`
+
+Exact automated-tested runtime head: `76fd693f6cb34c53b43b77b5ddfef96f1f290f4a`
+
+Android CI run: `34665707170` — PASS
+
+APK artifact: `10288587467` (`field-photo-prep-internal-apk`)
+
+Artifact digest: `sha256:aec98bc8dbe050d855b37524b2401b51521835a1225be97d7c29e2107cb6eb23`
+
+Staged APK SHA-256: `22e2a7d755f55de8ca823e41f258cd1c1b457bb9f5d7003a2878605175665840`
+
+Later documentation/contract commits after the runtime head do not change the executable tree.
 
 ## User-facing problem
 
@@ -57,11 +69,17 @@ No queue, photo metadata, Drive, SAF, or provider state is written.
 
 ## Focused tests
 
+PASS on exact runtime `76fd693f6cb34c53b43b77b5ddfef96f1f290f4a`.
+
+Coverage proves:
+
 - slider progress 0/50/100% maps to CameraX linear zoom 0/0.5/1;
 - out-of-range slider progress clamps safely;
 - CameraX linear zoom maps back to slider progress;
 - pinch multiplication clamps to the device-reported min/max ratio;
 - invalid pinch scale input cannot escape the supported range.
+
+The complete Android CI also passed unit tests, internal debug build, stable test signer verification, emulator instrumentation, internal launch smoke, and APK artifact upload.
 
 ## Primary risks
 
