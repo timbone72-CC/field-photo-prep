@@ -2,7 +2,7 @@
 
 Date: 2026-09-10
 
-Status: STAGED — AUTOMATED PASS, CAMERA LIGHTING PASS, SAFE DRIVE BATCH GATE PENDING
+Status: PHYSICAL DRIVE PASS — AWAITING EXPLICIT LEVEL 3 MERGE APPROVAL
 
 Branch: `feat/selectable-batch-upload`
 
@@ -158,7 +158,7 @@ Physical batch gate:
 1. create/capture at least four disposable photos under one test work order and allow automatic preparation to complete;
 2. select only a proper subset, for example 2 of 4, and tap **Upload Selected (2)** once;
 3. prove exactly those two photos appear in the exact stored Drive work-order folder and the other two remain local/unattempted;
-4. select the remaining two and upload them with one tap;
+4. select the remaining ready photos and upload them with one tap;
 5. verify no duplicate remote files and no wrong-parent file;
 6. verify unrelated test Drive content is unchanged;
 7. if a safe deterministic retry-safe failure can be induced without ambiguous remote state, verify that one failed photo does not corrupt later selected photos;
@@ -198,6 +198,26 @@ The operator tested each lighting control in the combined staged APK and reporte
 
 No further camera-lighting retest is required for this batch PR unless executable camera code changes again.
 
+## Real-device selectable batch / Drive result
+
+**PASS on the operator's Samsung phone on 2026-09-11 using the disposable Field Photo Prep test work order.**
+
+Observed evidence:
+
+- four local prepared photo records were available for the same test work order;
+- the operator selected only two and the UI reported **2 selected for batch upload** / **Upload Selected (2)**;
+- after the first batch attempt, the selected subset was sent while the remaining prepared records stayed local/unattempted;
+- one real provider result entered `UNCERTAIN · attempt 1` and immediately became ineligible for normal batch selection/retry;
+- the app displayed **reconcile before retry** and preserved the record rather than blindly creating another remote copy;
+- explicit **Reconcile Uncertain** located and confirmed the existing remote file, changed the record to `UPLOADED · attempt 1`, retained the confirmed remote identity, and cleaned up the local copies;
+- the already uploaded records became non-selectable, proving confirmed photos were not offered for repeat normal upload;
+- the remaining ready photo(s) were then uploaded normally;
+- the operator confirmed all four expected photos were present in the correct Drive work-order folder at the end;
+- no duplicate remote photo was created during uncertainty resolution;
+- no photo landed in a wrong folder.
+
+This naturally occurring UNCERTAIN result provides stronger real-provider evidence than a manufactured failure: batch safety stopped normal retry authority, reconciliation proved the existing remote object, and the workflow completed without duplication.
+
 ## Protected behavior
 
 - protected originals are never removed before confirmed remote success;
@@ -215,6 +235,12 @@ Remove the batch-selection/orchestration UI and runner, returning to current `ma
 
 ## Approval state
 
-Implementation is authorized. Automated verification is PASS. Camera-lighting physical verification is PASS. The disposable real-Drive subset gate remains pending.
+Implementation authorization: complete.
 
-PR #27 must remain draft/unmerged until the real-Drive batch evidence is recorded and the operator gives explicit Level 3 pre-merge approval.
+Automated verification: PASS.
+
+Camera-lighting physical verification: PASS.
+
+Disposable real-Drive selectable-batch / reconciliation gate: PASS.
+
+PR #27 remains draft and unmerged until the operator gives the required explicit Level 3 pre-merge approval. No additional physical test is required unless executable batch/upload code changes again.
