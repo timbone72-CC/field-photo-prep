@@ -2,11 +2,11 @@ package com.inandout.fieldphotoprep;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -98,7 +98,7 @@ final class FieldUi {
         MaterialCardView card = card(context);
         int pad = dp(context, 16);
         card.setContentPadding(pad, pad, pad, pad);
-        card.addView(child, new MaterialCardView.LayoutParams(
+        card.addView(child, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         return card;
@@ -116,7 +116,7 @@ final class FieldUi {
         MaterialButton button = new MaterialButton(context, null,
                 com.google.android.material.R.attr.materialButtonStyle);
         button.setText(text);
-        button.setTextAllCaps(false);
+        button.setAllCaps(false);
         button.setTextSize(15);
         button.setCornerRadius(dp(context, 18));
         button.setMinHeight(dp(context, 52));
@@ -131,7 +131,7 @@ final class FieldUi {
         MaterialButton button = new MaterialButton(context, null,
                 com.google.android.material.R.attr.materialButtonOutlinedStyle);
         button.setText(text);
-        button.setTextAllCaps(false);
+        button.setAllCaps(false);
         button.setTextSize(14);
         button.setCornerRadius(dp(context, 16));
         button.setMinHeight(dp(context, 48));
@@ -144,10 +144,14 @@ final class FieldUi {
 
     static MaterialButton textButton(Context context, String text) {
         MaterialButton button = new MaterialButton(context, null,
-                com.google.android.material.R.attr.materialButtonTextButtonStyle);
+                com.google.android.material.R.attr.materialButtonStyle);
         button.setText(text);
-        button.setTextAllCaps(false);
+        button.setAllCaps(false);
         button.setMinHeight(dp(context, 44));
+        button.setCornerRadius(dp(context, 14));
+        button.setBackgroundTintList(ColorStateList.valueOf(
+                color(context, android.R.color.transparent)));
+        button.setStrokeWidth(0);
         button.setTextColor(color(context, R.color.fpp_primary));
         return button;
     }
@@ -168,7 +172,7 @@ final class FieldUi {
                 dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 16));
         TextInputEditText editText = new TextInputEditText(layout.getContext());
         editText.setSingleLine(true);
-        layout.addView(editText, new TextInputLayout.LayoutParams(
+        layout.addView(editText, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         return layout;
