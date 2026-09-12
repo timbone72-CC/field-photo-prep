@@ -2,26 +2,42 @@
 
 Date: 2026-09-11
 
-Status: **IMPLEMENTED — FINAL AUTOMATION AND PHYSICAL UI SMOKE PENDING**
+Status: **STAGED — AUTOMATED PASS, PHYSICAL UI SMOKE PENDING**
 
 Branch: `feat/phase-9-app-shell-redesign`
 
+PR: #32 — `Phase 9 app shell and field UI redesign`
+
 Rollback baseline: `e0e46321893b44e2755d4cc842edca4ccd7c2974`
+
+Exact tested runtime head: `25e20943d3fd00f804de94a082fc8b7b24858c49`
+
+Android CI: run `34695114644` — **PASS**
+
+Artifact: `field-photo-prep-internal-apk` — ID `10298048411`
+
+Artifact digest: `sha256:0ccc469d067849449ed2d38e1b24fbf09a2185c8718bf5de6719c310262f1f70`
+
+Staged APK SHA-256: `848a7e557441fb98b30f694007b03fc35448b8d8079dac1b9372c1c7aa80977e`
 
 ## Problem
 
-The proven Field Photo Prep workflow worked correctly but the non-camera screens still looked and behaved like stacked development controls. The operator approved a more finished native Android presentation while explicitly locking the already-approved CameraX camera layout.
+The proven Field Photo Prep workflow worked correctly but the non-camera screens still looked and behaved like stacked development controls. The operator approved a finished native Android presentation and then selected **Concept 3 — Hybrid Field App** as the final Phase 9 direction. The already-approved CameraX camera layout remains locked.
 
-## Approved result
+## Approved Concept 3 result
 
-Phase 9 keeps the same workflow ownership and actions but presents them through a Material 3 / Samsung One UI-inspired shell:
+Concept 3 uses the polished hierarchy of a normal Android app without inventing features the current product does not have:
 
-- Addresses/Home is a property-focused screen with a Drive connection card, clear address rows, a secondary refresh action, and one primary **New Address** action.
-- Work Orders presents the selected address as context, existing work orders as rows/cards, the selected work order clearly, one grouped new-work-order surface, and maintenance/reuse tools in a secondary area.
-- Photos presents the immutable upload destination as context, one prominent **Open Camera** action, clean photo rows with user-facing states, explicit selection controls, and one prominent **Upload Selected (N)** action.
-- Individual photo fallback actions remain available without being given the same visual weight as the normal batch workflow.
-- Light/dark palettes use the same component hierarchy.
-- The CameraX camera layout is not restyled or reorganized by Phase 9.
+- a field-green app accent for normal workflow actions;
+- blue reserved for the camera-specific primary action;
+- compact headers, rounded cards, clear status hierarchy, and less technical clutter;
+- Addresses/Home focused on Drive readiness, properties, and one strong **New Address** action;
+- Work Orders focused on the selected property, selected work order, creation, existing work orders, and quieter maintenance tools;
+- Photos focused on **Open Camera**, compact photo/status rows, selection, and a persistent green **Upload Selected (N)** action at the bottom;
+- technical destination identity remains available but visually de-emphasized;
+- light/dark palettes share the same hierarchy;
+- no fake Maps, route, notes, schedule, or other dead navigation was added from the visual concept;
+- CameraX camera layout and controls remain unchanged.
 
 ## Classification
 
@@ -33,7 +49,7 @@ No persisted-data schema, queue state machine, Drive permission, provider/docume
 
 ### `MainActivity.java`
 
-Presentation was reorganized around task-focused Addresses and Work Orders surfaces. Existing methods continue to own the same actions:
+The underlying Addresses and Work Orders actions remain owned by the same existing methods, including:
 
 - master-folder picker/access;
 - address refresh/create/reuse;
@@ -43,11 +59,17 @@ Presentation was reorganized around task-focused Addresses and Work Orders surfa
 - destructive Clear & Reuse confirmation/revalidation;
 - transition to the selected work order's photo screen.
 
-The Drive operation bodies and fail-closed checks remain in the same activity methods. The redesign changes surrounding view construction and presentation only.
+Drive operation bodies and fail-closed checks were not moved into the presentation layer.
+
+### `MainScreenDecorator.java`
+
+Concept 3 adds a narrow presentation-only decorator for `MainActivity`. It styles the already-built owned view hierarchy after the activity is resumed, including the compact header, Drive/status card, selected-work-order emphasis, card spacing, and field-green visual hierarchy.
+
+It does not receive `DriveClient`, `FolderPrefs`, queue objects, or upload coordinators and performs no Drive operation.
 
 ### `PhotoCaptureActivity.java`
 
-No queue/upload method was rewritten for Phase 9. The existing photo screen still creates and owns the same controls/listeners and remains the source of truth for:
+No queue/upload method was rewritten for Phase 9. The activity still owns the same controls/listeners and remains the source of truth for:
 
 - CameraX launch after durable capture reservation;
 - automatic/manual preparation eligibility;
@@ -60,32 +82,42 @@ No queue/upload method was rewritten for Phase 9. The existing photo screen stil
 
 ### `PhotoScreenDecorator.java`
 
-A narrow presentation adapter runs only for `PhotoCaptureActivity` after its existing `onCreate` has completed. It reuses the exact already-wired View instances and reorganizes/styles them. It does not receive `PendingPhotoStore`, `DriveClient`, `PhotoUploadCoordinator`, or queue ownership and cannot perform a Drive write.
+The Concept 3 presentation adapter reuses the exact already-wired views created by `PhotoCaptureActivity` and changes only their hierarchy/presentation:
 
-It also maps the existing operator-visible queue labels to shorter presentation labels such as `Ready to upload`, `Uploading`, `Uploaded`, and `Needs attention`; the underlying persisted enum/state remains unchanged.
+- `Photos` header with current address/work-order context;
+- blue **Open Camera** action;
+- compact user-facing photo-state rows;
+- existing selection controls;
+- existing `uploadBatchButton` reparented into a persistent bottom green action bar while retaining the same listener and enabled-state ownership;
+- individual fallback actions grouped below the normal batch workflow.
 
-Dynamic photo rows are styled as they are recreated by the existing `renderPhotoList` path.
+It does not receive `PendingPhotoStore`, `DriveClient`, `PhotoUploadCoordinator`, or queue ownership and cannot perform a Drive write.
+
+User-facing queue labels remain presentation mappings only, such as `Ready to upload`, `Uploading`, `Uploaded`, and `Needs attention`; the persisted enum/state is unchanged.
 
 ### `FieldPhotoPrepApplication.java`
 
-Existing startup queue recovery/automatic preparation remains unchanged. Phase 9 additionally registers an activity lifecycle presentation callback that invokes `PhotoScreenDecorator` only for `PhotoCaptureActivity`.
+Existing startup queue recovery and automatic preparation remain unchanged.
 
-`CameraCaptureActivity` is deliberately excluded.
+Phase 9 registers presentation callbacks for only `MainActivity` and `PhotoCaptureActivity`. Decoration now runs from `onActivityResumed`, after each owned activity has completed building its content view. Each decorator validates its expected view shape and fails closed rather than guessing.
+
+`CameraCaptureActivity` is deliberately excluded from all Phase 9 decoration.
 
 ### Resources / theme
 
 - Material/AppCompat dependencies provide the non-camera design system.
 - `Theme.FieldPhotoPrep` is assigned only to `MainActivity` and `PhotoCaptureActivity`.
-- The application-level theme remains the pre-Phase-9 theme so the locked `CameraCaptureActivity` inherits its existing presentation.
-- Light and dark Phase 9 palettes are resource-based; no theme choice changes queue or Drive state.
+- the application-level theme remains the pre-Phase-9 theme so locked `CameraCaptureActivity` keeps its existing presentation;
+- light/dark Concept 3 palettes are resource-based;
+- theme selection changes no queue or Drive state.
 
 ## Camera design lock verification
 
-`CameraCaptureActivity.java` is not part of the Phase 9 PR diff. Phase 9 does not modify its preview, Flash/Torch controls, shutter, Done control, zoom/lens controls, orientation handling, or protected-capture semantics.
+`CameraCaptureActivity.java` is not part of the Phase 9 PR diff. Phase 9 does not modify its preview, Flash/Torch controls, shutter, Done control, zoom/lens controls, portrait/landscape behavior, or protected-capture semantics.
 
 ## Protected behavior
 
-The following must remain behaviorally identical:
+The following remain behaviorally owned by the previously proven runtime:
 
 - provider freshness/absence checks before Drive creation;
 - duplicate folder choice rather than guessing;
@@ -101,32 +133,37 @@ The following must remain behaviorally identical:
 - local cleanup only after confirmed remote success;
 - destructive Clear & Reuse revalidation/confirmation rules.
 
-## Focused verification
+## Automated evidence
 
-Added `PhotoScreenDecoratorTest` to prove that presentation labels remove the technical local ID from normal photo rows while preserving operator-significant state meaning for:
+Exact runtime `25e20943d3fd00f804de94a082fc8b7b24858c49` passed Android CI run `34695114644`:
 
-- prepared WAITING → `Ready to upload`;
-- UNCERTAIN → `Needs attention`;
-- active reconciliation → `Checking upload`;
-- UPLOADED → `Uploaded`;
-- FAILED → `Upload failed — safe to retry`.
+- unit tests — PASS;
+- internal debug build — PASS;
+- stable test APK signer verification — PASS;
+- emulator KVM setup — PASS;
+- instrumented image tests and internal launch/UI smoke — PASS;
+- internal APK artifact upload — PASS.
 
-Existing repository tests remain the authority for Drive, identity, queue, preparation, batch, retry, reconciliation, cleanup, and camera behavior.
+`PhotoScreenDecoratorTest` verifies the friendly operator labels for prepared, UNCERTAIN, reconciliation, uploaded, and retry-safe failed states.
+
+`Phase9UiInstrumentedTest` launches the real `PhotoCaptureActivity` with a disposable test address/work-order preference and verifies the Concept 3 Photos surface still contains the selected work order, **Open Camera**, and the existing **Upload Selected (N)** action.
+
+An earlier Phase 9 instrumentation attempt exposed that activity lifecycle decoration was running before the owned content view was ready. The final runtime moves presentation decoration to `onActivityResumed`; the exact resulting runtime is the one that passed the full CI suite above.
 
 ## Known implementation boundary
 
-`PhotoScreenDecorator` intentionally validates the expected legacy photo-screen view shape before reorganizing it. If that owned screen structure changes later, decoration fails closed rather than guessing about unrelated Views. A future photo-screen refactor should either update the expected presentation contract or move the visual hierarchy directly into the activity in a separately reviewed change.
+The presentation decorators intentionally validate the expected owned screen structure before reorganizing it. If a future screen refactor changes that structure, decoration fails closed rather than guessing about unrelated views. A later UI architecture rewrite can replace this adapter approach in a separately reviewed phase.
 
 ## Physical smoke gate
 
-After one final successful CI run on the exact runtime head, install one internal APK on the primary Samsung phone and verify only the changed visual surface:
+Install the staged internal APK on the primary Samsung phone and verify the changed presentation once:
 
-1. redesigned Addresses screen launches and existing safe address opens;
-2. redesigned Work Orders screen opens an existing safe work order without a Drive create;
-3. redesigned Photos screen renders current queue state and selection controls;
-4. **Open Camera** enters the already-approved locked camera UI with no layout change;
+1. Addresses/Home launches with the Concept 3 field-app hierarchy and readable controls;
+2. an existing safe address/work order can be opened without creating new Drive data;
+3. Photos shows the blue **Open Camera** action, compact photo state/list presentation, and bottom green **Upload Selected (N)** action;
+4. **Open Camera** enters the already-approved locked camera UI with no camera layout change;
 5. **Done** returns to the redesigned Photos screen;
-6. enabled/disabled selection/upload controls look correct for one existing non-destructive state.
+6. the changed non-camera layout has no clipped, overlapping, or inaccessible controls on the Samsung phone.
 
 No Drive write is required solely for this Level 2 presentation gate.
 
