@@ -10,21 +10,19 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 
 /**
- * Phase 9 presentation adapter for the existing photo workflow.
+ * Concept 3 presentation adapter for the existing photo workflow.
  *
  * This class deliberately does not own photo, queue, preparation, upload, retry,
  * reconciliation, or cleanup behavior. It reuses the exact View instances built and
- * wired by PhotoCaptureActivity, then groups/styles them into the approved field UI.
- * CameraCaptureActivity is not decorated here and remains a locked design surface.
+ * wired by PhotoCaptureActivity. CameraCaptureActivity is not decorated here and
+ * remains a locked design surface.
  */
 final class PhotoScreenDecorator {
     private static final int EXPECTED_ROOT_CHILDREN = 19;
@@ -79,12 +77,92 @@ final class PhotoScreenDecorator {
 
         oldRoot.removeAllViews();
         oldRoot.setPadding(FieldUi.dp(activity, 16), FieldUi.dp(activity, 8),
-                FieldUi.dp(activity, 16), FieldUi.dp(activity, 24));
+                FieldUi.dp(activity, 16), FieldUi.dp(activity, 22));
         FieldUi.applyPageBackground(oldRoot);
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(FieldUi.color(activity, R.color.fpp_background));
 
-        // Header: reuse the existing back/title/subtitle views and preserve their listeners.
+        buildHeader(activity, oldRoot, title, phase, workOrder, address, back);
+        styleStatus(activity, status);
+        oldRoot.addView(status);
+        buildDestinationCard(activity, oldRoot, workOrder, address, identity);
+
+        styleCameraAction(activity, openCamera);
+        oldRoot.addView(openCamera, fullWidthParams(activity, 4, 14));
+
+        pendingCount.setTextSize(18);
+        pendingCount.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        pendingCount.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface));
+        pendingCount.setPadding(FieldUi.dp(activity, 2), FieldUi.dp(activity, 4),
+                0, FieldUi.dp(activity, 2));
+        oldRoot.addView(pendingCount);
+
+        batchSelection.setTextSize(13);
+        batchSelection.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface_variant));
+        batchSelection.setPadding(FieldUi.dp(activity, 2), 0, 0, FieldUi.dp(activity, 8));
+        oldRoot.addView(batchSelection);
+
+        for (int i = 0; i < batchControls.getChildCount(); i++) {
+            View child = batchControls.getChildAt(i);
+            if (child instanceof Button) {
+                styleSecondary(activity, (Button) child);
+            }
+        }
+        oldRoot.addView(batchControls, fullWidthParams(activity, 0, 10));
+
+        pendingList.setPadding(0, 0, 0, 0);
+        pendingList.setOnHierarchyChangeListener(new ViewGroup.OnHierarchyChangeListener() {
+            @Override
+            public void onChildViewAdded(View parent, View child) {
+                stylePhotoRow(activity, child);
+            }
+
+            @Override
+            public void onChildViewRemoved(View parent, View child) {
+                // Queue ownership remains in PhotoCaptureActivity.
+            }
+        });
+        for (int i = 0; i < pendingList.getChildCount(); i++) {
+            stylePhotoRow(activity, pendingList.getChildAt(i));
+        }
+        oldRoot.addView(pendingList);
+
+        TextView actionsHeading = FieldUi.sectionTitle(activity, "Selected photo");
+        oldRoot.addView(actionsHeading);
+        buildSelectedActionsCard(
+                activity, oldRoot, selectedPhoto, preparedPhoto,
+                prepare, uploadOne, reconcile, discard);
+
+        // Concept 3 keeps the main upload action fixed at the bottom. The same existing
+        // Button instance and listener are reused; only its parent and presentation change.
+        contentRoot.removeView(scroll);
+        LinearLayout shell = FieldUi.vertical(activity);
+        FieldUi.applyPageBackground(shell);
+        shell.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        LinearLayout uploadBar = FieldUi.vertical(activity);
+        uploadBar.setPadding(FieldUi.dp(activity, 16), FieldUi.dp(activity, 8),
+                FieldUi.dp(activity, 16), FieldUi.dp(activity, 12));
+        uploadBar.setBackgroundColor(FieldUi.color(activity, R.color.fpp_surface));
+        styleUploadAction(activity, uploadSelected);
+        uploadBar.addView(uploadSelected, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        shell.addView(uploadBar, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        contentRoot.addView(shell, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private static void buildHeader(
+            Activity activity,
+            LinearLayout root,
+            TextView title,
+            TextView phase,
+            TextView workOrder,
+            TextView address,
+            Button back) {
         LinearLayout header = new LinearLayout(activity);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -98,32 +176,40 @@ final class PhotoScreenDecorator {
         header.addView(back, backParams);
 
         LinearLayout heading = FieldUi.vertical(activity);
-        title.setText(stripPrefix(workOrder.getText().toString(), "Work order: ", "Photos"));
-        title.setTextSize(26);
+        title.setText("Photos");
+        title.setTextSize(24);
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         title.setTextColor(FieldUi.color(activity, R.color.fpp_on_background));
         title.setPadding(0, 0, 0, 0);
         heading.addView(title);
 
-        phase.setText(stripPrefix(address.getText().toString(), "Address: ", "Selected work order"));
-        phase.setTextSize(14);
+        phase.setText(stripPrefix(address.getText().toString(), "Address: ", "Selected property"));
+        phase.setTextSize(13);
         phase.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface_variant));
         phase.setPadding(0, 0, 0, 0);
         heading.addView(phase);
         header.addView(heading, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        oldRoot.addView(header);
+        root.addView(header);
+    }
 
-        status.setTextSize(14);
+    private static void styleStatus(Activity activity, TextView status) {
+        status.setTextSize(13);
         status.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface_variant));
-        status.setPadding(FieldUi.dp(activity, 2), FieldUi.dp(activity, 8),
-                FieldUi.dp(activity, 2), FieldUi.dp(activity, 10));
-        oldRoot.addView(status);
+        status.setPadding(FieldUi.dp(activity, 2), FieldUi.dp(activity, 5),
+                FieldUi.dp(activity, 2), FieldUi.dp(activity, 9));
+    }
 
-        // Destination context card. The stable provider ID stays available but visually quiet.
+    private static void buildDestinationCard(
+            Activity activity,
+            LinearLayout root,
+            TextView workOrder,
+            TextView address,
+            TextView identity) {
         LinearLayout context = FieldUi.vertical(activity);
-        TextView destinationLabel = FieldUi.muted(activity, "UPLOAD DESTINATION");
+        TextView destinationLabel = FieldUi.muted(activity, "CURRENT WORK ORDER");
         destinationLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        destinationLabel.setTextColor(FieldUi.color(activity, R.color.fpp_primary));
         context.addView(destinationLabel);
 
         workOrder.setText(stripPrefix(workOrder.getText().toString(), "Work order: ", "No work order"));
@@ -139,82 +225,48 @@ final class PhotoScreenDecorator {
         address.setPadding(0, 0, 0, FieldUi.dp(activity, 4));
         context.addView(address);
 
-        identity.setTextSize(12);
+        identity.setTextSize(11);
         identity.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface_variant));
-        identity.setAlpha(0.75f);
+        identity.setAlpha(0.62f);
         identity.setPadding(0, 0, 0, 0);
         context.addView(identity);
-        oldRoot.addView(FieldUi.paddedCard(activity, context), FieldUi.cardParams(activity));
 
-        stylePrimary(activity, openCamera, "Open Camera", R.drawable.ic_camera_24);
-        LinearLayout.LayoutParams cameraParams = fullWidthParams(activity, 4, 14);
-        oldRoot.addView(openCamera, cameraParams);
+        MaterialCardView card = FieldUi.paddedCard(activity, context);
+        card.setCardBackgroundColor(FieldUi.color(activity, R.color.fpp_primary_container));
+        card.setStrokeColor(FieldUi.color(activity, R.color.fpp_primary));
+        root.addView(card, FieldUi.cardParams(activity));
+    }
 
-        pendingCount.setTextSize(18);
-        pendingCount.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        pendingCount.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface));
-        pendingCount.setPadding(FieldUi.dp(activity, 2), FieldUi.dp(activity, 4),
-                0, FieldUi.dp(activity, 2));
-        oldRoot.addView(pendingCount);
-
-        batchSelection.setTextSize(13);
-        batchSelection.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface_variant));
-        batchSelection.setPadding(FieldUi.dp(activity, 2), 0, 0, FieldUi.dp(activity, 8));
-        oldRoot.addView(batchSelection);
-
-        // The existing two buttons keep the exact selection listeners and enabled-state rules.
-        for (int i = 0; i < batchControls.getChildCount(); i++) {
-            View child = batchControls.getChildAt(i);
-            if (child instanceof Button) {
-                styleSecondary(activity, (Button) child);
-            }
-        }
-        oldRoot.addView(batchControls, fullWidthParams(activity, 0, 8));
-
-        stylePrimary(activity, uploadSelected, uploadSelected.getText().toString(), R.drawable.ic_upload_24);
-        oldRoot.addView(uploadSelected, fullWidthParams(activity, 0, 12));
-
-        pendingList.setPadding(0, 0, 0, 0);
-        pendingList.setOnHierarchyChangeListener(new ViewGroup.OnHierarchyChangeListener() {
-            @Override
-            public void onChildViewAdded(View parent, View child) {
-                stylePhotoRow(activity, child);
-            }
-
-            @Override
-            public void onChildViewRemoved(View parent, View child) {
-                // No-op. Queue ownership stays in PhotoCaptureActivity.
-            }
-        });
-        for (int i = 0; i < pendingList.getChildCount(); i++) {
-            stylePhotoRow(activity, pendingList.getChildAt(i));
-        }
-        oldRoot.addView(pendingList);
-
-        TextView actionsHeading = FieldUi.sectionTitle(activity, "Selected photo actions");
-        oldRoot.addView(actionsHeading);
-
-        LinearLayout selectedCardContent = FieldUi.vertical(activity);
+    private static void buildSelectedActionsCard(
+            Activity activity,
+            LinearLayout root,
+            TextView selectedPhoto,
+            TextView preparedPhoto,
+            Button prepare,
+            Button uploadOne,
+            Button reconcile,
+            Button discard) {
+        LinearLayout content = FieldUi.vertical(activity);
         selectedPhoto.setTextSize(13);
         selectedPhoto.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         selectedPhoto.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface));
         selectedPhoto.setPadding(0, 0, 0, FieldUi.dp(activity, 4));
-        selectedCardContent.addView(selectedPhoto);
+        content.addView(selectedPhoto);
 
         preparedPhoto.setTextSize(13);
         preparedPhoto.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface_variant));
         preparedPhoto.setPadding(0, 0, 0, FieldUi.dp(activity, 10));
-        selectedCardContent.addView(preparedPhoto);
+        content.addView(preparedPhoto);
 
         styleSecondary(activity, prepare);
         styleSecondary(activity, uploadOne);
         styleSecondary(activity, reconcile);
         styleDanger(activity, discard);
-        addAction(selectedCardContent, prepare, activity);
-        addAction(selectedCardContent, uploadOne, activity);
-        addAction(selectedCardContent, reconcile, activity);
-        addAction(selectedCardContent, discard, activity);
-        oldRoot.addView(FieldUi.paddedCard(activity, selectedCardContent), FieldUi.cardParams(activity));
+        addAction(content, prepare, activity);
+        addAction(content, uploadOne, activity);
+        addAction(content, reconcile, activity);
+        addAction(content, discard, activity);
+        root.addView(FieldUi.paddedCard(activity, content), FieldUi.cardParams(activity));
     }
 
     private static boolean hasExpectedShape(View[] views) {
@@ -261,14 +313,13 @@ final class PhotoScreenDecorator {
         row.setLayoutParams(rowParams);
 
         CheckBox checkbox = (CheckBox) row.getChildAt(0);
-        checkbox.setText("Send");
-        checkbox.setTextSize(12);
-        checkbox.setTextColor(FieldUi.color(activity, R.color.fpp_on_surface_variant));
+        checkbox.setText("");
+        checkbox.setButtonTintList(ColorStateList.valueOf(
+                FieldUi.color(activity, R.color.fpp_primary)));
 
         Button photoButton = (Button) row.getChildAt(1);
         String original = photoButton.getText().toString();
-        String friendly = friendlyPhotoLabel(original);
-        photoButton.setText(friendly);
+        photoButton.setText(friendlyPhotoLabel(original));
         photoButton.setAllCaps(false);
         photoButton.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         photoButton.setTextSize(14);
@@ -316,8 +367,7 @@ final class PhotoScreenDecorator {
     }
 
     private static void addAction(LinearLayout parent, Button button, Activity activity) {
-        LinearLayout.LayoutParams params = fullWidthParams(activity, 0, 8);
-        parent.addView(button, params);
+        parent.addView(button, fullWidthParams(activity, 0, 8));
     }
 
     private static LinearLayout.LayoutParams fullWidthParams(
@@ -329,16 +379,29 @@ final class PhotoScreenDecorator {
         return params;
     }
 
-    private static void stylePrimary(Activity activity, Button button, String text, int iconRes) {
-        button.setText(text);
+    private static void styleCameraAction(Activity activity, Button button) {
+        button.setText("Open Camera");
         button.setAllCaps(false);
         button.setTextSize(15);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setMinHeight(FieldUi.dp(activity, 54));
+        button.setMinHeight(FieldUi.dp(activity, 58));
+        button.setTextColor(FieldUi.color(activity, R.color.fpp_on_camera));
+        button.setBackgroundTintList(ColorStateList.valueOf(
+                FieldUi.color(activity, R.color.fpp_camera)));
+        button.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_camera_24, 0, 0, 0);
+        button.setCompoundDrawablePadding(FieldUi.dp(activity, 8));
+        button.setGravity(Gravity.CENTER);
+    }
+
+    private static void styleUploadAction(Activity activity, Button button) {
+        button.setAllCaps(false);
+        button.setTextSize(15);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setMinHeight(FieldUi.dp(activity, 56));
         button.setTextColor(FieldUi.color(activity, R.color.fpp_on_primary));
         button.setBackgroundTintList(ColorStateList.valueOf(
                 FieldUi.color(activity, R.color.fpp_primary)));
-        button.setCompoundDrawablesRelativeWithIntrinsicBounds(iconRes, 0, 0, 0);
+        button.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_upload_24, 0, 0, 0);
         button.setCompoundDrawablePadding(FieldUi.dp(activity, 8));
         button.setGravity(Gravity.CENTER);
     }
