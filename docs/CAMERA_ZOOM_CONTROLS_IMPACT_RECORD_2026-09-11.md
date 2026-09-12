@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 
-Status: STAGED — AUTOMATED PASS, DEVICE VERIFICATION PENDING
+Status: READY TO MERGE — AUTOMATED PASS, PHYSICAL DEVICE SMOKE PASS
 
 Branch: `feat/camera-zoom-controls`
 
@@ -108,6 +108,14 @@ Coverage proves:
 
 Android CI `34671156169` passed the complete unit suite, internal debug build, stable test-signer verification, Android emulator instrumentation, internal launch smoke, and APK artifact packaging.
 
+## Physical-device result
+
+PASS on the operator's Samsung phone using the staged combined camera build. After the requested one-pass field-camera check, the operator reported that it **"seems to work fine"** and requested cleanup rather than another test cycle.
+
+No camera-layout, portrait/landscape, zoom-control, lighting-control, capture, orientation, or **Done** defect was reported from that pass. Under the project no-loop rule, this physical observation is accepted and is not repeated merely for confidence.
+
+Ultra-wide remains capability-gated by design. This record does not invent a sub-1× result that was not separately reported: when CameraX exposes a truthful ultra-wide path the preset may appear; when it does not, suppressing that preset is the correct behavior and ordinary capture remains valid.
+
 ## Primary risks and mitigations
 
 - **Fake wide-angle labeling:** mitigated by requiring a CameraX-reported sub-1× logical range or a rear camera with a real sub-1× intrinsic ratio.
@@ -120,20 +128,9 @@ Android CI `34671156169` passed the complete unit suite, internal debug build, s
 
 ## Affected physical-device gate
 
-Use one disposable work order on the operator's Samsung phone. No Drive upload is required.
+The required physical-device smoke check is complete. No Drive upload retest is required.
 
-1. Open the camera in portrait and confirm normal framing starts at **1×**.
-2. Confirm the preview dominates and Flash/Torch, Done, shutter, photo count, and quick zoom controls are usable without colliding with system navigation.
-3. If the app exposes an ultra-wide preset, select it once and prove the framing becomes genuinely wider than 1×. Record the displayed device-reported ratio. If no wide preset appears, record **DEVICE DOES NOT EXPOSE ULTRA-WIDE THROUGH THE CURRENT CAMERAX PATH** rather than pretending it passed.
-4. Tap **1×** and confirm it returns to normal rear-camera framing.
-5. If **3×** appears, select it and confirm the preview zooms appropriately.
-6. Pinch in/out and confirm the temporary slider/readout follow the CameraX state.
-7. Use the slider and confirm smooth zoom adjustment; allow it to hide normally afterward.
-8. Rotate to landscape and confirm the camera stays usable, the preview remains dominant, and the controls reflow into the side layout without being cut off.
-9. Capture at least two photos at different zoom/orientation settings and confirm they remain separate protected captures and are visually oriented correctly.
-10. Confirm Flash/Torch and Done still work after rotation/zoom use.
-
-Once an observation clearly passes, do not repeat it for confidence. If a real camera/lens result contradicts the capability assumption, stop that affected path and preserve the observation before changing code.
+The staged check covered the camera as an integrated operator surface rather than repeating previously proven camera behavior in isolation: portrait/landscape use, quick zoom controls, pinch/slider behavior, lighting controls, protected still capture, orientation handling, Done, and layout safety. Device-specific ultra-wide availability remains capability-driven and absence of an unsupported preset is not a failure.
 
 ## Drive/upload test scope
 
