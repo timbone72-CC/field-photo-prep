@@ -5,11 +5,13 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.ScaleGestureDetector;
 import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.activity.ComponentActivity;
@@ -18,6 +20,7 @@ import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.Preview;
+import androidx.camera.core.ZoomState;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
@@ -26,6 +29,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.io.File;
+import java.util.Locale;
 
 public final class CameraCaptureActivity extends ComponentActivity {
     public static final String EXTRA_CAPTURE_ID = "capture_id";
@@ -40,6 +44,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private static final String STATE_SESSION_BLOCKED = "session_blocked";
     private static final String STATE_FLASH_MODE = "flash_mode";
     private static final String STATE_TORCH_ENABLED = "torch_enabled";
+    private static final String STATE_LINEAR_ZOOM = "linear_zoom";
 
     private PendingPhotoStore photoStore;
     private DriveFolder sessionAddress;
@@ -53,19 +58,26 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private PreviewView previewView;
     private TextView statusText;
     private TextView countText;
+    private TextView zoomText;
     private Button shutterButton;
     private Button doneButton;
     private Button flashButton;
     private Button torchButton;
+    private Button zoomResetButton;
+    private SeekBar zoomSlider;
+    private ScaleGestureDetector zoomGestureDetector;
     private ImageCapture imageCapture;
     private Camera camera;
+    private ZoomState lastZoomState;
     private CameraFlashMode flashMode = CameraFlashMode.AUTO;
+    private float requestedLinearZoom;
     private boolean torchEnabled;
     private boolean hasFlashUnit;
     private boolean torchChangeInProgress;
     private boolean cameraReady;
     private boolean captureInProgress;
     private boolean sessionBlocked;
+    private boolean updatingZoomSlider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +100,9 @@ public final class CameraCaptureActivity extends ComponentActivity {
                 }
             }
             torchEnabled = savedInstanceState.getBoolean(STATE_TORCH_ENABLED, false);
+            requestedLinearZoom = Math.max(
+                    0f,
+                    Math.min(1f, savedInstanceState.getFloat(STATE_LINEAR_ZOOM, 0f)));
         } else {
             activeCaptureId = initialCaptureId;
         }
@@ -125,6 +140,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
         buildUi(sessionWorkOrder.name());
         updateCountUi();
         updateLightingUi();
+        updateZoomUi();
 
         if (sessionBlocked) {
             statusText.setText("This camera session needs inspection. Tap Done to return without taking another photo.");
@@ -154,6 +170,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
         outState.putBoolean(STATE_SESSION_BLOCKED, sessionBlocked);
         outState.putString(STATE_FLASH_MODE, flashMode.name());
         outState.putBoolean(STATE_TORCH_ENABLED, torchEnabled);
+        outState.putFloat(STATE_LINEAR_ZOOM, requestedLinearZoom);
     }
 
     private PendingPhotoRecord resolveSessionTemplate() throws Exception {
@@ -234,6 +251,57 @@ public final class CameraCaptureActivity extends ComponentActivity {
         lightingControls.addView(torchButton, torchParams);
         root.addView(lightingControls);
 
+        LinearLayout zoomHeader = new LinearLayout(this);
+        zoomHeader.setOrientation(LinearLayout.HORIZONTAL);
+        zoomHeader.setGravity(Gravity.CENTER_VERTICAL);
+
+        zoomText = new TextView(this);
+        zoomText.setText("Zoom: 1.0×");
+        zoomText.setTextSize(16);
+        zoomHeader.addView(
+                zoomText,
+                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        zoomResetButton = new Button(this);
+        zoomResetButton.setText("Reset 1×");
+        zoomResetButton.setMinHeight(dp(44));
+        zoomResetButton.setOnClickListener(v -> resetZoom());
+        zoomHeader.addView(
+                zoomResetButton,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+        root.addView(zoomHeader);
+
+        zoomSlider = new SeekBar(this);
+        zoomSlider.setMax(CameraZoomMath.SLIDER_STEPS);
+        zoomSlider.setProgress(CameraZoomMath.progressFromLinearZoom(requestedLinearZoom));
+        zoomSlider.setContentDescription("Camera zoom slider");
+        zoomSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (!fromUser || updatingZoomSlider) {
+                    return;
+                }
+                requestLinearZoom(CameraZoomMath.linearZoomFromProgress(progress));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // No durable state changes are owned by the slider.
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // ZoomState observation keeps the readout synchronized with CameraX.
+            }
+        });
+        root.addView(
+                zoomSlider,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+
         FrameLayout previewFrame = new FrameLayout(this);
         LinearLayout.LayoutParams previewFrameParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -244,9 +312,27 @@ public final class CameraCaptureActivity extends ComponentActivity {
         previewView = new PreviewView(this);
         previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
         previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
-        previewView.setClickable(false);
+        previewView.setClickable(true);
         previewView.setFocusable(false);
         previewView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        zoomGestureDetector = new ScaleGestureDetector(
+                this,
+                new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                    @Override
+                    public boolean onScale(ScaleGestureDetector detector) {
+                        return applyPinchZoom(detector.getScaleFactor());
+                    }
+                });
+        previewView.setOnTouchListener((view, event) -> {
+            if (!cameraReady
+                    || camera == null
+                    || captureInProgress
+                    || sessionBlocked
+                    || zoomGestureDetector == null) {
+                return false;
+            }
+            return zoomGestureDetector.onTouchEvent(event);
+        });
         previewFrame.addView(
                 previewView,
                 new FrameLayout.LayoutParams(
@@ -300,7 +386,11 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private void startCamera() {
         cameraReady = false;
         imageCapture = null;
+        if (camera != null) {
+            camera.getCameraInfo().getZoomState().removeObservers(this);
+        }
         camera = null;
+        lastZoomState = null;
         hasFlashUnit = false;
         torchChangeInProgress = false;
         statusText.setText("Starting camera…");
@@ -341,6 +431,17 @@ public final class CameraCaptureActivity extends ComponentActivity {
                     torchEnabled = false;
                     requestTorchState(restoreTorch, false);
                 }
+
+                boundCamera.getCameraInfo().getZoomState().observe(this, zoomState -> {
+                    if (camera != boundCamera || zoomState == null) {
+                        return;
+                    }
+                    lastZoomState = zoomState;
+                    requestedLinearZoom = zoomState.getLinearZoom();
+                    updateZoomUi();
+                });
+                boundCamera.getCameraControl().setLinearZoom(requestedLinearZoom);
+
                 cameraReady = true;
                 statusText.setText(capturedCount == 0
                         ? "Ready — tap Take Photo."
@@ -350,6 +451,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
                 cameraReady = false;
                 imageCapture = null;
                 camera = null;
+                lastZoomState = null;
                 hasFlashUnit = false;
                 torchEnabled = false;
                 statusText.setText("Camera could not start: " + safeMessage(error)
@@ -430,6 +532,78 @@ public final class CameraCaptureActivity extends ComponentActivity {
             flashButton.setText(flashMode.buttonLabel());
             torchButton.setText(torchEnabled ? "Torch: On" : "Torch: Off");
         }
+    }
+
+    private boolean applyPinchZoom(float scaleFactor) {
+        if (!canAdjustZoom()) {
+            return false;
+        }
+        float requestedRatio = CameraZoomMath.pinchTarget(
+                lastZoomState.getZoomRatio(),
+                scaleFactor,
+                lastZoomState.getMinZoomRatio(),
+                lastZoomState.getMaxZoomRatio());
+        try {
+            camera.getCameraControl().setZoomRatio(requestedRatio);
+            return true;
+        } catch (RuntimeException error) {
+            statusText.setText("Zoom could not change: " + safeMessage(error));
+            return false;
+        }
+    }
+
+    private void requestLinearZoom(float linearZoom) {
+        if (!canAdjustZoom()) {
+            return;
+        }
+        requestedLinearZoom = Math.max(0f, Math.min(1f, linearZoom));
+        try {
+            camera.getCameraControl().setLinearZoom(requestedLinearZoom);
+        } catch (RuntimeException error) {
+            statusText.setText("Zoom could not change: " + safeMessage(error));
+        }
+    }
+
+    private void resetZoom() {
+        if (!canAdjustZoom()) {
+            return;
+        }
+        requestLinearZoom(0f);
+        statusText.setText("Zoom reset to 1×.");
+    }
+
+    private boolean canAdjustZoom() {
+        return cameraReady
+                && camera != null
+                && lastZoomState != null
+                && lastZoomState.getMaxZoomRatio() > lastZoomState.getMinZoomRatio() + 0.001f
+                && !captureInProgress
+                && !sessionBlocked;
+    }
+
+    private void updateZoomUi() {
+        if (zoomText == null || zoomSlider == null || zoomResetButton == null) {
+            return;
+        }
+
+        if (lastZoomState == null) {
+            zoomText.setText(cameraReady ? "Zoom: unavailable" : "Zoom: starting…");
+            updatingZoomSlider = true;
+            zoomSlider.setProgress(CameraZoomMath.progressFromLinearZoom(requestedLinearZoom));
+            updatingZoomSlider = false;
+            zoomSlider.setEnabled(false);
+            zoomResetButton.setEnabled(false);
+            return;
+        }
+
+        zoomText.setText(String.format(Locale.US, "Zoom: %.1f×", lastZoomState.getZoomRatio()));
+        updatingZoomSlider = true;
+        zoomSlider.setProgress(CameraZoomMath.progressFromLinearZoom(lastZoomState.getLinearZoom()));
+        updatingZoomSlider = false;
+
+        boolean adjustable = canAdjustZoom();
+        zoomSlider.setEnabled(adjustable);
+        zoomResetButton.setEnabled(adjustable && lastZoomState.getLinearZoom() > 0.001f);
     }
 
     private void capturePhoto() {
@@ -674,6 +848,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
                     && !torchChangeInProgress);
         }
         updateLightingUi();
+        updateZoomUi();
     }
 
     @Override
