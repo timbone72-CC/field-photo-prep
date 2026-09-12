@@ -79,7 +79,7 @@ The historical Phase 4 PR #10 was not force-merged after the later Phase 7 line 
 ### Phase 5 — Camera + Temporary Photo Protection — COMPLETE
 
 Delivered and validated:
-- launch the system camera for the exact selected work occurrence;
+- launch camera capture for the exact selected work occurrence;
 - bind the photo to the selected work-order provider identity before camera launch;
 - protect non-empty captured image data locally;
 - retain unconfirmed photos across app/process restart;
@@ -139,7 +139,7 @@ Stable test signing was added so test APK updates preserve app-private state acr
 
 The complete Phase 5 → 7B stack was merged to main, followed by the controlled Phase 3B/4 integration in PR #20. The current main line therefore contains the full proven core workflow.
 
-## Phase 8 — Field Workflow / Release Hardening — IN PROGRESS
+## Phase 8 — Field Workflow / Release Hardening — IN PROGRESS — 8C DEFERRED
 
 Goal: turn the proven core into a practical first field release without expanding the product unnecessarily.
 
@@ -158,12 +158,10 @@ Delivered and validated:
 
 Phase 8A passed Android CI and merged through PR #21 on 2026-09-10.
 
-The external Samsung camera OK/Retake screen remains accepted for the first release. Removing it reliably would likely require an in-app camera subsystem such as CameraX and is deferred unless field use proves that cost worthwhile.
-
 ### Phase 8B — Normal install/update/release path — COMPLETE
 
 Delivered and validated:
-- internal/test APKs now use application ID `com.inandout.fieldphotoprep.internal` and launcher label `Field Photo Prep Internal`;
+- internal/test APKs use application ID `com.inandout.fieldphotoprep.internal` and launcher label `Field Photo Prep Internal`;
 - the stable checked-in test key remains explicitly non-production and signs only the internal/debug build;
 - the future production identity remains `com.inandout.fieldphotoprep` and is reserved for a separately secured production signer;
 - no production private key was created or committed;
@@ -176,9 +174,29 @@ Phase 8B merged through PR #22 on 2026-09-10. Permanent evidence: `docs/PHASE_8B
 
 No Play Store publication is assumed.
 
-### Phase 8C — Second Android phone/shared-master reality check — NEXT
+### Post-8B field camera and upload workflow enhancements — COMPLETE
 
-On another supported Android phone using that operator's own Google Drive access to the shared approved master:
+Field use demonstrated that the external-camera flow and one-photo-at-a-time interaction created unnecessary friction. The app now owns still capture in-app with CameraX while preserving the same protected-photo and immutable-destination rules.
+
+Delivered and validated on the current main line:
+- CameraX in-app multi-shot camera session with one **Done** action;
+- automatic background preparation after durable `WAITING` capture;
+- Flash Auto/On/Off and separate Torch On/Off controls;
+- selectable prepared-photo upload batches with strictly sequential Drive writes;
+- real `UNCERTAIN` fail-closed behavior and explicit reconciliation without blind duplicate retry;
+- pinch zoom and a one-handed zoom slider;
+- phone-camera-style preview-first controls;
+- portrait and landscape camera layouts;
+- capability-gated truthful ultra-wide support when CameraX exposes a real sub-1× path;
+- exact 1× reset and supported higher-zoom quick controls.
+
+The camera/layout smoke passed on the operator's Samsung phone, and the selectable batch Drive gate passed against a disposable real Google Drive work order. PRs #25, #26, #27, and #30 are merged. The old superseded camera PR #24 is closed.
+
+### Phase 8C — Second Android phone/shared-master reality check — DEFERRED
+
+Reason for deferral: a second suitable Android phone is not currently available.
+
+When another supported Android phone becomes available, use that phone user's own Google Drive access to the shared approved master and complete the original portability gate:
 - install the internal build normally;
 - select the intended Drive provider/account and approved shared master;
 - reopen a safe existing address/work order without duplicates;
@@ -186,6 +204,10 @@ On another supported Android phone using that operator's own Google Drive access
 - verify the Drive destination and visual result;
 - restart and confirm safe confirmed state;
 - prove the app does not assume provider IDs are portable between phones/accounts.
+
+This deferral does not invalidate the already proven single-device core workflow and is not a reason to simulate a second device/account. Phase 8C remains required before claiming cross-device/account portability or treating that portability as field-proven.
+
+Development may continue on work that does not depend on second-device provider identity behavior. The next roadmap phase should be defined from actual remaining field needs rather than inventing a substitute for the missing second-phone gate.
 
 ## Phase development staging rule
 
@@ -203,7 +225,7 @@ The accepted lean-architecture audit baseline is recorded in:
 
 `docs/LEAN_ARCHITECTURE_BASELINE_2026-09-10.md`
 
-The app remains intentionally small: no database framework, DI framework, reactive stack, background worker framework, in-app camera subsystem, or permanent photo gallery has been added without a demonstrated need.
+The app remains intentionally small. CameraX was added only after field use demonstrated a real need for faster in-app multi-shot capture and camera controls. The app still avoids unnecessary database, DI, reactive, background-worker, and permanent photo-gallery frameworks.
 
 ## Product boundary
 
