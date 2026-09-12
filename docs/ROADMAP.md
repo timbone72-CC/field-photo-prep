@@ -207,7 +207,30 @@ When another supported Android phone becomes available, use that phone user's ow
 
 This deferral does not invalidate the already proven single-device core workflow and is not a reason to simulate a second device/account. Phase 8C remains required before claiming cross-device/account portability or treating that portability as field-proven.
 
-Development may continue on work that does not depend on second-device provider identity behavior. The next roadmap phase should be defined from actual remaining field needs rather than inventing a substitute for the missing second-phone gate.
+Development may continue on work that does not depend on second-device provider identity behavior.
+
+## Phase 9 — App Shell & Field UI Redesign — IN PROGRESS
+
+Goal: make the non-camera app look and feel like a coherent finished Android product while preserving the already-proven workflow and safety semantics.
+
+Detailed plan:
+
+`docs/PHASE_9_APP_SHELL_UI_REDESIGN_PLAN_2026-09-11.md`
+
+Approved direction:
+- Material 3 / Samsung One UI-inspired native Android presentation;
+- Addresses/Home, Work Orders, and Photos become clear task-focused screens;
+- address/work-order/photo records use cards/list rows and compact user-facing statuses instead of stacked development controls;
+- one obvious primary action per screen with secondary and maintenance actions de-emphasized;
+- technical provider/photo identity details stay available but are hidden from the normal field workflow;
+- destructive **Clear & Reuse** remains clearly separated and keeps all existing confirmation/safety guards;
+- no Compose rewrite and no new app architecture solely for appearance.
+
+### Phase 9 camera design lock
+
+The current CameraX camera UI is approved and **locked for Phase 9**. The redesign must not change the camera layout, Flash/Torch placement, shutter, Done, zoom/lens controls, portrait/landscape behavior, or capture semantics. Camera changes require their own separately approved scope unless a blocking defect is discovered.
+
+Phase 9 is Level 2 so long as it remains a UI/navigation redesign and does not alter persisted state, Drive/provider identity, folder create/reuse rules, photo preparation, upload/retry/UNCERTAIN semantics, cleanup, signing, or deployment behavior.
 
 ## Phase development staging rule
 
