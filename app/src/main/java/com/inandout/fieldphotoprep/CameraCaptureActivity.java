@@ -3,6 +3,9 @@ package com.inandout.fieldphotoprep;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.ScaleGestureDetector;
@@ -16,6 +19,7 @@ import android.widget.TextView;
 
 import androidx.activity.ComponentActivity;
 import androidx.camera.core.Camera;
+import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
@@ -44,7 +48,9 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private static final String STATE_SESSION_BLOCKED = "session_blocked";
     private static final String STATE_FLASH_MODE = "flash_mode";
     private static final String STATE_TORCH_ENABLED = "torch_enabled";
-    private static final String STATE_LINEAR_ZOOM = "linear_zoom";
+    private static final String STATE_EFFECTIVE_ZOOM = "effective_zoom";
+    private static final String STATE_PHYSICAL_WIDE = "physical_wide";
+    private static final long ZOOM_SLIDER_HIDE_DELAY_MS = 2600L;
 
     private PendingPhotoStore photoStore;
     private DriveFolder sessionAddress;
@@ -63,14 +69,33 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private Button doneButton;
     private Button flashButton;
     private Button torchButton;
-    private Button zoomResetButton;
+    private Button wideButton;
+    private Button oneXButton;
+    private Button threeXButton;
     private SeekBar zoomSlider;
+    private LinearLayout zoomSliderPanel;
     private ScaleGestureDetector zoomGestureDetector;
+
+    private ProcessCameraProvider cameraProvider;
+    private Preview cameraPreview;
     private ImageCapture imageCapture;
     private Camera camera;
     private ZoomState lastZoomState;
+
+    private CameraSelector physicalWideSelector;
+    private float physicalWideIntrinsicRatio = 1f;
+    private float logicalWideRatio = 1f;
+    private float defaultMaxRatio = 1f;
+    private float activeIntrinsicRatio = 1f;
+    private float requestedEffectiveZoomRatio = 1f;
+    private Float pendingEffectiveZoomRatio;
+    private boolean restorePhysicalWideRequested;
+    private boolean activePhysicalWide;
+    private boolean logicalWideAvailable;
+    private boolean physicalWideSuppressed;
+    private boolean threeXAvailable;
+
     private CameraFlashMode flashMode = CameraFlashMode.AUTO;
-    private float requestedLinearZoom;
     private boolean torchEnabled;
     private boolean hasFlashUnit;
     private boolean torchChangeInProgress;
@@ -78,6 +103,13 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private boolean captureInProgress;
     private boolean sessionBlocked;
     private boolean updatingZoomSlider;
+    private boolean zoomSliderTracking;
+
+    private final Runnable hideZoomSliderRunnable = () -> {
+        if (!zoomSliderTracking && zoomSliderPanel != null) {
+            zoomSliderPanel.setVisibility(View.GONE);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,9 +132,10 @@ public final class CameraCaptureActivity extends ComponentActivity {
                 }
             }
             torchEnabled = savedInstanceState.getBoolean(STATE_TORCH_ENABLED, false);
-            requestedLinearZoom = Math.max(
-                    0f,
-                    Math.min(1f, savedInstanceState.getFloat(STATE_LINEAR_ZOOM, 0f)));
+            requestedEffectiveZoomRatio = validEffectiveRatio(
+                    savedInstanceState.getFloat(STATE_EFFECTIVE_ZOOM, 1f));
+            restorePhysicalWideRequested =
+                    savedInstanceState.getBoolean(STATE_PHYSICAL_WIDE, false);
         } else {
             activeCaptureId = initialCaptureId;
         }
@@ -138,12 +171,11 @@ public final class CameraCaptureActivity extends ComponentActivity {
         }
 
         buildUi(sessionWorkOrder.name());
-        updateCountUi();
-        updateLightingUi();
-        updateZoomUi();
+        refreshAllCameraUi();
 
         if (sessionBlocked) {
-            statusText.setText("This camera session needs inspection. Tap Done to return without taking another photo.");
+            statusText.setText(
+                    "This camera session needs inspection. Tap Done to return without taking another photo.");
             updateControlState();
             return;
         }
@@ -170,7 +202,19 @@ public final class CameraCaptureActivity extends ComponentActivity {
         outState.putBoolean(STATE_SESSION_BLOCKED, sessionBlocked);
         outState.putString(STATE_FLASH_MODE, flashMode.name());
         outState.putBoolean(STATE_TORCH_ENABLED, torchEnabled);
-        outState.putFloat(STATE_LINEAR_ZOOM, requestedLinearZoom);
+        outState.putFloat(STATE_EFFECTIVE_ZOOM, requestedEffectiveZoomRatio);
+        outState.putBoolean(STATE_PHYSICAL_WIDE, activePhysicalWide);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        buildUi(sessionWorkOrder == null ? "Unknown" : sessionWorkOrder.name());
+        if (cameraPreview != null && previewView != null) {
+            cameraPreview.setSurfaceProvider(previewView.getSurfaceProvider());
+        }
+        updateTargetRotation();
+        refreshAllCameraUi();
     }
 
     private PendingPhotoRecord resolveSessionTemplate() throws Exception {
@@ -182,7 +226,8 @@ public final class CameraCaptureActivity extends ComponentActivity {
             template = photoStore.getById(initialCaptureId);
         }
         if (template == null) {
-            throw new IllegalStateException("The camera session's protected photo identity is unavailable.");
+            throw new IllegalStateException(
+                    "The camera session's protected photo identity is unavailable.");
         }
         return template;
     }
@@ -197,117 +242,14 @@ public final class CameraCaptureActivity extends ComponentActivity {
     }
 
     private void buildUi(String workOrderName) {
-        int pad = dp(12);
+        if (zoomSliderPanel != null) {
+            zoomSliderPanel.removeCallbacks(hideZoomSliderRunnable);
+        }
+        boolean landscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-
-        ViewCompat.setOnApplyWindowInsetsListener(root, (view, windowInsets) -> {
-            Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            view.setPadding(
-                    pad + systemBars.left,
-                    pad + systemBars.top,
-                    pad + systemBars.right,
-                    pad + systemBars.bottom);
-            return windowInsets;
-        });
-
-        TextView title = new TextView(this);
-        title.setText("Camera");
-        title.setTextSize(22);
-        root.addView(title);
-
-        TextView workOrderText = new TextView(this);
-        workOrderText.setText("Work order: " + workOrderName);
-        workOrderText.setPadding(0, dp(4), 0, dp(4));
-        root.addView(workOrderText);
-
-        countText = new TextView(this);
-        countText.setTextSize(16);
-        countText.setPadding(0, 0, 0, dp(6));
-        root.addView(countText);
-
-        LinearLayout lightingControls = new LinearLayout(this);
-        lightingControls.setOrientation(LinearLayout.HORIZONTAL);
-        lightingControls.setGravity(Gravity.CENTER);
-        lightingControls.setPadding(0, 0, 0, dp(8));
-
-        flashButton = new Button(this);
-        flashButton.setMinHeight(dp(48));
-        flashButton.setOnClickListener(v -> cycleFlashMode());
-        lightingControls.addView(
-                flashButton,
-                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        torchButton = new Button(this);
-        torchButton.setMinHeight(dp(48));
-        torchButton.setOnClickListener(v -> toggleTorch());
-        LinearLayout.LayoutParams torchParams = new LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f);
-        torchParams.setMarginStart(dp(8));
-        lightingControls.addView(torchButton, torchParams);
-        root.addView(lightingControls);
-
-        LinearLayout zoomHeader = new LinearLayout(this);
-        zoomHeader.setOrientation(LinearLayout.HORIZONTAL);
-        zoomHeader.setGravity(Gravity.CENTER_VERTICAL);
-
-        zoomText = new TextView(this);
-        zoomText.setText("Zoom: 1.0×");
-        zoomText.setTextSize(16);
-        zoomHeader.addView(
-                zoomText,
-                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        zoomResetButton = new Button(this);
-        zoomResetButton.setText("Reset 1×");
-        zoomResetButton.setMinHeight(dp(44));
-        zoomResetButton.setOnClickListener(v -> resetZoom());
-        zoomHeader.addView(
-                zoomResetButton,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT));
-        root.addView(zoomHeader);
-
-        zoomSlider = new SeekBar(this);
-        zoomSlider.setMax(CameraZoomMath.SLIDER_STEPS);
-        zoomSlider.setProgress(CameraZoomMath.progressFromLinearZoom(requestedLinearZoom));
-        zoomSlider.setContentDescription("Camera zoom slider");
-        zoomSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (!fromUser || updatingZoomSlider) {
-                    return;
-                }
-                requestLinearZoom(CameraZoomMath.linearZoomFromProgress(progress));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // No durable state changes are owned by the slider.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                // ZoomState observation keeps the readout synchronized with CameraX.
-            }
-        });
-        root.addView(
-                zoomSlider,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        FrameLayout previewFrame = new FrameLayout(this);
-        LinearLayout.LayoutParams previewFrameParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f);
-        root.addView(previewFrame, previewFrameParams);
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.BLACK);
 
         previewView = new PreviewView(this);
         previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
@@ -315,6 +257,85 @@ public final class CameraCaptureActivity extends ComponentActivity {
         previewView.setClickable(true);
         previewView.setFocusable(false);
         previewView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        installZoomGesture();
+        root.addView(
+                previewView,
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT));
+
+        LinearLayout topBar = new LinearLayout(this);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        topBar.setPadding(dp(10), dp(6), dp(10), dp(6));
+        topBar.setBackgroundColor(Color.argb(145, 0, 0, 0));
+
+        TextView workOrderText = new TextView(this);
+        workOrderText.setText(workOrderName);
+        workOrderText.setTextColor(Color.WHITE);
+        workOrderText.setTextSize(15);
+        workOrderText.setSingleLine(true);
+        topBar.addView(
+                workOrderText,
+                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        flashButton = makeCompactCameraButton("Flash");
+        flashButton.setOnClickListener(v -> cycleFlashMode());
+        topBar.addView(flashButton);
+
+        torchButton = makeCompactCameraButton("Torch");
+        torchButton.setOnClickListener(v -> toggleTorch());
+        LinearLayout.LayoutParams torchParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        torchParams.setMarginStart(dp(6));
+        topBar.addView(torchButton, torchParams);
+
+        FrameLayout.LayoutParams topParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP);
+        if (landscape) {
+            topParams.setMarginEnd(dp(112));
+        }
+        root.addView(topBar, topParams);
+
+        statusText = new TextView(this);
+        statusText.setText("Starting camera…");
+        statusText.setTextColor(Color.WHITE);
+        statusText.setTextSize(14);
+        statusText.setGravity(Gravity.CENTER);
+        statusText.setPadding(dp(10), dp(5), dp(10), dp(5));
+        statusText.setBackground(makeRoundedBackground(Color.argb(125, 0, 0, 0), 18));
+        FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        statusParams.topMargin = dp(58);
+        if (landscape) {
+            statusParams.rightMargin = dp(112);
+        }
+        root.addView(statusText, statusParams);
+
+        buildZoomSliderOverlay(root, landscape);
+
+        if (landscape) {
+            buildLandscapeControls(root);
+        } else {
+            buildPortraitControls(root);
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return windowInsets;
+        });
+
+        setContentView(root);
+        ViewCompat.requestApplyInsets(root);
+    }
+
+    private void installZoomGesture() {
         zoomGestureDetector = new ScaleGestureDetector(
                 this,
                 new ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -331,61 +352,291 @@ public final class CameraCaptureActivity extends ComponentActivity {
                     || zoomGestureDetector == null) {
                 return false;
             }
-            return zoomGestureDetector.onTouchEvent(event);
+            boolean handled = zoomGestureDetector.onTouchEvent(event);
+            if (handled) {
+                showZoomSlider();
+            }
+            return handled;
         });
-        previewFrame.addView(
-                previewView,
-                new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT));
+    }
 
-        statusText = new TextView(this);
-        statusText.setText("Starting camera…");
-        statusText.setGravity(Gravity.CENTER_HORIZONTAL);
-        statusText.setPadding(0, dp(8), 0, dp(8));
-        root.addView(statusText);
+    private void buildZoomSliderOverlay(FrameLayout root, boolean landscape) {
+        zoomSliderPanel = new LinearLayout(this);
+        zoomSliderPanel.setOrientation(LinearLayout.VERTICAL);
+        zoomSliderPanel.setPadding(dp(14), dp(8), dp(14), dp(8));
+        zoomSliderPanel.setBackground(makeRoundedBackground(Color.argb(185, 0, 0, 0), 18));
+        zoomSliderPanel.setVisibility(View.GONE);
 
-        LinearLayout controls = new LinearLayout(this);
-        controls.setOrientation(LinearLayout.HORIZONTAL);
-        controls.setGravity(Gravity.CENTER);
-        controls.setPadding(0, dp(8), 0, dp(8));
-        controls.setClickable(true);
-        controls.setFocusable(true);
-        controls.setElevation(dp(8));
-
-        doneButton = new Button(this);
-        doneButton.setText("Done");
-        doneButton.setMinHeight(dp(60));
-        doneButton.setOnClickListener(v -> finishSession());
-        controls.addView(
-                doneButton,
-                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        shutterButton = new Button(this);
-        shutterButton.setText("Take Photo");
-        shutterButton.setMinHeight(dp(60));
-        shutterButton.setOnClickListener(v -> capturePhoto());
-        LinearLayout.LayoutParams shutterParams = new LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f);
-        shutterParams.setMarginStart(dp(12));
-        controls.addView(shutterButton, shutterParams);
-
-        root.addView(
-                controls,
+        zoomText = new TextView(this);
+        zoomText.setText("Zoom: 1.0×");
+        zoomText.setTextColor(Color.WHITE);
+        zoomText.setTextSize(16);
+        zoomText.setGravity(Gravity.CENTER);
+        zoomSliderPanel.addView(
+                zoomText,
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT));
-        controls.bringToFront();
 
-        setContentView(root);
-        ViewCompat.requestApplyInsets(root);
+        zoomSlider = new SeekBar(this);
+        zoomSlider.setMax(CameraZoomMath.SLIDER_STEPS);
+        zoomSlider.setContentDescription("Camera zoom slider");
+        zoomSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (!fromUser || updatingZoomSlider) {
+                    return;
+                }
+                requestLinearZoom(CameraZoomMath.linearZoomFromProgress(progress));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                zoomSliderTracking = true;
+                zoomSlider.removeCallbacks(hideZoomSliderRunnable);
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                zoomSliderTracking = false;
+                scheduleZoomSliderHide();
+            }
+        });
+        zoomSliderPanel.addView(
+                zoomSlider,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        int width = landscape ? dp(340) : FrameLayout.LayoutParams.MATCH_PARENT;
+        FrameLayout.LayoutParams zoomParams = new FrameLayout.LayoutParams(
+                width,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        if (landscape) {
+            zoomParams.setMargins(dp(16), 0, dp(128), dp(16));
+        } else {
+            zoomParams.setMargins(dp(18), 0, dp(18), dp(142));
+        }
+        root.addView(zoomSliderPanel, zoomParams);
+    }
+
+    private void buildPortraitControls(FrameLayout root) {
+        LinearLayout bottomPanel = new LinearLayout(this);
+        bottomPanel.setOrientation(LinearLayout.VERTICAL);
+        bottomPanel.setPadding(dp(12), dp(8), dp(12), dp(10));
+        bottomPanel.setBackgroundColor(Color.argb(165, 0, 0, 0));
+
+        LinearLayout zoomPresets = makeZoomPresetRow();
+        bottomPanel.addView(
+                zoomPresets,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout shutterRow = new LinearLayout(this);
+        shutterRow.setOrientation(LinearLayout.HORIZONTAL);
+        shutterRow.setGravity(Gravity.CENTER_VERTICAL);
+        shutterRow.setPadding(0, dp(4), 0, 0);
+
+        doneButton = makeBottomTextButton("Done");
+        doneButton.setOnClickListener(v -> finishSession());
+        shutterRow.addView(
+                doneButton,
+                new LinearLayout.LayoutParams(0, dp(72), 1f));
+
+        shutterButton = makeShutterButton();
+        shutterButton.setOnClickListener(v -> capturePhoto());
+        LinearLayout.LayoutParams shutterParams = new LinearLayout.LayoutParams(dp(76), dp(76));
+        shutterParams.setMarginStart(dp(8));
+        shutterParams.setMarginEnd(dp(8));
+        shutterRow.addView(shutterButton, shutterParams);
+
+        countText = new TextView(this);
+        countText.setTextColor(Color.WHITE);
+        countText.setTextSize(14);
+        countText.setGravity(Gravity.CENTER);
+        shutterRow.addView(
+                countText,
+                new LinearLayout.LayoutParams(0, dp(72), 1f));
+
+        bottomPanel.addView(
+                shutterRow,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        root.addView(
+                bottomPanel,
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        Gravity.BOTTOM));
+    }
+
+    private void buildLandscapeControls(FrameLayout root) {
+        LinearLayout rail = new LinearLayout(this);
+        rail.setOrientation(LinearLayout.VERTICAL);
+        rail.setGravity(Gravity.CENTER_HORIZONTAL);
+        rail.setPadding(dp(8), dp(8), dp(8), dp(8));
+        rail.setBackgroundColor(Color.argb(170, 0, 0, 0));
+
+        LinearLayout zoomPresets = makeZoomPresetColumn();
+        rail.addView(
+                zoomPresets,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        0,
+                        1f));
+
+        shutterButton = makeShutterButton();
+        shutterButton.setOnClickListener(v -> capturePhoto());
+        rail.addView(
+                shutterButton,
+                new LinearLayout.LayoutParams(dp(72), dp(72)));
+
+        doneButton = makeBottomTextButton("Done");
+        doneButton.setOnClickListener(v -> finishSession());
+        LinearLayout.LayoutParams doneParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(48));
+        doneParams.topMargin = dp(8);
+        rail.addView(doneButton, doneParams);
+
+        countText = new TextView(this);
+        countText.setTextColor(Color.WHITE);
+        countText.setTextSize(13);
+        countText.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        countParams.topMargin = dp(4);
+        rail.addView(countText, countParams);
+
+        FrameLayout.LayoutParams railParams = new FrameLayout.LayoutParams(
+                dp(112),
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                Gravity.END);
+        root.addView(rail, railParams);
+    }
+
+    private LinearLayout makeZoomPresetRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+
+        wideButton = makeZoomPresetButton("0.5×");
+        wideButton.setOnClickListener(v -> selectWidePreset());
+        row.addView(wideButton);
+
+        oneXButton = makeZoomPresetButton("1×");
+        oneXButton.setOnClickListener(v -> selectDefaultPreset(1f));
+        LinearLayout.LayoutParams oneParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        oneParams.setMarginStart(dp(8));
+        row.addView(oneXButton, oneParams);
+
+        threeXButton = makeZoomPresetButton("3×");
+        threeXButton.setOnClickListener(v -> selectDefaultPreset(3f));
+        LinearLayout.LayoutParams threeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        threeParams.setMarginStart(dp(8));
+        row.addView(threeXButton, threeParams);
+        return row;
+    }
+
+    private LinearLayout makeZoomPresetColumn() {
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setGravity(Gravity.CENTER);
+
+        wideButton = makeZoomPresetButton("0.5×");
+        wideButton.setOnClickListener(v -> selectWidePreset());
+        column.addView(wideButton);
+
+        oneXButton = makeZoomPresetButton("1×");
+        oneXButton.setOnClickListener(v -> selectDefaultPreset(1f));
+        LinearLayout.LayoutParams oneParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        oneParams.topMargin = dp(5);
+        column.addView(oneXButton, oneParams);
+
+        threeXButton = makeZoomPresetButton("3×");
+        threeXButton.setOnClickListener(v -> selectDefaultPreset(3f));
+        LinearLayout.LayoutParams threeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        threeParams.topMargin = dp(5);
+        column.addView(threeXButton, threeParams);
+        return column;
+    }
+
+    private Button makeCompactCameraButton(String label) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(12);
+        button.setAllCaps(false);
+        button.setMinWidth(0);
+        button.setMinimumWidth(0);
+        button.setMinHeight(dp(38));
+        button.setMinimumHeight(0);
+        button.setPadding(dp(10), 0, dp(10), 0);
+        button.setBackground(makeRoundedBackground(Color.argb(150, 40, 40, 40), 18));
+        return button;
+    }
+
+    private Button makeBottomTextButton(String label) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(15);
+        button.setAllCaps(false);
+        button.setBackground(makeRoundedBackground(Color.argb(140, 45, 45, 45), 24));
+        return button;
+    }
+
+    private Button makeZoomPresetButton(String label) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(13);
+        button.setAllCaps(false);
+        button.setMinWidth(dp(52));
+        button.setMinimumWidth(0);
+        button.setMinHeight(dp(38));
+        button.setMinimumHeight(0);
+        button.setPadding(dp(10), 0, dp(10), 0);
+        button.setBackground(makeRoundedBackground(Color.argb(175, 35, 35, 35), 22));
+        return button;
+    }
+
+    private Button makeShutterButton() {
+        Button button = new Button(this);
+        button.setText("");
+        button.setContentDescription("Take photo");
+        GradientDrawable shutter = new GradientDrawable();
+        shutter.setShape(GradientDrawable.OVAL);
+        shutter.setColor(Color.WHITE);
+        shutter.setStroke(dp(4), Color.argb(220, 210, 210, 210));
+        button.setBackground(shutter);
+        return button;
+    }
+
+    private GradientDrawable makeRoundedBackground(int color, int radiusDp) {
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(color);
+        background.setCornerRadius(dp(radiusDp));
+        return background;
     }
 
     private void startCamera() {
         cameraReady = false;
         imageCapture = null;
+        cameraPreview = null;
         if (camera != null) {
             camera.getCameraInfo().getZoomState().removeObservers(this);
         }
@@ -399,57 +650,45 @@ public final class CameraCaptureActivity extends ComponentActivity {
         final var providerFuture = ProcessCameraProvider.getInstance(this);
         providerFuture.addListener(() -> {
             try {
-                ProcessCameraProvider cameraProvider = providerFuture.get();
+                cameraProvider = providerFuture.get();
+                boolean restorePhysical = restorePhysicalWideRequested;
+                float restoreRatio = requestedEffectiveZoomRatio;
+                restorePhysicalWideRequested = false;
 
-                Preview preview = new Preview.Builder().build();
-                ImageCapture boundImageCapture = new ImageCapture.Builder()
-                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                        .setFlashMode(toImageCaptureFlashMode(flashMode))
-                        .build();
-
-                if (previewView.getDisplay() != null) {
-                    boundImageCapture.setTargetRotation(previewView.getDisplay().getRotation());
-                } else {
-                    boundImageCapture.setTargetRotation(Surface.ROTATION_0);
-                }
-
-                preview.setSurfaceProvider(previewView.getSurfaceProvider());
-                cameraProvider.unbindAll();
-                Camera boundCamera = cameraProvider.bindToLifecycle(
-                        this,
+                bindCamera(
                         CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview,
-                        boundImageCapture);
+                        1f,
+                        false,
+                        restorePhysical ? 1f : restoreRatio,
+                        true);
 
-                imageCapture = boundImageCapture;
-                camera = boundCamera;
-                hasFlashUnit = boundCamera.getCameraInfo().hasFlashUnit();
-                if (!hasFlashUnit) {
-                    torchEnabled = false;
-                } else if (torchEnabled) {
-                    boolean restoreTorch = torchEnabled;
-                    torchEnabled = false;
-                    requestTorchState(restoreTorch, false);
-                }
-
-                boundCamera.getCameraInfo().getZoomState().observe(this, zoomState -> {
-                    if (camera != boundCamera || zoomState == null) {
-                        return;
+                if (restorePhysical
+                        && !logicalWideAvailable
+                        && physicalWideSelector != null
+                        && !physicalWideSuppressed) {
+                    try {
+                        bindCamera(
+                                physicalWideSelector,
+                                physicalWideIntrinsicRatio,
+                                true,
+                                restoreRatio,
+                                false);
+                    } catch (Exception error) {
+                        physicalWideSuppressed = true;
+                        activePhysicalWide = false;
+                        activeIntrinsicRatio = 1f;
+                        bindCamera(
+                                CameraSelector.DEFAULT_BACK_CAMERA,
+                                1f,
+                                false,
+                                1f,
+                                true);
                     }
-                    lastZoomState = zoomState;
-                    requestedLinearZoom = zoomState.getLinearZoom();
-                    updateZoomUi();
-                });
-                boundCamera.getCameraControl().setLinearZoom(requestedLinearZoom);
-
-                cameraReady = true;
-                statusText.setText(capturedCount == 0
-                        ? "Ready — tap Take Photo."
-                        : "Ready for the next photo.");
-                updateControlState();
+                }
             } catch (Exception error) {
                 cameraReady = false;
                 imageCapture = null;
+                cameraPreview = null;
                 camera = null;
                 lastZoomState = null;
                 hasFlashUnit = false;
@@ -459,6 +698,268 @@ public final class CameraCaptureActivity extends ComponentActivity {
                 updateControlState();
             }
         }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void bindCamera(
+            CameraSelector selector,
+            float intrinsicRatio,
+            boolean physicalWide,
+            float targetEffectiveRatio,
+            boolean discoverCapabilities) throws Exception {
+        if (cameraProvider == null) {
+            throw new IllegalStateException("Camera provider is not ready.");
+        }
+
+        if (camera != null) {
+            camera.getCameraInfo().getZoomState().removeObservers(this);
+            if (torchEnabled && hasFlashUnit) {
+                try {
+                    camera.getCameraControl().enableTorch(false);
+                } catch (RuntimeException ignored) {
+                    // Rebinding the camera also releases the prior torch session.
+                }
+            }
+        }
+        torchEnabled = false;
+        torchChangeInProgress = false;
+        cameraReady = false;
+        lastZoomState = null;
+        pendingEffectiveZoomRatio = validEffectiveRatio(targetEffectiveRatio);
+
+        Preview preview = new Preview.Builder().build();
+        ImageCapture boundImageCapture = new ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .setFlashMode(toImageCaptureFlashMode(flashMode))
+                .build();
+
+        int rotation = currentDisplayRotation();
+        preview.setTargetRotation(rotation);
+        boundImageCapture.setTargetRotation(rotation);
+        preview.setSurfaceProvider(previewView.getSurfaceProvider());
+
+        cameraProvider.unbindAll();
+        Camera boundCamera = cameraProvider.bindToLifecycle(
+                this,
+                selector,
+                preview,
+                boundImageCapture);
+
+        cameraPreview = preview;
+        imageCapture = boundImageCapture;
+        camera = boundCamera;
+        activeIntrinsicRatio = CameraLensMath.isUsableRatio(intrinsicRatio) ? intrinsicRatio : 1f;
+        activePhysicalWide = physicalWide;
+        hasFlashUnit = boundCamera.getCameraInfo().hasFlashUnit();
+
+        if (discoverCapabilities) {
+            discoverCameraCapabilities(boundCamera);
+        }
+
+        boundCamera.getCameraInfo().getZoomState().observe(this, zoomState -> {
+            if (camera != boundCamera || zoomState == null) {
+                return;
+            }
+            lastZoomState = zoomState;
+            if (!activePhysicalWide) {
+                logicalWideRatio = zoomState.getMinZoomRatio();
+                logicalWideAvailable = CameraLensMath.isUltraWide(logicalWideRatio);
+                defaultMaxRatio = zoomState.getMaxZoomRatio();
+                threeXAvailable = defaultMaxRatio >= 2.95f;
+            }
+            float effective = CameraLensMath.effectiveRatio(
+                    activeIntrinsicRatio,
+                    zoomState.getZoomRatio());
+            requestedEffectiveZoomRatio = effective;
+            updateZoomUi();
+
+            if (pendingEffectiveZoomRatio != null) {
+                float requested = pendingEffectiveZoomRatio;
+                pendingEffectiveZoomRatio = null;
+                applyEffectiveZoom(requested);
+            }
+        });
+
+        cameraReady = true;
+        ZoomState initialZoom = boundCamera.getCameraInfo().getZoomState().getValue();
+        if (initialZoom != null) {
+            lastZoomState = initialZoom;
+            updateZoomUi();
+            if (pendingEffectiveZoomRatio != null) {
+                float requested = pendingEffectiveZoomRatio;
+                pendingEffectiveZoomRatio = null;
+                applyEffectiveZoom(requested);
+            }
+        }
+
+        statusText.setText(capturedCount == 0
+                ? "Ready — frame the photo and tap the shutter."
+                : "Ready for the next photo.");
+        updateControlState();
+    }
+
+    private void discoverCameraCapabilities(Camera defaultCamera) {
+        ZoomState defaultZoom = defaultCamera.getCameraInfo().getZoomState().getValue();
+        if (defaultZoom != null) {
+            logicalWideRatio = defaultZoom.getMinZoomRatio();
+            logicalWideAvailable = CameraLensMath.isUltraWide(logicalWideRatio);
+            defaultMaxRatio = defaultZoom.getMaxZoomRatio();
+            threeXAvailable = defaultMaxRatio >= 2.95f;
+        } else {
+            logicalWideRatio = 1f;
+            logicalWideAvailable = false;
+            defaultMaxRatio = 1f;
+            threeXAvailable = false;
+        }
+
+        physicalWideSelector = null;
+        physicalWideIntrinsicRatio = 1f;
+        if (physicalWideSuppressed) {
+            updateQuickZoomUi();
+            return;
+        }
+
+        CameraInfo best = null;
+        float bestRatio = 1f;
+
+        try {
+            for (CameraInfo info : defaultCamera.getCameraInfo().getPhysicalCameraInfos()) {
+                float ratio = safeIntrinsicRatio(info);
+                if (isBackFacing(info)
+                        && CameraLensMath.isUltraWide(ratio)
+                        && (best == null || ratio < bestRatio)) {
+                    best = info;
+                    bestRatio = ratio;
+                }
+            }
+        } catch (RuntimeException ignored) {
+            // Some providers expose no physical-camera metadata.
+        }
+
+        if (best == null && cameraProvider != null) {
+            try {
+                for (CameraInfo info : cameraProvider.getAvailableCameraInfos()) {
+                    float ratio = safeIntrinsicRatio(info);
+                    if (isBackFacing(info)
+                            && CameraLensMath.isUltraWide(ratio)
+                            && (best == null || ratio < bestRatio)) {
+                        best = info;
+                        bestRatio = ratio;
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // Ordinary default-camera capture remains available.
+            }
+        }
+
+        if (best != null) {
+            try {
+                physicalWideSelector = best.getCameraSelector();
+                physicalWideIntrinsicRatio = bestRatio;
+            } catch (RuntimeException ignored) {
+                physicalWideSelector = null;
+                physicalWideIntrinsicRatio = 1f;
+            }
+        }
+        updateQuickZoomUi();
+    }
+
+    private boolean isBackFacing(CameraInfo info) {
+        try {
+            return info.getLensFacing() == CameraSelector.LENS_FACING_BACK;
+        } catch (RuntimeException error) {
+            return false;
+        }
+    }
+
+    private float safeIntrinsicRatio(CameraInfo info) {
+        try {
+            float ratio = info.getIntrinsicZoomRatio();
+            return CameraLensMath.isUsableRatio(ratio) ? ratio : 1f;
+        } catch (RuntimeException error) {
+            return 1f;
+        }
+    }
+
+    private void selectWidePreset() {
+        if (!cameraReady || captureInProgress || sessionBlocked) {
+            return;
+        }
+        showZoomSlider();
+
+        if (logicalWideAvailable) {
+            if (activePhysicalWide) {
+                try {
+                    bindCamera(
+                            CameraSelector.DEFAULT_BACK_CAMERA,
+                            1f,
+                            false,
+                            logicalWideRatio,
+                            true);
+                } catch (Exception error) {
+                    statusText.setText("Wide camera could not open: " + safeMessage(error));
+                }
+            } else {
+                applyEffectiveZoom(logicalWideRatio);
+            }
+            return;
+        }
+
+        if (physicalWideSelector == null || physicalWideSuppressed) {
+            statusText.setText("Ultra-wide is not exposed by this phone to the app.");
+            return;
+        }
+
+        try {
+            bindCamera(
+                    physicalWideSelector,
+                    physicalWideIntrinsicRatio,
+                    true,
+                    physicalWideIntrinsicRatio,
+                    false);
+            statusText.setText("Ultra-wide " + formatRatio(physicalWideIntrinsicRatio) + ".");
+        } catch (Exception error) {
+            physicalWideSuppressed = true;
+            physicalWideSelector = null;
+            statusText.setText("Ultra-wide could not open; normal 1× camera restored.");
+            try {
+                bindCamera(
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        1f,
+                        false,
+                        1f,
+                        true);
+            } catch (Exception restoreError) {
+                cameraReady = false;
+                statusText.setText("Camera needs to be reopened: " + safeMessage(restoreError));
+                updateControlState();
+            }
+        }
+    }
+
+    private void selectDefaultPreset(float effectiveRatio) {
+        if (!cameraReady || captureInProgress || sessionBlocked) {
+            return;
+        }
+        showZoomSlider();
+
+        if (activePhysicalWide) {
+            try {
+                bindCamera(
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        1f,
+                        false,
+                        effectiveRatio,
+                        true);
+            } catch (Exception error) {
+                statusText.setText("Normal camera could not open: " + safeMessage(error));
+            }
+        } else {
+            applyEffectiveZoom(effectiveRatio);
+        }
+
+        if (Math.abs(effectiveRatio - 1f) < 0.01f) {
+            statusText.setText("Zoom reset to 1×.");
+        }
     }
 
     private void cycleFlashMode() {
@@ -472,7 +973,11 @@ public final class CameraCaptureActivity extends ComponentActivity {
     }
 
     private void toggleTorch() {
-        if (!cameraReady || camera == null || !hasFlashUnit || captureInProgress || torchChangeInProgress) {
+        if (!cameraReady
+                || camera == null
+                || !hasFlashUnit
+                || captureInProgress
+                || torchChangeInProgress) {
             return;
         }
         requestTorchState(!torchEnabled, true);
@@ -526,11 +1031,23 @@ public final class CameraCaptureActivity extends ComponentActivity {
             return;
         }
         if (cameraReady && !hasFlashUnit) {
-            flashButton.setText("Flash: Unavailable");
-            torchButton.setText("Torch: Unavailable");
+            flashButton.setText("Flash —");
+            torchButton.setText("Torch —");
         } else {
-            flashButton.setText(flashMode.buttonLabel());
-            torchButton.setText(torchEnabled ? "Torch: On" : "Torch: Off");
+            flashButton.setText(compactFlashLabel());
+            torchButton.setText(torchEnabled ? "Torch On" : "Torch Off");
+        }
+    }
+
+    private String compactFlashLabel() {
+        switch (flashMode) {
+            case ON:
+                return "Flash On";
+            case OFF:
+                return "Flash Off";
+            case AUTO:
+            default:
+                return "Flash Auto";
         }
     }
 
@@ -538,13 +1055,14 @@ public final class CameraCaptureActivity extends ComponentActivity {
         if (!canAdjustZoom()) {
             return false;
         }
-        float requestedRatio = CameraZoomMath.pinchTarget(
+        float requestedLocalRatio = CameraZoomMath.pinchTarget(
                 lastZoomState.getZoomRatio(),
                 scaleFactor,
                 lastZoomState.getMinZoomRatio(),
                 lastZoomState.getMaxZoomRatio());
         try {
-            camera.getCameraControl().setZoomRatio(requestedRatio);
+            camera.getCameraControl().setZoomRatio(requestedLocalRatio);
+            showZoomSlider();
             return true;
         } catch (RuntimeException error) {
             statusText.setText("Zoom could not change: " + safeMessage(error));
@@ -556,20 +1074,30 @@ public final class CameraCaptureActivity extends ComponentActivity {
         if (!canAdjustZoom()) {
             return;
         }
-        requestedLinearZoom = Math.max(0f, Math.min(1f, linearZoom));
+        float requested = Math.max(0f, Math.min(1f, linearZoom));
         try {
-            camera.getCameraControl().setLinearZoom(requestedLinearZoom);
+            camera.getCameraControl().setLinearZoom(requested);
+            showZoomSlider();
         } catch (RuntimeException error) {
             statusText.setText("Zoom could not change: " + safeMessage(error));
         }
     }
 
-    private void resetZoom() {
+    private void applyEffectiveZoom(float effectiveRatio) {
         if (!canAdjustZoom()) {
+            pendingEffectiveZoomRatio = validEffectiveRatio(effectiveRatio);
             return;
         }
-        requestLinearZoom(0f);
-        statusText.setText("Zoom reset to 1×.");
+        float localRatio = CameraLensMath.localRatioForEffective(
+                effectiveRatio,
+                activeIntrinsicRatio,
+                lastZoomState.getMinZoomRatio(),
+                lastZoomState.getMaxZoomRatio());
+        try {
+            camera.getCameraControl().setZoomRatio(localRatio);
+        } catch (RuntimeException error) {
+            statusText.setText("Zoom could not change: " + safeMessage(error));
+        }
     }
 
     private boolean canAdjustZoom() {
@@ -582,28 +1110,106 @@ public final class CameraCaptureActivity extends ComponentActivity {
     }
 
     private void updateZoomUi() {
-        if (zoomText == null || zoomSlider == null || zoomResetButton == null) {
+        if (zoomText == null || zoomSlider == null) {
+            updateQuickZoomUi();
             return;
         }
 
         if (lastZoomState == null) {
-            zoomText.setText(cameraReady ? "Zoom: unavailable" : "Zoom: starting…");
+            zoomText.setText(cameraReady ? "Zoom unavailable" : "Zoom starting…");
             updatingZoomSlider = true;
-            zoomSlider.setProgress(CameraZoomMath.progressFromLinearZoom(requestedLinearZoom));
+            zoomSlider.setProgress(0);
             updatingZoomSlider = false;
             zoomSlider.setEnabled(false);
-            zoomResetButton.setEnabled(false);
+            updateQuickZoomUi();
             return;
         }
 
-        zoomText.setText(String.format(Locale.US, "Zoom: %.1f×", lastZoomState.getZoomRatio()));
-        updatingZoomSlider = true;
-        zoomSlider.setProgress(CameraZoomMath.progressFromLinearZoom(lastZoomState.getLinearZoom()));
-        updatingZoomSlider = false;
+        float effective = CameraLensMath.effectiveRatio(
+                activeIntrinsicRatio,
+                lastZoomState.getZoomRatio());
+        requestedEffectiveZoomRatio = effective;
+        zoomText.setText("Zoom " + formatRatio(effective));
 
-        boolean adjustable = canAdjustZoom();
-        zoomSlider.setEnabled(adjustable);
-        zoomResetButton.setEnabled(adjustable && lastZoomState.getLinearZoom() > 0.001f);
+        updatingZoomSlider = true;
+        zoomSlider.setProgress(
+                CameraZoomMath.progressFromLinearZoom(lastZoomState.getLinearZoom()));
+        updatingZoomSlider = false;
+        zoomSlider.setEnabled(canAdjustZoom());
+        updateQuickZoomUi();
+    }
+
+    private void updateQuickZoomUi() {
+        if (wideButton != null) {
+            float wideRatio = currentWideRatio();
+            boolean available = logicalWideAvailable
+                    || (physicalWideSelector != null && !physicalWideSuppressed);
+            wideButton.setVisibility(available ? View.VISIBLE : View.GONE);
+            if (available) {
+                wideButton.setText(formatRatio(wideRatio));
+                wideButton.setEnabled(cameraReady && !captureInProgress && !sessionBlocked);
+                wideButton.setAlpha(isNearCurrentRatio(wideRatio) ? 1f : 0.72f);
+            }
+        }
+
+        if (oneXButton != null) {
+            oneXButton.setEnabled(cameraReady && !captureInProgress && !sessionBlocked);
+            oneXButton.setAlpha(isNearCurrentRatio(1f) ? 1f : 0.72f);
+        }
+
+        if (threeXButton != null) {
+            threeXButton.setVisibility(threeXAvailable ? View.VISIBLE : View.GONE);
+            threeXButton.setEnabled(
+                    cameraReady && threeXAvailable && !captureInProgress && !sessionBlocked);
+            threeXButton.setAlpha(isNearCurrentRatio(3f) ? 1f : 0.72f);
+        }
+    }
+
+    private float currentWideRatio() {
+        if (logicalWideAvailable) {
+            return logicalWideRatio;
+        }
+        if (physicalWideSelector != null && !physicalWideSuppressed) {
+            return physicalWideIntrinsicRatio;
+        }
+        return 1f;
+    }
+
+    private boolean isNearCurrentRatio(float ratio) {
+        if (lastZoomState == null) {
+            return false;
+        }
+        float effective = CameraLensMath.effectiveRatio(
+                activeIntrinsicRatio,
+                lastZoomState.getZoomRatio());
+        return Math.abs(effective - ratio) < 0.08f;
+    }
+
+    private String formatRatio(float ratio) {
+        if (Math.abs(ratio - Math.round(ratio)) < 0.04f) {
+            return Math.round(ratio) + "×";
+        }
+        return String.format(Locale.US, "%.1f×", ratio);
+    }
+
+    private float validEffectiveRatio(float ratio) {
+        return CameraLensMath.isUsableRatio(ratio) ? ratio : 1f;
+    }
+
+    private void showZoomSlider() {
+        if (zoomSliderPanel == null) {
+            return;
+        }
+        zoomSliderPanel.setVisibility(View.VISIBLE);
+        scheduleZoomSliderHide();
+    }
+
+    private void scheduleZoomSliderHide() {
+        if (zoomSliderPanel == null || zoomSliderTracking) {
+            return;
+        }
+        zoomSliderPanel.removeCallbacks(hideZoomSliderRunnable);
+        zoomSliderPanel.postDelayed(hideZoomSliderRunnable, ZOOM_SLIDER_HIDE_DELAY_MS);
     }
 
     private void capturePhoto() {
@@ -633,11 +1239,11 @@ public final class CameraCaptureActivity extends ComponentActivity {
 
         captureInProgress = true;
         statusText.setText("Saving photo " + (capturedCount + 1) + "…");
-        updateControlState();
-
-        if (previewView.getDisplay() != null) {
-            imageCapture.setTargetRotation(previewView.getDisplay().getRotation());
+        if (zoomSliderPanel != null) {
+            zoomSliderPanel.setVisibility(View.GONE);
         }
+        updateControlState();
+        updateTargetRotation();
 
         final String shotCaptureId = activeCaptureId;
         final File shotOutputFile = outputFile;
@@ -658,6 +1264,23 @@ public final class CameraCaptureActivity extends ComponentActivity {
                         handleCaptureError(shotCaptureId, exception);
                     }
                 });
+    }
+
+    private void updateTargetRotation() {
+        int rotation = currentDisplayRotation();
+        if (cameraPreview != null) {
+            cameraPreview.setTargetRotation(rotation);
+        }
+        if (imageCapture != null) {
+            imageCapture.setTargetRotation(rotation);
+        }
+    }
+
+    private int currentDisplayRotation() {
+        if (previewView != null && previewView.getDisplay() != null) {
+            return previewView.getDisplay().getRotation();
+        }
+        return Surface.ROTATION_0;
     }
 
     private void reserveCaptureIfNeeded() throws Exception {
@@ -692,13 +1315,17 @@ public final class CameraCaptureActivity extends ComponentActivity {
         try {
             PendingPhotoRecord waiting = photoStore.finishCaptureIfImageExists(shotCaptureId);
             if (waiting == null) {
-                throw new IllegalStateException("Camera reported success but no protected image data remained.");
+                throw new IllegalStateException(
+                        "Camera reported success but no protected image data remained.");
             }
             requireSameSessionDestination(waiting);
             recordCompletedShot(waiting);
-            statusText.setText("Photo " + capturedCount + " saved — ready for the next photo.");
+            statusText.setText(
+                    "Photo " + capturedCount + " saved — ready for the next photo.");
         } catch (Exception error) {
-            blockSession("Photo data exists but its protected state needs inspection: " + safeMessage(error));
+            blockSession(
+                    "Photo data exists but its protected state needs inspection: "
+                            + safeMessage(error));
             return;
         }
 
@@ -714,7 +1341,9 @@ public final class CameraCaptureActivity extends ComponentActivity {
 
     private void handleCaptureFailureAfterCallback(String shotCaptureId, String message) {
         if (!shotCaptureId.equals(activeCaptureId)) {
-            blockSession("Camera failure returned for a different protected photo. Tap Done to inspect the session.");
+            blockSession(
+                    "Camera failure returned for a different protected photo. "
+                            + "Tap Done to inspect the session.");
             return;
         }
 
@@ -723,16 +1352,20 @@ public final class CameraCaptureActivity extends ComponentActivity {
             if (preserved != null) {
                 requireSameSessionDestination(preserved);
                 recordCompletedShot(preserved);
-                statusText.setText(message + " Non-empty image data was protected as photo "
-                        + capturedCount + ". You can continue or tap Done.");
+                statusText.setText(
+                        message + " Non-empty image data was protected as photo "
+                                + capturedCount + ". You can continue or tap Done.");
             } else {
                 clearActiveCapture();
-                statusText.setText(message + " No image data was kept. You can try again or tap Done.");
+                statusText.setText(
+                        message + " No image data was kept. You can try again or tap Done.");
             }
             captureInProgress = false;
             updateControlState();
         } catch (Exception error) {
-            blockSession(message + " Protected photo state also needs inspection: " + safeMessage(error));
+            blockSession(
+                    message + " Protected photo state also needs inspection: "
+                            + safeMessage(error));
         }
     }
 
@@ -762,7 +1395,8 @@ public final class CameraCaptureActivity extends ComponentActivity {
             return;
         }
         if (torchChangeInProgress) {
-            statusText.setText("Wait for the torch setting to finish changing before leaving the camera.");
+            statusText.setText(
+                    "Wait for the torch setting to finish changing before leaving the camera.");
             return;
         }
 
@@ -770,7 +1404,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
             try {
                 camera.getCameraControl().enableTorch(false);
             } catch (RuntimeException ignored) {
-                // Lifecycle shutdown will also release the camera. Photo state is independent of torch cleanup.
+                // Lifecycle shutdown will also release the camera.
             }
         }
 
@@ -781,8 +1415,9 @@ public final class CameraCaptureActivity extends ComponentActivity {
                 recordCompletedShot(preserved);
             }
         } catch (Exception error) {
-            finishWithError("Camera session ended, but a protected photo needs inspection: "
-                    + safeMessage(error));
+            finishWithError(
+                    "Camera session ended, but a protected photo needs inspection: "
+                            + safeMessage(error));
             return;
         }
 
@@ -820,33 +1455,52 @@ public final class CameraCaptureActivity extends ComponentActivity {
         if (countText == null) {
             return;
         }
-        countText.setText(capturedCount + " photo" + (capturedCount == 1 ? "" : "s")
-                + " captured this session");
+        countText.setText(
+                capturedCount + " photo" + (capturedCount == 1 ? "" : "s"));
+    }
+
+    private void refreshAllCameraUi() {
+        updateCountUi();
+        updateLightingUi();
+        updateZoomUi();
+        updateControlState();
     }
 
     private void updateControlState() {
         if (shutterButton == null || doneButton == null) {
             return;
         }
-        shutterButton.setEnabled(cameraReady
-                && !captureInProgress
-                && !sessionBlocked
-                && !torchChangeInProgress);
+        shutterButton.setEnabled(
+                cameraReady
+                        && !captureInProgress
+                        && !sessionBlocked
+                        && !torchChangeInProgress);
+        shutterButton.setAlpha(shutterButton.isEnabled() ? 1f : 0.45f);
         doneButton.setEnabled(!captureInProgress && !torchChangeInProgress);
+        doneButton.setAlpha(doneButton.isEnabled() ? 1f : 0.45f);
+
         if (flashButton != null) {
-            flashButton.setEnabled(cameraReady
-                    && hasFlashUnit
-                    && !captureInProgress
-                    && !sessionBlocked
-                    && !torchChangeInProgress);
+            flashButton.setEnabled(
+                    cameraReady
+                            && hasFlashUnit
+                            && !captureInProgress
+                            && !sessionBlocked
+                            && !torchChangeInProgress);
+            flashButton.setAlpha(flashButton.isEnabled() ? 1f : 0.5f);
         }
         if (torchButton != null) {
-            torchButton.setEnabled(cameraReady
-                    && hasFlashUnit
-                    && !captureInProgress
-                    && !sessionBlocked
-                    && !torchChangeInProgress);
+            torchButton.setEnabled(
+                    cameraReady
+                            && hasFlashUnit
+                            && !captureInProgress
+                            && !sessionBlocked
+                            && !torchChangeInProgress);
+            torchButton.setAlpha(torchButton.isEnabled() ? 1f : 0.5f);
         }
+        if (zoomSlider != null) {
+            zoomSlider.setEnabled(canAdjustZoom());
+        }
+
         updateLightingUi();
         updateZoomUi();
     }
@@ -882,8 +1536,11 @@ public final class CameraCaptureActivity extends ComponentActivity {
             }
         }
         Intent result = new Intent();
-        result.putExtra(EXTRA_ERROR_MESSAGE,
-                message == null || message.trim().isEmpty() ? "Camera operation failed." : message);
+        result.putExtra(
+                EXTRA_ERROR_MESSAGE,
+                message == null || message.trim().isEmpty()
+                        ? "Camera operation failed."
+                        : message);
         result.putExtra(EXTRA_CAPTURED_COUNT, capturedCount);
         if (lastCapturedPhotoId != null) {
             result.putExtra(EXTRA_LAST_CAPTURE_ID, lastCapturedPhotoId);
@@ -893,7 +1550,9 @@ public final class CameraCaptureActivity extends ComponentActivity {
     }
 
     private String safeMessage(Throwable error) {
-        if (error == null || error.getMessage() == null || error.getMessage().trim().isEmpty()) {
+        if (error == null
+                || error.getMessage() == null
+                || error.getMessage().trim().isEmpty()) {
             return error == null ? "unknown error" : error.getClass().getSimpleName();
         }
         return error.getMessage();
