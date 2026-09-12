@@ -55,13 +55,14 @@ public final class FieldPhotoPrepApplication extends Application implements Came
 
             @Override
             public void onActivityResumed(Activity activity) {
-                // onActivityResumed runs after each activity has finished building its content view.
-                // The decorators are presentation-only and fail closed if a screen no longer has
-                // the expected owned view shape. CameraCaptureActivity is deliberately excluded.
+                // Presentation decoration runs after Activity.onResume so the owned content view and
+                // latest queue render are already present. CameraCaptureActivity is intentionally
+                // excluded and remains a locked design surface.
                 if (activity instanceof MainActivity) {
                     MainScreenDecorator.decorate(activity);
                 } else if (activity instanceof PhotoCaptureActivity) {
                     PhotoScreenDecorator.decorate(activity);
+                    Concept3PhotoEnhancer.enhance(activity);
                 }
             }
 
