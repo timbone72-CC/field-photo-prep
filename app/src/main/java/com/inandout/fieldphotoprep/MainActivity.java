@@ -177,7 +177,7 @@ public final class MainActivity extends Activity {
         });
 
         ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
-            WindowInsetsCompat.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             view.setPadding(0, bars.top, 0, bars.bottom);
             return insets;
         });
