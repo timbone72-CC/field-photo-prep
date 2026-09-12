@@ -104,6 +104,24 @@ The Phase 3B and Phase 4 development branches implement repeated matching settle
 8. After confirmed remote creation and successful local bookkeeping, temporary local image data may be removed automatically.
 9. The app does not need to retain confirmed uploaded image data as a permanent local copy.
 
+## Selectable batch upload contract
+
+1. Batch upload is an orchestration layer over the existing per-photo upload contract. It does not define a second Drive write path.
+2. The operator may select any subset of currently upload-eligible prepared photos for the open work order and may intentionally keep the batch small to control network/provider load.
+3. Selection state is local UI/session state only. Checking or unchecking a photo does not create, retry, confirm, reconcile, delete, or redirect any Drive object.
+4. **Select All Ready** selects only photos currently eligible for a normal upload attempt. **Clear Selection** clears only the UI selection.
+5. Starting **Upload Selected (N)** snapshots the selected local photo IDs. A photo ID may appear at most once in one batch snapshot.
+6. The batch performs exactly one per-photo upload attempt at a time. It must not issue simultaneous remote creates merely because several photos were selected by one operator action.
+7. Before each attempt, the existing per-photo coordinator remains responsible for validating the photo's queue state, prepared copy, immutable destination, create barrier, write/verify path, remote identity, and final queue result.
+8. Each selected photo must target its own stored work-order provider document ID. The currently displayed work order must not override any photo's stored destination.
+9. `CAPTURING`, `UPLOADING`, `UNCERTAIN`, already `UPLOADED`, missing-image, or unprepared photos are not eligible for a normal batch attempt.
+10. A confirmed upload may proceed to the next selected photo. Incomplete local cleanup after confirmed remote success may be reported without changing that remote success.
+11. A known retry-safe failure that leaves the active photo in `FAILED` or pre-attempt `WAITING` state may be preserved locally while the batch proceeds to a later selected photo.
+12. If the active photo becomes `UNCERTAIN`, remains `UPLOADING`, cannot be reread, or otherwise has an unverified remote outcome, the batch must stop immediately. No later selected photo may be intentionally attempted.
+13. When a batch stops early, later selected photos remain in their prior queue state and are not implicitly retried or marked failed.
+14. Process death during a batch is resolved per photo: the active in-flight photo follows existing restart recovery, while later unattempted photos remain unchanged. The UI batch selection itself is not durable upload authority.
+15. The individual-photo upload and UNCERTAIN reconciliation controls remain available and retain the same identity and retry rules.
+
 ## Access and permissions
 
 1. Android remote access is granted through the operator-selected persisted SAF tree URI, not through app-managed Google OAuth credentials.
@@ -129,6 +147,8 @@ The Phase 3B and Phase 4 development branches implement repeated matching settle
 5. Duplicate control may use stored provider/remote file and folder identities plus app-generated stable photo identities; visible names alone are insufficient identity after selection.
 6. Folder-name matching is only a discovery step. Once a folder is selected or linked, its stored provider identity owns Android destination identity.
 7. A failed or interrupted **Clear & Reuse** operation must be treated as incomplete destructive state and must not be retried blindly without first re-reading the actual selected folder contents and name from the provider.
+8. Batch orchestration must not retry the same selected photo twice in one run or bypass the existing per-photo provisional/confirmed remote identity barriers.
+9. An `UNCERTAIN` batch item blocks later batch attempts until that item's remote state is resolved or the operator ends the affected workflow; it is never interpreted as permission for a blind retry.
 
 ## Safe-environment rule
 
@@ -136,7 +156,7 @@ Drive integration development and verification uses a dedicated test master fold
 
 ## Android Google Drive Reality Gate
 
-Any Android runtime change that alters or depends on master-tree access, address-folder discovery, work-order-folder discovery, folder creation, folder identity, provider freshness, folder recycling, child deletion, rename, upload destination, upload confirmation, retry, or remote file identity must complete the affected parts of this gate before being called ready for Level 3 merge approval:
+Any Android runtime change that alters or depends on master-tree access, address-folder discovery, work-order-folder discovery, folder creation, folder identity, provider freshness, folder recycling, child deletion, rename, upload destination, upload confirmation, retry, batch upload orchestration, or remote file identity must complete the affected parts of this gate before being called ready for Level 3 merge approval:
 
 1. Write the real operator sequence from the initiating tap to the final visible result.
 2. Map the boundary as `app state → persisted master tree URI → address provider document ID → work-order provider document ID → DocumentsProvider operation/result → persisted app state`.
@@ -153,7 +173,12 @@ Any Android runtime change that alters or depends on master-tree access, address
 13. Confirm unrelated test Drive content is unchanged.
 14. For upload changes, force or simulate one interrupted/failed attempt and prove the temporary recoverable photo and exact work-order destination identity survive.
 15. After confirmed upload, prove the app can remove unnecessary temporary image data without deleting the Drive copy.
-16. If rollout steps are ordered, do not perform the later step until the required earlier evidence exists.
+16. For selectable batch upload, use at least four disposable prepared photos under one safe test work order. Select only a subset, upload it with one action, and prove exactly that subset is created under the stored work-order parent while unselected photos remain local/unattempted.
+17. After the first subset is confirmed, upload the remaining disposable photos and verify no duplicate remote files were created and no selected photo was sent to a wrong parent.
+18. Verify the batch executes sequentially from the operator's perspective and that the UI/result identifies which photos confirmed, failed retry-safely, or stopped the batch.
+19. Do not deliberately manufacture an ambiguous remote create solely to satisfy an `UNCERTAIN` batch test. If a safe deterministic ambiguous condition cannot be induced, rely on focused automated stop-on-uncertainty coverage and record the real-provider limitation.
+20. If a real provider result naturally becomes uncertain during batch testing, stop immediately, preserve evidence, do not retry the uncertain photo, and confirm later selected photos were not attempted.
+21. If rollout steps are ordered, do not perform the later step until the required earlier evidence exists.
 
 ## Future platform implementation
 
