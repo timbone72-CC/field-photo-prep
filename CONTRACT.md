@@ -81,21 +81,26 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 10. Flash mode and torch state are session camera controls only; changing them must never alter photo identity, destination identity, queue state, preparation state, or Drive state.
 11. A device that does not expose a usable flash unit must disable flash/torch controls rather than failing ordinary camera capture.
 12. Leaving the camera must not intentionally leave the torch enabled, and lighting controls must not race an active shutter write.
-13. The in-app camera provides both pinch-to-zoom on the live preview and a visible zoom slider, with a live zoom-ratio readout and a **Reset 1×** control.
-14. A fresh camera session starts at 1×. Zoom remains in effect across multiple shutter presses during the same camera session and may survive ordinary activity state restoration for that session; **Reset 1×** returns to normal framing.
-15. Zoom requests must stay within the active camera's reported supported range. A device or camera with no adjustable zoom range must disable zoom adjustment without breaking ordinary capture.
-16. Zoom is a camera-session control only. Changing zoom must never alter protected-photo identity, destination identity, queue state, preparation state, Drive state, or the exact work-order bound to a captured photo.
-17. Zoom controls must not be actively changed by the operator during an active shutter write.
-18. The app does not keep successfully uploaded photos as a permanent local photo library.
-19. A newly captured photo must be retained temporarily until its Drive upload is confirmed or the operator explicitly discards it.
-20. A failed preparation, platform/provider access, network request, or Drive upload must not destroy a photo that has not yet been confirmed in Drive.
-21. The exact work-order remote folder identity is bound to the photo when the photo is accepted for that work occurrence. Later navigation to another address or work order must not redirect an already captured photo.
-22. The app must clearly distinguish photos that are waiting, uploading, uploaded, failed, or uncertain while local temporary state still exists.
-23. A photo may not be shown as uploaded until the approved Drive integration has confirmed creation of the destination file.
-24. After confirmed Drive upload and successful local status update, the app may automatically remove the temporary local image data for that photo.
-25. The app may retain only lightweight upload history or remote identity needed for duplicate protection; it need not retain the image itself.
-26. Camera capture must not depend on an active internet connection.
-27. Initial implementation is still-photo only. Video capture is outside the current approved scope.
+13. The camera must support both portrait and landscape field use. Rotating the device must keep the live preview usable, reflow camera controls for the available orientation, and preserve the same protected camera session and destination identity.
+14. The live preview is the dominant camera surface. Flash/Torch remain compact near the preview edge, **Done** remains obvious, and the primary shutter is presented as a large camera-style control rather than a form button.
+15. The camera provides pinch-to-zoom plus a fine zoom slider. The slider is normally hidden and appears while zoom is being adjusted so it does not permanently consume preview space.
+16. Quick zoom/lens presets may be shown near the shutter when supported. **1×** always returns to the normal default rear-camera framing; it must not be implemented merely as “minimum zoom.” A **3×** shortcut may appear only when that zoom is supported.
+17. An ultra-wide shortcut may appear only when the active Android/CameraX camera stack exposes a real rear-camera path below 1×, either through the default logical camera's reported range or a CameraX-exposed rear camera with a genuine sub-1× intrinsic ratio. The app must not label an ordinary digital view as ultra-wide.
+18. Ultra-wide labeling should use the device-reported effective ratio rather than inventing a lens value. If a real ultra-wide camera cannot be selected safely, the app must hide/suppress that shortcut and keep ordinary capture available.
+19. CameraX-reported zoom state is authoritative for the live zoom readout and slider position. Zoom requests must remain inside the active camera's supported range.
+20. Zoom, lens choice, orientation, flash, and torch are camera-session controls only. They must never alter protected-photo identity, destination identity, queue state, preparation state, Drive state, or the exact work order bound to a captured photo.
+21. Zoom/lens controls must not be actively changed by the operator during an active shutter write.
+22. Still-capture target rotation must follow the active display orientation so portrait and landscape photos remain visually usable after preparation/upload.
+23. The app does not keep successfully uploaded photos as a permanent local photo library.
+24. A newly captured photo must be retained temporarily until its Drive upload is confirmed or the operator explicitly discards it.
+25. A failed preparation, platform/provider access, network request, or Drive upload must not destroy a photo that has not yet been confirmed in Drive.
+26. The exact work-order remote folder identity is bound to the photo when the photo is accepted for that work occurrence. Later navigation to another address or work order must not redirect an already captured photo.
+27. The app must clearly distinguish photos that are waiting, uploading, uploaded, failed, or uncertain while local temporary state still exists.
+28. A photo may not be shown as uploaded until the approved Drive integration has confirmed creation of the destination file.
+29. After confirmed Drive upload and successful local status update, the app may automatically remove the temporary local image data for that photo.
+30. The app may retain only lightweight upload history or remote identity needed for duplicate protection; it need not retain the image itself.
+31. Camera capture must not depend on an active internet connection.
+32. Initial implementation is still-photo only. Video capture is outside the current approved scope.
 
 ## 4. Prepared upload copy
 
@@ -186,8 +191,10 @@ The first working app needs only the surfaces required for the core workflow:
 - choose or create a `Work Order - YYYY-MM-DD` folder;
 - optionally reuse an old same-work-order folder, including explicit **Clear & Reuse** when the operator chooses a non-empty folder;
 - open an in-app camera for the selected work occurrence;
-- use **Flash Auto/On/Off** and a separate **Torch On/Off** control when lighting assistance is needed;
-- use pinch-to-zoom or the visible zoom slider, see the live zoom ratio, and reset the camera to **1×** when needed;
+- use a phone-camera-style preview-first layout with a large shutter, obvious **Done**, compact Flash/Torch, and session photo count;
+- use portrait or landscape camera orientation without losing the protected work-order session;
+- use quick device-supported wide/1×/3× presets where genuinely available, with **1×** as the normal-camera reset;
+- pinch to zoom or use the temporary fine zoom slider and live effective zoom readout;
 - take multiple photos in one camera session and use **Done** to return once;
 - see each captured photo retained separately under the same exact work-order destination identity;
 - allow prepared upload copies to be created automatically in the background;
