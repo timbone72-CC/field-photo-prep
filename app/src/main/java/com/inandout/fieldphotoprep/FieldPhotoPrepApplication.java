@@ -50,8 +50,14 @@ public final class FieldPhotoPrepApplication extends Application implements Came
         }
 
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+            @Override public void onActivityCreated(Activity activity, Bundle savedInstanceState) {}
+            @Override public void onActivityStarted(Activity activity) {}
+
             @Override
-            public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+            public void onActivityResumed(Activity activity) {
+                // onActivityResumed runs after each activity has finished building its content view.
+                // The decorators are presentation-only and fail closed if a screen no longer has
+                // the expected owned view shape. CameraCaptureActivity is deliberately excluded.
                 if (activity instanceof MainActivity) {
                     MainScreenDecorator.decorate(activity);
                 } else if (activity instanceof PhotoCaptureActivity) {
@@ -59,8 +65,6 @@ public final class FieldPhotoPrepApplication extends Application implements Came
                 }
             }
 
-            @Override public void onActivityStarted(Activity activity) {}
-            @Override public void onActivityResumed(Activity activity) {}
             @Override public void onActivityPaused(Activity activity) {}
             @Override public void onActivityStopped(Activity activity) {}
             @Override public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
