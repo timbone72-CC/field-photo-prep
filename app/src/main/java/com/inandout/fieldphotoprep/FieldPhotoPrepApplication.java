@@ -1,6 +1,8 @@
 package com.inandout.fieldphotoprep;
 
+import android.app.Activity;
 import android.app.Application;
+import android.os.Bundle;
 
 import androidx.camera.camera2.Camera2Config;
 import androidx.camera.core.CameraXConfig;
@@ -46,6 +48,22 @@ public final class FieldPhotoPrepApplication extends Application implements Came
                 // manual Prepare action can recover preparation without changing queue identity.
             }
         }
+
+        registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+            @Override
+            public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+                if (activity instanceof PhotoCaptureActivity) {
+                    PhotoScreenDecorator.decorate(activity);
+                }
+            }
+
+            @Override public void onActivityStarted(Activity activity) {}
+            @Override public void onActivityResumed(Activity activity) {}
+            @Override public void onActivityPaused(Activity activity) {}
+            @Override public void onActivityStopped(Activity activity) {}
+            @Override public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
+            @Override public void onActivityDestroyed(Activity activity) {}
+        });
     }
 
     AutomaticPhotoPreparationQueue automaticPreparationQueue() {
