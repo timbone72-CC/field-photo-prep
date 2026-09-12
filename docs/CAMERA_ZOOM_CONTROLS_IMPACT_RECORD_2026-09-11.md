@@ -2,11 +2,23 @@
 
 Date: 2026-09-11
 
-Status: IMPLEMENTED — FINAL AUTOMATED AND DEVICE VERIFICATION PENDING
+Status: STAGED — AUTOMATED PASS, DEVICE VERIFICATION PENDING
 
 Branch: `feat/camera-zoom-controls`
 
 Rollback baseline: `2d161b464c4f4b9acde9c53daad5675d3012f07c`
+
+Exact automated-tested runtime head: `ffb8c68a5d1b58e0537832241792e1c945ad4da2`
+
+Android CI run: `34671156169` — PASS
+
+APK artifact: `10290314715` (`field-photo-prep-internal-apk`)
+
+Artifact digest: `sha256:c2cdfe5f326cf4cf06185b9b7eea40c6d65daaf46b194c98f425ba356d9f74c2`
+
+Staged APK SHA-256: `d33aa156d816d48ee3b7e864dfa9b2ee8baba2c431c0767e24f73f3055e76a27`
+
+Later documentation/contract commits after the runtime head do not change the executable tree.
 
 ## User-facing problem
 
@@ -81,7 +93,9 @@ No queue record, protected-photo metadata, work-order provider ID, Drive object,
 
 ## Focused automated verification
 
-Required coverage:
+PASS on exact runtime `ffb8c68a5d1b58e0537832241792e1c945ad4da2`.
+
+Coverage proves:
 
 - slider progress maps safely across CameraX linear zoom;
 - slider values clamp at both ends;
@@ -92,7 +106,7 @@ Required coverage:
 - physical-camera ratio conversion clamps to its reported range;
 - only a real usable ratio below 1× qualifies as ultra-wide.
 
-The final complete Android CI must pass on the exact expanded runtime head, including unit tests, internal debug build, stable signer verification, emulator instrumentation, launch smoke, and APK artifact packaging.
+Android CI `34671156169` passed the complete unit suite, internal debug build, stable test-signer verification, Android emulator instrumentation, internal launch smoke, and APK artifact packaging.
 
 ## Primary risks and mitigations
 
