@@ -20,7 +20,9 @@
 
         <activity
             android:name=".CameraCaptureActivity"
-            android:exported="false" />
+            android:configChanges="orientation|screenSize"
+            android:exported="false"
+            android:screenOrientation="fullSensor" />
 
         <activity
             android:name=".PhotoCaptureActivity"
