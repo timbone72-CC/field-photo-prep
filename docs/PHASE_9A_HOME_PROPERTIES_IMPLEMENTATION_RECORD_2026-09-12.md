@@ -2,7 +2,7 @@
 
 Date: 2026-09-12
 
-Status: **IMPLEMENTED — AUTOMATED GATE BLOCKED BY RUNNER STARTUP FAILURE; DEVICE APK NOT STAGED**
+Status: **IMPLEMENTED — AUTOMATED GATE PASSED; DEVICE SMOKE PENDING**
 
 Branch: `feat/phase-9a-home-properties`
 
@@ -13,6 +13,8 @@ Rollback baseline: `e77b83bf07505cc586fbf8766cb8623db51e35b7`
 Approved specification: `docs/PHASE_9A_HOME_PROPERTIES_UI_SPEC_2026-09-12.md`
 
 Current executable runtime head: `fb8dba9cb3ace14c15867226c58d64e411b1a9c0`
+
+Branch head used for successful CI: `6a82eeb1e6cc0566b539702a2d4b1ae45d288648`
 
 ## Problem
 
@@ -97,13 +99,35 @@ Display normalization is presentation only. Example: `101_CHUCKER_LN_ELK_CITY_OK
 - New Address remains wrap-content rather than a full-width action;
 - the old visible `Address and work-order setup` development subtitle is absent from Home.
 
-## Automated verification status
+## Automated verification
 
-GitHub Actions runs for the executable runtime have repeatedly failed before any workflow steps were created/exposed (`steps: null`), including a manual failed-job rerun. This is treated as CI-runner/infrastructure blockage, **not** as passing evidence and not as an executable test failure.
+After the repository was made public, GitHub Actions recovered and completed the full Android suite on branch head `6a82eeb1e6cc0566b539702a2d4b1ae45d288648`.
 
-No APK will be staged for the operator until one full Android CI run executes and passes on the exact final executable runtime head.
+Workflow run: `34724927051`
 
-## Physical gate after automation recovers
+Result: **PASS**
+
+Passed stages:
+
+- unit tests;
+- internal debug build;
+- stable test APK signer verification;
+- KVM setup;
+- connected Android instrumentation tests;
+- internal app launch smoke;
+- APK artifact upload.
+
+Artifact ID: `10307369351`
+
+GitHub artifact digest: `sha256:9316e9cfd5cbf114453e32a736aae9ac97da6c31fb0ccd985de3a96f5e4e6455`
+
+Staged APK filename: `Field-Photo-Prep-Phase-9A-Home-Test.apk`
+
+Staged APK SHA-256: `f29b5051af2918122951f7564bdfd34df7cee5eb609776f657e5e319c78f7985`
+
+The branch head differs from the executable runtime only by documentation/recordkeeping changes. Per `TESTING_CONTRACT.md`, no second runtime test is required solely for those documentation-only updates.
+
+## Physical gate
 
 One Samsung Home/Properties smoke only:
 
