@@ -2,9 +2,11 @@
 
 Date: 2026-09-11
 
-Status: READY TO MERGE — AUTOMATED PASS, PHYSICAL DEVICE SMOKE PASS
+Status: MERGED — AUTOMATED PASS, PHYSICAL DEVICE SMOKE PASS
 
 Branch: `feat/camera-zoom-controls`
+
+Merged via PR #30 at `1b6192a84110acd5ad113660d243a09e3f4a9ef0`.
 
 Rollback baseline: `2d161b464c4f4b9acde9c53daad5675d3012f07c`
 
