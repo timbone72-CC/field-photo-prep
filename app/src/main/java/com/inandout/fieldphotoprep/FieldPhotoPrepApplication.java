@@ -52,7 +52,9 @@ public final class FieldPhotoPrepApplication extends Application implements Came
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override
             public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-                if (activity instanceof PhotoCaptureActivity) {
+                if (activity instanceof MainActivity) {
+                    MainScreenDecorator.decorate(activity);
+                } else if (activity instanceof PhotoCaptureActivity) {
                     PhotoScreenDecorator.decorate(activity);
                 }
             }
