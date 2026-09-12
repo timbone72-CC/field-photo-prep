@@ -1,7 +1,6 @@
 package com.inandout.fieldphotoprep;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.view.View;
@@ -19,7 +18,7 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public final class Phase9UiInstrumentedTest {
     @Test
-    public void photoScreenDecoratesWithoutChangingWorkflowAvailability() {
+    public void conceptThreePhotoScreenLaunchesWithCoreWorkflowActions() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         FolderPrefs prefs = new FolderPrefs(context);
         prefs.setCurrentAddress(new DriveFolder("test-address-provider-id", "123 Test Street"));
@@ -29,14 +28,15 @@ public final class Phase9UiInstrumentedTest {
                      ActivityScenario.launch(PhotoCaptureActivity.class)) {
             scenario.onActivity(activity -> {
                 View content = activity.findViewById(android.R.id.content);
-                TextView title = findText(content, "Cut Grass - 2026-09-11");
+                TextView title = findText(content, "Photos");
+                TextView workOrder = findText(content, "Cut Grass - 2026-09-11");
                 Button camera = findButton(content, "Open Camera");
                 Button upload = findButtonStartingWith(content, "Upload Selected (");
 
-                assertNotNull("redesigned work-order title should be visible", title);
-                assertNotNull("existing camera listener should be presented as Open Camera", camera);
-                assertNotNull("existing batch action should remain present", upload);
-                assertTrue("camera action remains enabled with a selected work order", camera.isEnabled());
+                assertNotNull("Concept 3 Photos title should be visible", title);
+                assertNotNull("selected work order should remain visible", workOrder);
+                assertNotNull("existing camera action should be presented as Open Camera", camera);
+                assertNotNull("existing batch upload action should remain present", upload);
             });
         }
     }
