@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="home_background">#F7F9F7</color>
+    <color name="home_surface">#FFFFFF</color>
+    <color name="home_surface_alt">#EEF2EF</color>
+    <color name="home_text_primary">#18201B</color>
+    <color name="home_text_secondary">#5E6861</color>
+    <color name="home_primary">#186A4A</color>
+    <color name="home_primary_pressed">#12543B</color>
+    <color name="home_on_primary">#FFFFFF</color>
+    <color name="home_outline">#D4DDD6</color>
+    <color name="home_error">#B3261E</color>
+    <color name="home_error_container">#FCE8E6</color>
+</resources>
