@@ -37,11 +37,21 @@ public final class Concept3UiStructureInstrumentedTest {
         assertNotNull(home.findViewById(R.id.home_property_list));
         assertNotNull(home.findViewById(R.id.home_new_address_button));
         assertEquals(dp(context, 48), home.findViewById(R.id.drive_status_strip).getLayoutParams().height);
+
         View work = inflater.inflate(R.layout.screen_work_orders, null, false);
         assertNotNull(work.findViewById(R.id.work_order_list));
-        assertNotNull(work.findViewById(R.id.work_order_create_button));
+        Button workDate = work.findViewById(R.id.work_order_date_button);
+        Button workCreate = work.findViewById(R.id.work_order_create_button);
+        assertNotNull(workDate);
+        assertNotNull(workCreate);
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, workDate.getLayoutParams().width);
+        assertEquals(dp(context, 48), workDate.getLayoutParams().height);
+        assertEquals(14 * context.getResources().getDisplayMetrics().scaledDensity,
+                workDate.getTextSize(), 1.0f);
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, workCreate.getLayoutParams().width);
         assertNotNull(work.findViewById(R.id.work_order_photos));
         assertEquals(View.GONE, work.findViewById(R.id.work_order_maintenance).getVisibility());
+
         View photos = inflater.inflate(R.layout.screen_photos, null, false);
         assertNotNull(photos.findViewById(R.id.photos_open_camera));
         assertNotNull(photos.findViewById(R.id.photos_pending_list));
