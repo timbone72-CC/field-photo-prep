@@ -61,29 +61,7 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: |
-            set -eu
-            adb shell wm size 1080x2400
-            adb shell wm density 440
-            adb shell cmd uimode night no
-            adb shell settings put system font_scale 1.0
-            gradle connectedDebugAndroidTest
-            mkdir -p verification-reports
-            cp -R app/build/reports/androidTests/connected verification-reports/full-instrumentation
-            for visual_variant in dark large-font; do
-              if [ "$visual_variant" = dark ]; then adb shell cmd uimode night yes; else adb shell cmd uimode night no; fi
-              if [ "$visual_variant" = large-font ]; then adb shell settings put system font_scale 1.3; else adb shell settings put system font_scale 1.0; fi
-              gradle connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.inandout.fieldphotoprep.Concept3UiStructureInstrumentedTest,com.inandout.fieldphotoprep.Concept3RenderedScreensInstrumentedTest -Pandroid.testInstrumentationRunnerArguments.visualVariant="$visual_variant"
-            done
-            adb exec-out run-as com.inandout.fieldphotoprep.internal tar -C files -cf - concept3-screens > verification-reports/concept3-screens.tar
-            adb shell cmd uimode night no
-            adb shell settings put system font_scale 1.0
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb shell am force-stop com.inandout.fieldphotoprep.internal
-            adb shell am start -W -n com.inandout.fieldphotoprep.internal/com.inandout.fieldphotoprep.MainActivity
-            sleep 3
-            adb shell pidof com.inandout.fieldphotoprep.internal | grep -q '[0-9]'
-            echo "Field Photo Prep Internal instrumentation and launch smoke tests passed"
+          script: bash scripts/verify-concept3-rendered.sh
       - name: Upload internal APK
         uses: actions/upload-artifact@v4
         with:
@@ -91,11 +69,14 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
       - name: Upload rendered screens and test evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: concept-3-rendered-verification
           path: |
             verification-reports
+            app/build/reports/androidTests/connected
+            app/build/outputs/androidTest-results
             app/build/test-results/testDebugUnitTest
             apk-signer.txt
           if-no-files-found: error
