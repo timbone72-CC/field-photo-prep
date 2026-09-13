@@ -39,4 +39,8 @@ Primary risks: default Android button styling/font scale, duplicate labels after
 
 Samsung gate: inspect compact Home with real properties, select one existing work order, inspect Photos/selection/sticky upload, confirm existing camera handoff and all three-tab/system-bar spacing. No merge before operator approval; no destructive Drive experiment solely for this presentation correction.
 
-Status: implementation and focused verification in progress. Final runtime SHA, CI evidence and rendered review pending.
+Status: **IMPLEMENTED — AUTOMATED AND RENDERED REVIEW PASSED; SAMSUNG VISUAL GATE PENDING**.
+
+Exact tested runtime/APK source: `801e05f84e1bbc2cd0f308dc77bae1cd43d0ef87`; [CI 34732932338](https://github.com/timbone72-CC/field-photo-prep/actions/runs/34732932338) PASS: 139 unit tests, internal build, stable signer, 8 full instrumentation tests, 2 explicit UI tests each in dark/1.3-font variants, and launch smoke. All nine final actual-activity images were visually inspected and accepted. The initial visual review was corrected before this gate: lighter Photos statuses, flat navigation and green connected dot against the quiet strip.
+
+APK artifact `10310476852`; APK SHA-256 `4d009ad04e539bc054e8b8513780b9f2f94a939d2ac72424e843284a54fb1ea2`. Rendered evidence artifact `10309898268`. See the updated implementation record for archive digests, viewport, fixture limitations and Samsung checklist. Final evidence records are documentation-only; no runtime change follows verification. No merge before Samsung approval.

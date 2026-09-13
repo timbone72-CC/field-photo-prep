@@ -1,5 +1,56 @@
 # Concept 3 Non-Camera UI Implementation Record
 
+## Current three-tab correction — 2026-09-13
+
+Status: **IMPLEMENTED — AUTOMATED AND RENDERED REVIEW PASSED; SAMSUNG VISUAL GATE PENDING**.
+
+Branch: `feat/concept-3-ui-makeover-20260912`; draft PR [#35](https://github.com/timbone72-CC/field-photo-prep/pull/35).
+
+Exact tested runtime / APK source: `801e05f84e1bbc2cd0f308dc77bae1cd43d0ef87`.
+Last application-runtime change: `c9de04d212f9df2062f47d8b639f8b2ef4d06f7f`; the subsequent tested commit corrects verification capture only. Final records are a later documentation-only commit; runtime has not changed after verification.
+
+The operator's correction scope explicitly covers the three separate Home, Work Orders and Photos tabs. The supplied **Concept 3 — Hybrid Field App** image governs visual interpretation. Continue the existing implementation rather than restarting from main. The original automated pass below did not establish visual fidelity; this pass includes inspection of the actual rendered activities.
+
+### Coordinated result
+
+- Shared 48dp app bars / 17sp titles; calmer 14sp medium property and work-order text; 10dp card corners; consistent light/dark proportions.
+- Home: secondary 48dp pale storage/status strip, contrasting green connected dot/refresh icon, Properties/count on one line, compact blue New Address visual within a 48dp touch target, property cards starting at 60dp with compact vector icons.
+- Work Orders: real property and selected-order context, compact selectable orders, Photos action, dated creation and quiet maintenance/reuse controls. Content-sized list replaces the fixed 260dp blank reservation; existing actions and safety owners remain unchanged.
+- Photos: real context, blue 48dp Open Camera, 52dp local thumbnails, lighter 12sp statuses, explicit checkboxes/count, Select All Ready/Clear, sticky green 48dp Upload Selected. Individual/retry/UNCERTAIN controls retain their existing behavior.
+- One shared 56dp bottom navigation uses 20dp icons and 11sp single-line labels, a flat selected state, and existing system-bar inset handling. Photos → Home now explicitly returns to Home; Photos → Work Orders uses the existing saved-property selection path.
+- Property-only display cleanup removes the reported terminal PRESSURE TEST metadata from numeric property labels. Work-order PRESSURE TEST labels remain intact. Duplicate display labels retain short provider-ID disambiguators. Stored names and IDs are untouched. Free-form address naming has no general metadata grammar, so ambiguous address tokens are preserved rather than guessed away.
+
+`CameraCaptureActivity`, camera controls/resources, Drive/provider identity, SAF permissions, folder persistence, protected originals, preparation, queue/attempt sequencing, retry/reconciliation, duplicate/create/reuse/Clear & Reuse, exact stored destination binding and confirmed-success cleanup owners are unchanged. No fake runtime data/features or Google Drive integration impact.
+
+### Final verification and actual rendered review
+
+[Android CI run 34732932338](https://github.com/timbone72-CC/field-photo-prep/actions/runs/34732932338) — **PASS**, exact head `801e05f84e1bbc2cd0f308dc77bae1cd43d0ef87`.
+
+- Unit tests: **139 passed**, zero failures/errors/skips.
+- Internal debug build: **PASS**.
+- Stable signer verification: **PASS**; certificate SHA-256 `2c0a9616fd819333ed98b33593fbe597e120e95936103c6b7a76270e985d3fba`.
+- Full instrumentation: **8 passed**, zero failures/skips; includes real-activity rendering/selection/navigation and Concept 3 structure alongside existing photo preparation/upload coverage.
+- Additional dark and 1.3-font UI runs: **2 passed each**, explicitly executing both UI tests and requiring all three newly named screenshots.
+- Internal launch smoke: **PASS**.
+
+Rendered evidence artifact: `10309898268`, `concept-3-rendered-verification`; archive SHA-256 `c7e4280430c3ea5314e0cb8c26f3d3ba7988c52c5701a8b83e120de7b148935c`.
+
+Visually inspected all **nine** final PNGs: Home / Work Orders / Photos in light, dark, and light at 1.3 font scale, API 35 at 1080×2400 / 440dpi (approximately 393dp wide). Review accepted the smaller hierarchy, quiet storage strip, dense property/order rows, consistent green/blue actions, local thumbnail/check/count/upload presentation, one-line icon navigation and clear system-bar spacing. Larger font preserves readable wrapping and compact navigation. Initial rendered review led to lighter Photos statuses, flat navigation and a contrasting connected dot before this final gate.
+
+These are actual production activities/adapters/image decoding with isolated AndroidTest-only folder/queue/JPEG fixtures. No provider was read/written; fixtures are not evidence of real Samsung/Google Drive behavior. Maintenance/creation controls below a long list remain scrollable and use the existing owners.
+
+### One final internal APK / remaining Samsung gate
+
+APK artifact: `10310476852`, `field-photo-prep-internal-apk`; archive SHA-256 `916b1a317a9ad187890eca0234568fa296a208982622e0691bb29e0cc01cfa22`.
+
+Staged filename: `Field-Photo-Prep-Concept-3-Correction.apk`.
+APK SHA-256: `4d009ad04e539bc054e8b8513780b9f2f94a939d2ac72424e843284a54fb1ea2`.
+Downloaded archive digests and the APK certificate were independently verified.
+
+Install over the existing signed internal app; do not clear app data. Check compact Home with real properties, existing property/order selection and Photos context, real thumbnails/checkbox/count/sticky upload, existing Open Camera handoff, and all three tabs against Samsung status/navigation bars at normal phone settings. No destructive Drive experiment or camera redesign regression gate is required solely for this presentation correction. **Do not merge until operator Samsung approval.**
+
+## Original implementation record — 2026-09-12 (historical)
+
 Date: 2026-09-12
 
 Status: **IMPLEMENTED — AUTOMATED GATE PASSED; SAMSUNG VISUAL GATE PENDING**
