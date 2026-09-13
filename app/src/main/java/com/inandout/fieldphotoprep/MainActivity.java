@@ -5,17 +5,30 @@ import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.content.UriPermission;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -42,26 +55,46 @@ public final class MainActivity extends Activity {
     private DriveFolder selectedWorkOrder;
     private LocalDate selectedDate = LocalDate.now();
     private boolean createBlockedUntilRefresh;
+    private boolean busy;
+
+    private FrameLayout appRoot;
+    private View homeRoot;
+    private LinearLayout legacyRoot;
 
     private TextView statusText;
-    private TextView masterText;
-    private TextView listLabel;
+    private TextView homeStatusText;
+    private TextView legacyStatusText;
+    private TextView legacyMasterText;
+    private TextView homeMasterNameText;
+    private TextView homeDriveStateText;
+    private TextView homePropertyCountText;
+    private TextView homeEmptyText;
+    private View homeDriveStatusDot;
+    private ProgressBar homeProgress;
+    private ImageButton driveOptionsButton;
+
     private TextView addressText;
     private TextView currentWorkOrderText;
-    private LinearLayout addressControls;
     private LinearLayout workOrderControls;
     private ScrollView workOrderScroll;
     private Button chooseMasterButton;
-    private Button refreshAddressButton;
+    private ImageButton refreshAddressButton;
     private Button useCreateAddressButton;
     private Button backButton;
     private Button refreshWorkOrdersButton;
-    private Button selectWorkOrderButton;
     private Button dateButton;
     private Button useCreateButton;
     private Button reuseEmptyButton;
     private Button clearReuseButton;
     private Button photosButton;
+    private ListView workOrderList;
+    private WorkOrderListAdapter workOrderAdapter;
+    private LinearLayout maintenanceControls;
+    private Button maintenanceButton;
+    private Button homeNavWorkOrdersButton;
+    private Button homeNavPhotosButton;
+    private Button workNavHomeButton;
+    private Button workNavPhotosButton;
     private EditText workOrderInput;
     private ListView folderList;
     private ArrayAdapter<DriveFolder> adapter;
@@ -76,12 +109,24 @@ public final class MainActivity extends Activity {
 
         Uri savedTree = folderPrefs.getMasterTreeUri();
         if (savedTree == null) {
-            statusText.setText("Choose the master Drive folder to begin.");
+            showHomeInlineMessage("Google Drive is not connected.");
         } else if (hasPersistedReadPermission(savedTree)) {
-            statusText.setText("Master folder ready.");
+            clearHomeInlineMessage();
             refreshAddressFolders();
         } else {
-            statusText.setText("Master folder access expired. Choose it again.");
+            showHomeInlineMessage("Drive access expired. Reconnect the master folder.");
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String destination = intent.getStringExtra("field_tab");
+        if ("home".equals(destination)) {
+            showAddressScreen(true);
+        } else if ("work_orders".equals(destination) && screen == Screen.ADDRESSES) {
+            openSavedPropertyFromHome();
         }
     }
 
@@ -101,153 +146,158 @@ public final class MainActivity extends Activity {
     }
 
     private void buildUi() {
-        int pad = dp(16);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-
-        TextView title = new TextView(this);
-        title.setText("Field Photo Prep");
-        title.setTextSize(24);
-        root.addView(title);
-
-        TextView phase = new TextView(this);
-        phase.setText("Address and work-order setup");
-        phase.setTextSize(14);
-        root.addView(phase);
-
-        statusText = new TextView(this);
-        statusText.setPadding(0, dp(12), 0, dp(8));
-        root.addView(statusText);
-
-        masterText = new TextView(this);
-        masterText.setPadding(0, dp(8), 0, dp(8));
-        root.addView(masterText);
-
-        addressControls = new LinearLayout(this);
-        addressControls.setOrientation(LinearLayout.VERTICAL);
-
-        chooseMasterButton = new Button(this);
-        chooseMasterButton.setText("Choose Master Folder");
-        chooseMasterButton.setOnClickListener(v -> chooseMasterFolder());
-        addressControls.addView(chooseMasterButton);
-
-        refreshAddressButton = new Button(this);
-        refreshAddressButton.setText("Refresh Address Folders");
-        refreshAddressButton.setEnabled(false);
-        refreshAddressButton.setOnClickListener(v -> refreshAddressFolders());
-        addressControls.addView(refreshAddressButton);
-
-        useCreateAddressButton = new Button(this);
-        useCreateAddressButton.setText("Use / Create Address Folder");
-        useCreateAddressButton.setEnabled(false);
-        useCreateAddressButton.setOnClickListener(v -> showAddressEntryDialog());
-        addressControls.addView(useCreateAddressButton);
-        root.addView(addressControls);
-
-        workOrderControls = new LinearLayout(this);
-        workOrderControls.setOrientation(LinearLayout.VERTICAL);
-
-        addressText = new TextView(this);
-        addressText.setTextSize(18);
-        addressText.setPadding(0, dp(4), 0, dp(8));
-        workOrderControls.addView(addressText);
-
-        LinearLayout navigationRow = new LinearLayout(this);
-        navigationRow.setOrientation(LinearLayout.HORIZONTAL);
-
-        backButton = new Button(this);
-        backButton.setText("Back to Addresses");
-        backButton.setOnClickListener(v -> showAddressScreen(true));
-        navigationRow.addView(backButton, new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-
-        refreshWorkOrdersButton = new Button(this);
-        refreshWorkOrdersButton.setText("Refresh Work Orders");
-        refreshWorkOrdersButton.setOnClickListener(v -> refreshWorkOrderFolders());
-        navigationRow.addView(refreshWorkOrdersButton, new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        workOrderControls.addView(navigationRow);
-
-        selectWorkOrderButton = new Button(this);
-        selectWorkOrderButton.setText("Select Existing Work Order");
-        selectWorkOrderButton.setEnabled(false);
-        selectWorkOrderButton.setOnClickListener(v -> showWorkOrderPicker());
-        workOrderControls.addView(selectWorkOrderButton);
-
-        workOrderInput = new EditText(this);
-        workOrderInput.setHint("Work order name only — e.g. Cut Grass");
-        workOrderInput.setSingleLine(true);
-        workOrderControls.addView(workOrderInput);
-
-        dateButton = new Button(this);
-        dateButton.setOnClickListener(v -> chooseWorkOrderDate());
-        workOrderControls.addView(dateButton);
-
-        useCreateButton = new Button(this);
-        useCreateButton.setText("Use / Create Dated Work Order");
-        useCreateButton.setOnClickListener(v -> useOrCreateWorkOrder());
-        workOrderControls.addView(useCreateButton);
-
-        reuseEmptyButton = new Button(this);
-        reuseEmptyButton.setText("Reuse Selected Empty Folder");
-        reuseEmptyButton.setOnClickListener(v -> reuseSelectedEmptyFolder());
-        workOrderControls.addView(reuseEmptyButton);
-
-        clearReuseButton = new Button(this);
-        clearReuseButton.setText("Clear & Reuse Selected Folder");
-        clearReuseButton.setOnClickListener(v -> prepareClearAndReuse());
-        workOrderControls.addView(clearReuseButton);
-
-        currentWorkOrderText = new TextView(this);
-        currentWorkOrderText.setPadding(0, dp(8), 0, dp(4));
-        workOrderControls.addView(currentWorkOrderText);
-
-        photosButton = new Button(this);
-        photosButton.setText("Photos for Selected Work Order");
-        photosButton.setEnabled(false);
-        photosButton.setOnClickListener(v -> openPhotoCapture());
-        workOrderControls.addView(photosButton);
-
-        workOrderScroll = new ScrollView(this);
-        workOrderScroll.setFillViewport(true);
-        workOrderScroll.setVisibility(View.GONE);
-        workOrderScroll.addView(workOrderControls, new ScrollView.LayoutParams(
+        appRoot = new FrameLayout(this);
+        appRoot.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(workOrderScroll, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+                ViewGroup.LayoutParams.MATCH_PARENT));
 
-        listLabel = new TextView(this);
-        listLabel.setTextSize(16);
-        listLabel.setPadding(0, dp(16), 0, dp(4));
-        root.addView(listLabel);
+        buildHomeUi();
+        buildLegacyWorkOrderUi();
 
-        folderList = new ListView(this);
-        adapter = new ArrayAdapter<DriveFolder>(this, android.R.layout.simple_list_item_1, visibleFolders) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                TextView view = (TextView) super.getView(position, convertView, parent);
-                DriveFolder folder = getItem(position);
-                view.setText(folder == null ? "" : folderLabel(folder));
-                return view;
-            }
-        };
-        folderList.setAdapter(adapter);
-        folderList.setOnItemClickListener((parent, view, position, id) -> {
-            DriveFolder folder = visibleFolders.get(position);
-            if (screen == Screen.ADDRESSES) {
-                openAddress(folder);
-            } else {
-                selectWorkOrder(folder, "Work order selected");
-            }
-        });
-        root.addView(folderList, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
-
-        setContentView(root);
+        appRoot.addView(homeRoot, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        appRoot.addView(legacyRoot, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(appRoot);
         updateDateButton();
     }
+
+private void buildHomeUi() {
+    homeRoot = LayoutInflater.from(this).inflate(R.layout.screen_home_properties, appRoot, false);
+    homeStatusText = homeRoot.findViewById(R.id.home_status_text);
+    homeMasterNameText = homeRoot.findViewById(R.id.home_master_name);
+    homeDriveStateText = homeRoot.findViewById(R.id.home_drive_state);
+    homePropertyCountText = homeRoot.findViewById(R.id.home_property_count);
+    homeEmptyText = homeRoot.findViewById(R.id.home_empty_text);
+    homeDriveStatusDot = homeRoot.findViewById(R.id.drive_status_dot);
+    homeProgress = homeRoot.findViewById(R.id.home_progress);
+    driveOptionsButton = homeRoot.findViewById(R.id.home_drive_options_button);
+
+    chooseMasterButton = homeRoot.findViewById(R.id.home_connect_button);
+    refreshAddressButton = homeRoot.findViewById(R.id.home_refresh_button);
+    useCreateAddressButton = homeRoot.findViewById(R.id.home_new_address_button);
+    folderList = homeRoot.findViewById(R.id.home_property_list);
+    homeNavWorkOrdersButton = homeRoot.findViewById(R.id.nav_work_orders);
+    homeNavPhotosButton = homeRoot.findViewById(R.id.nav_photos);
+    homeRoot.findViewById(R.id.nav_home).setSelected(true);
+
+    chooseMasterButton.setOnClickListener(v -> chooseMasterFolder());
+    refreshAddressButton.setOnClickListener(v -> refreshAddressFolders());
+    useCreateAddressButton.setOnClickListener(v -> showAddressEntryDialog());
+    driveOptionsButton.setOnClickListener(this::showDriveOptions);
+    homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
+    homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
+
+    adapter = new PropertyListAdapter(this, visibleFolders);
+    folderList.setAdapter(adapter);
+    folderList.setOnItemClickListener((parent, view, position, id) -> {
+        if (screen != Screen.ADDRESSES || busy || position < 0 || position >= visibleFolders.size()) {
+            return;
+        }
+        openAddress(visibleFolders.get(position));
+    });
+
+    ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
+        var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+        view.setPadding(0, bars.top, 0, bars.bottom);
+        return insets;
+    });
+    ViewCompat.requestApplyInsets(homeRoot);
+}
+
+private void openSavedPropertyFromHome() {
+    DriveFolder saved = folderPrefs.getCurrentAddress();
+    if (saved == null) {
+        showHomeInlineMessage("Choose a property first.");
+        return;
+    }
+    DriveFolder actual = DriveClient.findById(visibleFolders, saved.id());
+    if (actual == null) {
+        showHomeInlineMessage("Refresh Properties, then choose the property you want to open.");
+        return;
+    }
+    openAddress(actual);
+}
+
+private void openSavedPhotosFromHome() {
+    DriveFolder savedAddress = folderPrefs.getCurrentAddress();
+    DriveFolder savedWorkOrder = folderPrefs.getCurrentWorkOrder();
+    if (savedAddress == null || savedWorkOrder == null) {
+        showHomeInlineMessage("Choose a property and work order before opening Photos.");
+        return;
+    }
+    startActivity(new Intent(this, PhotoCaptureActivity.class));
+}
+
+
+    private void showDriveOptions(View anchor) {
+        if (busy) {
+            showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Drive options")
+                .setItems(new CharSequence[]{"Change Drive"}, (dialog, which) -> chooseMasterFolder())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+private void buildLegacyWorkOrderUi() {
+    legacyRoot = (LinearLayout) LayoutInflater.from(this)
+            .inflate(R.layout.screen_work_orders, appRoot, false);
+    legacyStatusText = legacyRoot.findViewById(R.id.work_order_status);
+    legacyMasterText = legacyRoot.findViewById(R.id.work_order_master_text);
+    addressText = legacyRoot.findViewById(R.id.work_order_address);
+    currentWorkOrderText = legacyRoot.findViewById(R.id.work_order_current);
+    workOrderScroll = legacyRoot.findViewById(R.id.work_order_scroll);
+    workOrderInput = legacyRoot.findViewById(R.id.work_order_name_input);
+    backButton = legacyRoot.findViewById(R.id.work_order_back);
+    refreshWorkOrdersButton = legacyRoot.findViewById(R.id.work_order_refresh);
+    dateButton = legacyRoot.findViewById(R.id.work_order_date_button);
+    useCreateButton = legacyRoot.findViewById(R.id.work_order_create_button);
+    reuseEmptyButton = legacyRoot.findViewById(R.id.work_order_reuse_empty);
+    clearReuseButton = legacyRoot.findViewById(R.id.work_order_clear_reuse);
+    photosButton = legacyRoot.findViewById(R.id.work_order_photos);
+    workOrderList = legacyRoot.findViewById(R.id.work_order_list);
+    maintenanceControls = legacyRoot.findViewById(R.id.work_order_maintenance);
+    maintenanceButton = legacyRoot.findViewById(R.id.work_order_maintenance_toggle);
+    workNavHomeButton = legacyRoot.findViewById(R.id.nav_home);
+    workNavPhotosButton = legacyRoot.findViewById(R.id.nav_photos);
+    legacyRoot.findViewById(R.id.nav_work_orders).setSelected(true);
+
+    workOrderControls = (LinearLayout) workOrderScroll.getChildAt(0);
+    workOrderAdapter = new WorkOrderListAdapter(this, visibleFolders);
+    workOrderList.setAdapter(workOrderAdapter);
+    workOrderList.setOnItemClickListener((parent, view, position, id) -> {
+        if (busy || position < 0 || position >= visibleFolders.size()) {
+            return;
+        }
+        selectWorkOrder(visibleFolders.get(position), "Work order selected");
+    });
+
+    backButton.setOnClickListener(v -> showAddressScreen(true));
+    refreshWorkOrdersButton.setOnClickListener(v -> refreshWorkOrderFolders());
+    dateButton.setOnClickListener(v -> chooseWorkOrderDate());
+    useCreateButton.setOnClickListener(v -> useOrCreateWorkOrder());
+    reuseEmptyButton.setOnClickListener(v -> reuseSelectedEmptyFolder());
+    clearReuseButton.setOnClickListener(v -> prepareClearAndReuse());
+    photosButton.setOnClickListener(v -> openPhotoCapture());
+    maintenanceButton.setOnClickListener(v -> maintenanceControls.setVisibility(
+            maintenanceControls.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
+    workNavHomeButton.setOnClickListener(v -> showAddressScreen(true));
+    workNavPhotosButton.setOnClickListener(v -> openPhotoCapture());
+
+    ViewCompat.setOnApplyWindowInsetsListener(legacyRoot, (view, insets) -> {
+        var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+        view.setPadding(dp(14), bars.top, dp(14), bars.bottom);
+        return insets;
+    });
+    ViewCompat.requestApplyInsets(legacyRoot);
+    legacyRoot.setVisibility(View.GONE);
+}
+
 
     private void chooseMasterFolder() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -304,9 +354,9 @@ public final class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     visibleFolders.clear();
                     visibleFolders.addAll(folders);
-                    adapter.notifyDataSetChanged();
-                    statusText.setText(folders.size() + " address folder"
-                            + (folders.size() == 1 ? "" : "s") + " found.");
+                    notifyFolderAdapters();
+                    renderPropertyCountAndEmptyState();
+                    clearHomeInlineMessage();
                     setNotBusy();
                 });
             } catch (Exception error) {
@@ -387,9 +437,10 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
-                        adapter.notifyDataSetChanged();
-                        statusText.setText(matches.size() + " address folders named " + requestedName
-                                + " already exist. Tap the intended one; no folder was created.");
+                        notifyFolderAdapters();
+                        renderPropertyCountAndEmptyState();
+                        showHomeInlineMessage(matches.size() + " address folders named " + requestedName
+                                + " already exist. Choose the intended property; no folder was created.");
                         setNotBusy();
                     });
                     return;
@@ -403,7 +454,8 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
-                        adapter.notifyDataSetChanged();
+                        notifyFolderAdapters();
+                        renderPropertyCountAndEmptyState();
                         openAddress(existing);
                     });
                     return;
@@ -428,8 +480,9 @@ public final class MainActivity extends Activity {
                         createBlockedUntilRefresh = true;
                         visibleFolders.clear();
                         visibleFolders.addAll(afterCreate);
-                        adapter.notifyDataSetChanged();
-                        statusText.setText("Address create result is ambiguous. Tap the intended same-named folder; no additional folder will be created until refresh.");
+                        notifyFolderAdapters();
+                        renderPropertyCountAndEmptyState();
+                        showHomeInlineMessage("Address create result is ambiguous. Choose the intended same-named property; no additional folder will be created until refresh.");
                         setNotBusy();
                     });
                     return;
@@ -441,7 +494,8 @@ public final class MainActivity extends Activity {
                     }
                     visibleFolders.clear();
                     visibleFolders.addAll(afterCreate);
-                    adapter.notifyDataSetChanged();
+                    notifyFolderAdapters();
+                    renderPropertyCountAndEmptyState();
                     openAddress(verified);
                 });
             } catch (Exception error) {
@@ -459,13 +513,12 @@ public final class MainActivity extends Activity {
         selectedWorkOrder = folderPrefs.getCurrentWorkOrder();
         createBlockedUntilRefresh = false;
         screen = Screen.WORK_ORDERS;
-        addressControls.setVisibility(View.GONE);
-        workOrderScroll.setVisibility(View.VISIBLE);
-        listLabel.setVisibility(View.GONE);
-        folderList.setVisibility(View.GONE);
-        addressText.setText("Address: " + address.name());
+        statusText = legacyStatusText;
+        homeRoot.setVisibility(View.GONE);
+        legacyRoot.setVisibility(View.VISIBLE);
+        addressText.setText(PropertyDisplayName.fromDriveFolderName(address.name()));
         renderCurrentWorkOrder();
-        renderWorkOrderPickerButton();
+        applySystemBarAppearance(false);
         refreshWorkOrderFolders();
     }
 
@@ -474,16 +527,17 @@ public final class MainActivity extends Activity {
         selectedAddress = null;
         selectedWorkOrder = null;
         createBlockedUntilRefresh = false;
-        addressControls.setVisibility(View.VISIBLE);
-        workOrderScroll.setVisibility(View.GONE);
-        listLabel.setVisibility(View.VISIBLE);
-        folderList.setVisibility(View.VISIBLE);
-        listLabel.setText("Address folders");
+        statusText = homeStatusText;
+        legacyRoot.setVisibility(View.GONE);
+        homeRoot.setVisibility(View.VISIBLE);
         visibleFolders.clear();
         if (adapter != null) {
-            adapter.notifyDataSetChanged();
+            notifyFolderAdapters();
         }
+        renderPropertyCountAndEmptyState();
         renderSavedMaster();
+        clearHomeInlineMessage();
+        applySystemBarAppearance(true);
         setNotBusy();
         if (refresh && folderPrefs.getMasterTreeUri() != null) {
             refreshAddressFolders();
@@ -515,47 +569,15 @@ public final class MainActivity extends Activity {
                     visibleFolders.clear();
                     visibleFolders.addAll(folders);
                     reconcileSelectedWorkOrder(folders);
-                    adapter.notifyDataSetChanged();
-                    statusText.setText(folders.size() + " work-order folder"
-                            + (folders.size() == 1 ? "" : "s") + " found.");
+                    notifyFolderAdapters();
+                    setStatusText(folders.size() + " work order" + (folders.size() == 1 ? "" : "s") + " available");
+                    statusText.setVisibility(View.GONE);
                     setNotBusy();
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> showError("Could not read work-order folders", error));
             }
         });
-    }
-
-    private void showWorkOrderPicker() {
-        if (screen != Screen.WORK_ORDERS || visibleFolders.isEmpty()) {
-            showMessage("No work-order folders are available to select.");
-            return;
-        }
-
-        CharSequence[] labels = new CharSequence[visibleFolders.size()];
-        for (int i = 0; i < visibleFolders.size(); i++) {
-            labels[i] = folderLabel(visibleFolders.get(i));
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle("Select existing work-order folder")
-                .setItems(labels, (dialog, which) -> {
-                    if (which >= 0 && which < visibleFolders.size()) {
-                        selectWorkOrder(visibleFolders.get(which), "Work order selected");
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void renderWorkOrderPickerButton() {
-        if (selectWorkOrderButton == null) {
-            return;
-        }
-        int count = screen == Screen.WORK_ORDERS ? visibleFolders.size() : 0;
-        selectWorkOrderButton.setText(count == 0
-                ? "Select Existing Work Order"
-                : "Select Existing Work Order (" + count + ")");
     }
 
     private void chooseWorkOrderDate() {
@@ -619,8 +641,8 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
-                        adapter.notifyDataSetChanged();
-                        statusText.setText(matches.size() + " folders named " + requestedName
+                        notifyFolderAdapters();
+                        setStatusText(matches.size() + " folders named " + requestedName
                                 + " already exist. Select the intended one; no folder was created.");
                         setNotBusy();
                     });
@@ -635,7 +657,7 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
-                        adapter.notifyDataSetChanged();
+                        notifyFolderAdapters();
                         selectWorkOrder(existing, "Existing work-order folder reused");
                     });
                     return;
@@ -660,8 +682,8 @@ public final class MainActivity extends Activity {
                         createBlockedUntilRefresh = true;
                         visibleFolders.clear();
                         visibleFolders.addAll(afterCreate);
-                        adapter.notifyDataSetChanged();
-                        statusText.setText("Work-order create result is ambiguous. Select the intended same-named folder; no additional folder will be created until refresh.");
+                        notifyFolderAdapters();
+                        setStatusText("Work-order create result is ambiguous. Select the intended same-named folder; no additional folder will be created until refresh.");
                         setNotBusy();
                     });
                     return;
@@ -673,7 +695,7 @@ public final class MainActivity extends Activity {
                     }
                     visibleFolders.clear();
                     visibleFolders.addAll(afterCreate);
-                    adapter.notifyDataSetChanged();
+                    notifyFolderAdapters();
                     selectWorkOrder(verified, "Work-order folder created");
                 });
             } catch (Exception error) {
@@ -748,8 +770,8 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
-                        adapter.notifyDataSetChanged();
-                        statusText.setText(requestedMatches.size() + " folders named " + requestedName
+                        notifyFolderAdapters();
+                        setStatusText(requestedMatches.size() + " folders named " + requestedName
                                 + " already exist. No old folder was renamed; select the intended existing folder.");
                         setNotBusy();
                     });
@@ -764,7 +786,7 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
-                        adapter.notifyDataSetChanged();
+                        notifyFolderAdapters();
                         selectWorkOrder(existing, "Requested dated folder already exists; old folder unchanged");
                     });
                     return;
@@ -812,7 +834,7 @@ public final class MainActivity extends Activity {
                     }
                     visibleFolders.clear();
                     visibleFolders.addAll(afterRename);
-                    adapter.notifyDataSetChanged();
+                    notifyFolderAdapters();
                     selectWorkOrder(verified, "Empty folder reused with the same identity");
                 });
             } catch (Exception error) {
@@ -887,8 +909,8 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
-                        adapter.notifyDataSetChanged();
-                        statusText.setText(requestedMatches.size() + " folders named " + requestedName
+                        notifyFolderAdapters();
+                        setStatusText(requestedMatches.size() + " folders named " + requestedName
                                 + " already exist. Nothing was deleted; select the intended existing folder.");
                         setNotBusy();
                     });
@@ -903,7 +925,7 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
-                        adapter.notifyDataSetChanged();
+                        notifyFolderAdapters();
                         selectWorkOrder(existing, "Requested dated folder already exists; old folder unchanged");
                     });
                     return;
@@ -1102,7 +1124,7 @@ public final class MainActivity extends Activity {
                         }
                         visibleFolders.clear();
                         visibleFolders.addAll(afterRename);
-                        adapter.notifyDataSetChanged();
+                        notifyFolderAdapters();
                         selectWorkOrder(verified, "Clear & Reuse complete with the same identity");
                     });
                 } catch (Exception error) {
@@ -1149,7 +1171,9 @@ public final class MainActivity extends Activity {
         selectedWorkOrder = folder;
         folderPrefs.setCurrentWorkOrder(folder);
         renderCurrentWorkOrder();
-        statusText.setText(message + ": " + folder.name());
+        if (workOrderAdapter != null) { workOrderAdapter.setSelectedId(folder.id()); }
+        setStatusText(message + ": " + PropertyDisplayName.readableFolderName(folder.name()));
+        statusText.setVisibility(View.VISIBLE);
         setNotBusy();
     }
 
@@ -1169,13 +1193,26 @@ public final class MainActivity extends Activity {
         renderCurrentWorkOrder();
     }
 
+
+    private void notifyFolderAdapters() {
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+        if (workOrderAdapter != null) {
+            workOrderAdapter.notifyDataSetChanged();
+        }
+    }
+
     private void renderCurrentWorkOrder() {
         if (currentWorkOrderText == null) {
             return;
         }
         currentWorkOrderText.setText(selectedWorkOrder == null
-                ? "Selected work order: none"
-                : "Selected work order: " + selectedWorkOrder.name());
+                ? "Select a work order below"
+                : "Selected: " + PropertyDisplayName.readableFolderName(selectedWorkOrder.name()));
+        if (workOrderAdapter != null) {
+            workOrderAdapter.setSelectedId(selectedWorkOrder == null ? null : selectedWorkOrder.id());
+        }
     }
 
     private String folderLabel(DriveFolder folder) {
@@ -1219,25 +1256,100 @@ public final class MainActivity extends Activity {
 
     private void renderSavedMaster() {
         DriveFolder master = folderPrefs == null ? null : folderPrefs.getMasterFolder();
-        if (masterText != null) {
-            masterText.setText(master == null
+        Uri treeUri = folderPrefs == null ? null : folderPrefs.getMasterTreeUri();
+        boolean canRead = treeUri != null && hasPersistedReadPermission(treeUri);
+
+        if (legacyMasterText != null) {
+            legacyMasterText.setText(master == null
                     ? "Master folder: not selected"
                     : "Master folder: " + master.name());
         }
+
+        if (homeMasterNameText != null) {
+            if (master == null) {
+                homeMasterNameText.setText("Google Drive");
+                homeDriveStateText.setText("Not connected");
+                chooseMasterButton.setText("Connect Drive");
+                chooseMasterButton.setVisibility(View.VISIBLE);
+                refreshAddressButton.setVisibility(View.GONE);
+                driveOptionsButton.setVisibility(View.GONE);
+                tintDriveStatusDot(R.color.home_text_secondary);
+            } else if (canRead) {
+                homeMasterNameText.setText(master.name());
+                homeDriveStateText.setText("Drive connected");
+                chooseMasterButton.setVisibility(View.GONE);
+                refreshAddressButton.setVisibility(View.VISIBLE);
+                driveOptionsButton.setVisibility(View.VISIBLE);
+                tintDriveStatusDot(R.color.home_primary);
+            } else {
+                homeMasterNameText.setText(master.name());
+                homeDriveStateText.setText("Drive access expired");
+                chooseMasterButton.setText("Reconnect");
+                chooseMasterButton.setVisibility(View.VISIBLE);
+                refreshAddressButton.setVisibility(View.GONE);
+                driveOptionsButton.setVisibility(View.VISIBLE);
+                tintDriveStatusDot(R.color.home_error);
+            }
+        }
+
         if (refreshAddressButton != null) {
+            refreshAddressButton.setEnabled(canRead && !busy);
+        }
+        if (driveOptionsButton != null) {
+            driveOptionsButton.setEnabled(master != null && !busy);
+        }
+        renderPropertyCountAndEmptyState();
+    }
+
+    private void tintDriveStatusDot(int colorRes) {
+        if (homeDriveStatusDot == null) {
+            return;
+        }
+        ViewCompat.setBackgroundTintList(homeDriveStatusDot,
+                ColorStateList.valueOf(ContextCompat.getColor(this, colorRes)));
+    }
+
+    private void renderPropertyCountAndEmptyState() {
+        if (homePropertyCountText != null) {
+            int count = visibleFolders.size();
+            homePropertyCountText.setText(count == 1 ? "1 property" : count + " properties");
+        }
+        if (homeEmptyText != null) {
             Uri treeUri = folderPrefs == null ? null : folderPrefs.getMasterTreeUri();
-            refreshAddressButton.setEnabled(treeUri != null && hasPersistedReadPermission(treeUri));
+            boolean connected = treeUri != null && hasPersistedReadPermission(treeUri);
+            homeEmptyText.setVisibility(connected && !busy && visibleFolders.isEmpty()
+                    ? View.VISIBLE : View.GONE);
         }
     }
 
+    private void showHomeInlineMessage(String message) {
+        if (homeStatusText == null) {
+            return;
+        }
+        homeStatusText.setText(message == null ? "" : message);
+        homeStatusText.setVisibility(message == null || message.isBlank() ? View.GONE : View.VISIBLE);
+    }
+
+    private void clearHomeInlineMessage() {
+        showHomeInlineMessage(null);
+    }
+
     private void setBusy(String message) {
-        statusText.setText(message);
+        busy = true;
+        if (screen == Screen.ADDRESSES) {
+            clearHomeInlineMessage();
+            if (homeProgress != null) {
+                homeProgress.setVisibility(View.VISIBLE);
+            }
+        } else {
+            setStatusText(message);
+        }
         chooseMasterButton.setEnabled(false);
         refreshAddressButton.setEnabled(false);
+        driveOptionsButton.setEnabled(false);
         useCreateAddressButton.setEnabled(false);
         backButton.setEnabled(false);
         refreshWorkOrdersButton.setEnabled(false);
-        selectWorkOrderButton.setEnabled(false);
         workOrderInput.setEnabled(false);
         dateButton.setEnabled(false);
         useCreateButton.setEnabled(false);
@@ -1245,25 +1357,28 @@ public final class MainActivity extends Activity {
         clearReuseButton.setEnabled(false);
         photosButton.setEnabled(false);
         folderList.setEnabled(false);
+        renderPropertyCountAndEmptyState();
     }
 
     private void setNotBusy() {
+        busy = false;
         Uri treeUri = folderPrefs.getMasterTreeUri();
         boolean canRead = treeUri != null && hasPersistedReadPermission(treeUri);
         boolean canWrite = treeUri != null && hasPersistedWritePermission(treeUri);
 
-        renderWorkOrderPickerButton();
+        if (homeProgress != null) {
+            homeProgress.setVisibility(View.GONE);
+        }
         folderList.setEnabled(canRead);
         if (screen == Screen.ADDRESSES) {
             chooseMasterButton.setEnabled(true);
             refreshAddressButton.setEnabled(canRead);
             useCreateAddressButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
-            selectWorkOrderButton.setEnabled(false);
             photosButton.setEnabled(false);
+            renderSavedMaster();
         } else {
             backButton.setEnabled(true);
             refreshWorkOrdersButton.setEnabled(canRead);
-            selectWorkOrderButton.setEnabled(canRead && !visibleFolders.isEmpty());
             workOrderInput.setEnabled(canRead);
             dateButton.setEnabled(canRead);
             useCreateButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
@@ -1275,17 +1390,59 @@ public final class MainActivity extends Activity {
                     && !createBlockedUntilRefresh);
             photosButton.setEnabled(selectedAddress != null && selectedWorkOrder != null);
         }
+        renderPropertyCountAndEmptyState();
+    }
+
+    private void setStatusText(String message) {
+        if (statusText == null) {
+            return;
+        }
+        statusText.setText(message == null ? "" : message);
+        if (screen == Screen.WORK_ORDERS) {
+            statusText.setVisibility(message == null || message.isBlank() ? View.GONE : View.VISIBLE);
+        }
     }
 
     private void showMessage(String message) {
-        statusText.setText(message);
+        if (screen == Screen.ADDRESSES) {
+            showHomeInlineMessage(message);
+        } else {
+            setStatusText(message);
+            statusText.setVisibility(View.VISIBLE);
+        }
         setNotBusy();
     }
 
     private void showError(String prefix, Throwable error) {
         String detail = error.getMessage();
-        statusText.setText(prefix + (detail == null ? "." : ": " + detail));
+        String message = prefix + (detail == null ? "." : ": " + detail);
+        if (screen == Screen.ADDRESSES) {
+            showHomeInlineMessage(message);
+        } else {
+            setStatusText(message);
+            statusText.setVisibility(View.VISIBLE);
+        }
         setNotBusy();
+    }
+
+    private void applySystemBarAppearance(boolean home) {
+        boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
+                getWindow(), getWindow().getDecorView());
+        if (home) {
+            controller.setAppearanceLightStatusBars(!night);
+            controller.setAppearanceLightNavigationBars(!night);
+            int color = ContextCompat.getColor(this, R.color.home_background);
+            getWindow().setStatusBarColor(color);
+            getWindow().setNavigationBarColor(color);
+        } else {
+            controller.setAppearanceLightStatusBars(!night);
+            controller.setAppearanceLightNavigationBars(!night);
+            int color = ContextCompat.getColor(this, R.color.home_background);
+            getWindow().setStatusBarColor(color);
+            getWindow().setNavigationBarColor(color);
+        }
     }
 
     private int dp(int value) {

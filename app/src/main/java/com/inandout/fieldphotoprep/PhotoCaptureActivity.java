@@ -3,11 +3,23 @@ package com.inandout.fieldphotoprep;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+
+import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import android.widget.TextView;
 
 import java.io.File;
@@ -54,6 +66,7 @@ public final class PhotoCaptureActivity extends Activity {
     private Button uploadButton;
     private Button reconcileButton;
     private Button discardButton;
+    private View selectedActionsPanel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,7 +87,7 @@ public final class PhotoCaptureActivity extends Activity {
         buildUi();
 
         if (address == null || workOrder == null) {
-            statusText.setText("Choose an exact address and work order before taking photos.");
+            showPhotoStatus("Choose an exact address and work order before taking photos.");
             takePhotoButton.setEnabled(false);
             selectAllReadyButton.setEnabled(false);
             clearSelectionButton.setEnabled(false);
@@ -88,10 +101,10 @@ public final class PhotoCaptureActivity extends Activity {
 
         reconcileAndRefresh();
         if (PREPARATION_GATE.isBusy()) {
-            statusText.setText("A photo is being prepared in the background. Protected originals are locked until it finishes.");
+            showPhotoStatus("A photo is being prepared in the background. Protected originals are locked until it finishes.");
             renderSelectedPhoto();
         } else if (UPLOAD_GATE.isBusy()) {
-            statusText.setText("A Drive upload, selected batch, or reconciliation check is already running. Wait for its queue result.");
+            showPhotoStatus("A Drive upload, selected batch, or reconciliation check is already running. Wait for its queue result.");
             renderSelectedPhoto();
         }
     }
@@ -109,146 +122,89 @@ public final class PhotoCaptureActivity extends Activity {
         }
     }
 
-    private void buildUi() {
-        int pad = dp(16);
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-        scroll.addView(root);
+private void buildUi() {
+    setContentView(R.layout.screen_photos);
+    View root = findViewById(R.id.photos_root);
+    findViewById(R.id.nav_photos).setSelected(true);
+    statusText = findViewById(R.id.photos_status);
+    pendingCountText = findViewById(R.id.photos_pending_count);
+    batchSelectionText = findViewById(R.id.photos_batch_selection);
+    selectedPhotoText = findViewById(R.id.photos_selected_text);
+    preparedPhotoText = findViewById(R.id.photos_prepared_text);
+    pendingList = findViewById(R.id.photos_pending_list);
+    selectedActionsPanel = findViewById(R.id.photos_selected_panel);
+    takePhotoButton = findViewById(R.id.photos_open_camera);
+    selectAllReadyButton = findViewById(R.id.photos_select_all);
+    clearSelectionButton = findViewById(R.id.photos_clear_selection);
+    uploadBatchButton = findViewById(R.id.photos_upload_selected);
+    prepareButton = findViewById(R.id.photos_prepare);
+    uploadButton = findViewById(R.id.photos_upload_one);
+    reconcileButton = findViewById(R.id.photos_reconcile);
+    discardButton = findViewById(R.id.photos_discard);
 
-        TextView title = new TextView(this);
-        title.setText("Field Photo Prep");
-        title.setTextSize(24);
-        root.addView(title);
+    TextView addressText = findViewById(R.id.photos_address);
+    TextView workOrderText = findViewById(R.id.photos_work_order);
+    addressText.setText(address == null ? "No property selected"
+            : PropertyDisplayName.fromDriveFolderName(address.name()));
+    workOrderText.setText(workOrder == null ? "No work order selected"
+            : PropertyDisplayName.readableFolderName(workOrder.name()));
 
-        TextView phase = new TextView(this);
-        phase.setText("Photos for selected work order");
-        phase.setTextSize(14);
-        root.addView(phase);
+    takePhotoButton.setOnClickListener(v -> beginCameraCapture());
+    selectAllReadyButton.setOnClickListener(v -> selectAllReadyPhotos());
+    clearSelectionButton.setOnClickListener(v -> clearBatchSelection());
+    uploadBatchButton.setOnClickListener(v -> uploadSelectedBatch());
+    prepareButton.setOnClickListener(v -> prepareSelectedPhoto());
+    uploadButton.setOnClickListener(v -> uploadSelectedPhoto());
+    reconcileButton.setOnClickListener(v -> reconcileSelectedPhoto());
+    discardButton.setOnClickListener(v -> confirmDiscardSelected());
+    findViewById(R.id.photos_back).setOnClickListener(v -> finish());
+    findViewById(R.id.nav_home).setOnClickListener(v -> {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("field_tab", "home");
+        startActivity(intent);
+        finish();
+    });
+    findViewById(R.id.nav_work_orders).setOnClickListener(v -> {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("field_tab", "work_orders");
+        startActivity(intent);
+        finish();
+    });
 
-        statusText = new TextView(this);
-        statusText.setPadding(0, dp(12), 0, dp(8));
-        root.addView(statusText);
+    ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+        var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+        view.setPadding(0, bars.top, 0, bars.bottom);
+        return insets;
+    });
+    ViewCompat.requestApplyInsets(root);
+    WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
+            getWindow(), getWindow().getDecorView());
+    boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+            == Configuration.UI_MODE_NIGHT_YES;
+    controller.setAppearanceLightStatusBars(!night);
+    controller.setAppearanceLightNavigationBars(!night);
+    int barColor = ContextCompat.getColor(this, R.color.home_background);
+    getWindow().setStatusBarColor(barColor);
+    getWindow().setNavigationBarColor(barColor);
 
-        TextView addressText = new TextView(this);
-        addressText.setText(address == null ? "Address: none" : "Address: " + address.name());
-        addressText.setTextSize(18);
-        root.addView(addressText);
+    updateBatchSelectionUi();
+    renderSelectedPhoto();
+}
 
-        TextView workOrderText = new TextView(this);
-        workOrderText.setText(workOrder == null ? "Work order: none" : "Work order: " + workOrder.name());
-        workOrderText.setTextSize(18);
-        workOrderText.setPadding(0, dp(6), 0, 0);
-        root.addView(workOrderText);
 
-        TextView identityText = new TextView(this);
-        identityText.setText(workOrder == null
-                ? "Destination identity: none"
-                : "Destination identity: …" + shortId(workOrder.id()));
-        identityText.setPadding(0, dp(4), 0, dp(12));
-        root.addView(identityText);
-
-        takePhotoButton = new Button(this);
-        takePhotoButton.setText("Take Photo");
-        takePhotoButton.setOnClickListener(v -> beginCameraCapture());
-        root.addView(takePhotoButton);
-
-        pendingCountText = new TextView(this);
-        pendingCountText.setTextSize(18);
-        pendingCountText.setPadding(0, dp(16), 0, dp(6));
-        root.addView(pendingCountText);
-
-        batchSelectionText = new TextView(this);
-        batchSelectionText.setTextSize(16);
-        batchSelectionText.setPadding(0, 0, 0, dp(6));
-        root.addView(batchSelectionText);
-
-        LinearLayout batchControls = new LinearLayout(this);
-        batchControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        selectAllReadyButton = new Button(this);
-        selectAllReadyButton.setText("Select All Ready");
-        selectAllReadyButton.setOnClickListener(v -> selectAllReadyPhotos());
-        batchControls.addView(
-                selectAllReadyButton,
-                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        clearSelectionButton = new Button(this);
-        clearSelectionButton.setText("Clear Selection");
-        clearSelectionButton.setOnClickListener(v -> clearBatchSelection());
-        LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f);
-        clearParams.setMarginStart(dp(8));
-        batchControls.addView(clearSelectionButton, clearParams);
-        root.addView(batchControls);
-
-        uploadBatchButton = new Button(this);
-        uploadBatchButton.setText("Upload Selected (0)");
-        uploadBatchButton.setEnabled(false);
-        uploadBatchButton.setOnClickListener(v -> uploadSelectedBatch());
-        root.addView(uploadBatchButton);
-
-        pendingList = new LinearLayout(this);
-        pendingList.setOrientation(LinearLayout.VERTICAL);
-        pendingList.setPadding(0, dp(8), 0, 0);
-        root.addView(pendingList);
-
-        selectedPhotoText = new TextView(this);
-        selectedPhotoText.setPadding(0, dp(12), 0, dp(4));
-        root.addView(selectedPhotoText);
-
-        preparedPhotoText = new TextView(this);
-        preparedPhotoText.setPadding(0, 0, 0, dp(6));
-        root.addView(preparedPhotoText);
-
-        prepareButton = new Button(this);
-        prepareButton.setText("Prepare Selected Photo for Upload");
-        prepareButton.setEnabled(false);
-        prepareButton.setOnClickListener(v -> prepareSelectedPhoto());
-        root.addView(prepareButton);
-
-        uploadButton = new Button(this);
-        uploadButton.setText("Upload This Prepared Photo");
-        uploadButton.setEnabled(false);
-        uploadButton.setOnClickListener(v -> uploadSelectedPhoto());
-        root.addView(uploadButton);
-
-        reconcileButton = new Button(this);
-        reconcileButton.setText("Reconcile Uncertain Upload");
-        reconcileButton.setEnabled(false);
-        reconcileButton.setOnClickListener(v -> reconcileSelectedPhoto());
-        root.addView(reconcileButton);
-
-        discardButton = new Button(this);
-        discardButton.setText("Discard Selected Temporary Photo");
-        discardButton.setEnabled(false);
-        discardButton.setOnClickListener(v -> confirmDiscardSelected());
-        root.addView(discardButton);
-
-        Button backButton = new Button(this);
-        backButton.setText("Back to Work Order");
-        backButton.setOnClickListener(v -> finish());
-        root.addView(backButton);
-
-        setContentView(scroll);
-        updateBatchSelectionUi();
-        renderSelectedPhoto();
-    }
-
-    private void beginCameraCapture() {
+        private void beginCameraCapture() {
         if (address == null || workOrder == null) {
-            statusText.setText("Choose an exact address and work order before taking photos.");
+            showPhotoStatus("Choose an exact address and work order before taking photos.");
             return;
         }
         if (PREPARATION_GATE.isBusy()) {
-            statusText.setText("Wait for photo preparation to finish before starting another capture.");
+            showPhotoStatus("Wait for photo preparation to finish before starting another capture.");
             return;
         }
         if (pendingCaptureId != null) {
-            statusText.setText("A photo capture is already in progress.");
+            showPhotoStatus("A photo capture is already in progress.");
             return;
         }
 
@@ -264,7 +220,7 @@ public final class PhotoCaptureActivity extends Activity {
         try {
             Intent cameraIntent = new Intent(this, CameraCaptureActivity.class);
             cameraIntent.putExtra(CameraCaptureActivity.EXTRA_CAPTURE_ID, record.id());
-            statusText.setText("Opening in-app camera for " + workOrder.name() + "…");
+            showPhotoStatus("Opening in-app camera for " + workOrder.name() + "…");
             startActivityForResult(cameraIntent, REQUEST_CAPTURE_PHOTO);
         } catch (Exception error) {
             finishFailedCameraLaunch("Could not open the in-app camera safely", error);
@@ -297,7 +253,7 @@ public final class PhotoCaptureActivity extends Activity {
         String initialCaptureId = pendingCaptureId;
         pendingCaptureId = null;
         if (initialCaptureId == null) {
-            statusText.setText("Camera returned without a tracked session. Existing temporary photos were left unchanged.");
+            showPhotoStatus("Camera returned without a tracked session. Existing temporary photos were left unchanged.");
             refreshPhotoList();
             return;
         }
@@ -348,13 +304,13 @@ public final class PhotoCaptureActivity extends Activity {
                 if (cameraError != null && !cameraError.trim().isEmpty()) {
                     summary += " Camera note: " + cameraError;
                 }
-                statusText.setText(summary);
+                showPhotoStatus(summary);
             } else if (cameraError != null && !cameraError.trim().isEmpty()) {
-                statusText.setText(cameraError);
+                showPhotoStatus(cameraError);
             } else if (resultCode == RESULT_OK) {
-                statusText.setText("Camera session finished without a selectable photo. Existing local photo data was left unchanged.");
+                showPhotoStatus("Camera session finished without a selectable photo. Existing local photo data was left unchanged.");
             } else {
-                statusText.setText("Camera closed. No photo data was saved.");
+                showPhotoStatus("Camera closed. No photo data was saved.");
             }
         } catch (Exception error) {
             showError("Camera returned, but the protected photo state needs inspection", error);
@@ -391,10 +347,10 @@ public final class PhotoCaptureActivity extends Activity {
                 }
             }
             if (incomplete > 0) {
-                statusText.setText(incomplete
+                showPhotoStatus(incomplete
                         + " confirmed upload(s) still have local cleanup pending. Drive success remains confirmed.");
             } else if (cleaned > 0) {
-                statusText.setText("Removed local image copies for " + cleaned
+                showPhotoStatus("Removed local image copies for " + cleaned
                         + " previously confirmed upload(s). Drive copies and metadata were kept.");
             }
         } catch (Exception error) {
@@ -440,74 +396,103 @@ public final class PhotoCaptureActivity extends Activity {
         });
     }
 
-    private void renderPhotoList(
-            List<PendingPhotoRecord> records,
-            List<String> unusableQueuedIds) {
-        pendingList.removeAllViews();
-        pendingCountText.setText(records.size() + " local photo record"
-                + (records.size() == 1 ? "" : "s") + " for this work order");
+private void renderPhotoList(
+        List<PendingPhotoRecord> records,
+        List<String> unusableQueuedIds) {
+    pendingList.removeAllViews();
+    pendingCountText.setText("Photos (" + records.size() + ")");
 
-        boolean controlsBusy = PREPARATION_GATE.isBusy() || UPLOAD_GATE.isBusy();
-        for (PendingPhotoRecord record : records) {
-            boolean unusable = unusableQueuedIds.contains(record.id());
-            boolean prepared = hasPreparedCopy(record.id());
-            boolean preparing = PREPARATION_GATE.isPreparing(record.id());
-            boolean remoteBusy = isPhotoRemoteBusy(record.id());
-            boolean batchEligible = isBatchUploadEligible(record, unusable, prepared);
+    boolean controlsBusy = PREPARATION_GATE.isBusy() || UPLOAD_GATE.isBusy();
+    LayoutInflater inflater = LayoutInflater.from(this);
+    for (PendingPhotoRecord record : records) {
+        boolean unusable = unusableQueuedIds.contains(record.id());
+        boolean prepared = hasPreparedCopy(record.id());
+        boolean preparing = PREPARATION_GATE.isPreparing(record.id());
+        boolean remoteBusy = isPhotoRemoteBusy(record.id());
+        boolean batchEligible = isBatchUploadEligible(record, unusable, prepared);
 
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
+        View row = inflater.inflate(R.layout.row_photo, pendingList, false);
+        CheckBox batchCheckBox = row.findViewById(R.id.photo_row_check);
+        ImageView thumbnail = row.findViewById(R.id.photo_row_thumb);
+        TextView stateText = row.findViewById(R.id.photo_row_status);
+        TextView timeText = row.findViewById(R.id.photo_row_time);
 
-            CheckBox batchCheckBox = new CheckBox(this);
-            batchCheckBox.setText("Send");
-            batchCheckBox.setChecked(batchSelectedPhotoIds.contains(record.id()));
-            batchCheckBox.setEnabled(batchEligible && !controlsBusy);
-            batchCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (isChecked) {
-                    batchSelectedPhotoIds.add(record.id());
-                } else {
-                    batchSelectedPhotoIds.remove(record.id());
-                }
-                updateBatchSelectionUi();
-            });
-            row.addView(
-                    batchCheckBox,
-                    new LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT));
+        batchCheckBox.setVisibility(record.state() == PendingPhotoRecord.State.UPLOADED
+                ? View.INVISIBLE : View.VISIBLE);
+        batchCheckBox.setChecked(batchSelectedPhotoIds.contains(record.id()));
+        batchCheckBox.setEnabled(batchEligible && !controlsBusy);
+        batchCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                batchSelectedPhotoIds.add(record.id());
+            } else {
+                batchSelectedPhotoIds.remove(record.id());
+            }
+            updateBatchSelectionUi();
+        });
 
-            Button photoButton = new Button(this);
-            String attempt = record.uploadAttemptCount() > 0
-                    ? " · attempt " + record.uploadAttemptCount()
-                    : "";
-            String active = remoteBusy
-                    ? (record.state() == PendingPhotoRecord.State.UNCERTAIN
-                    ? " · RECONCILING"
-                    : " · SENDING")
-                    : preparing ? " · PREPARING" : prepared ? " · PREPARED" : "";
-            String label = record.state().name() + attempt
-                    + (unusable ? " · IMAGE MISSING" : "")
-                    + active
-                    + "\n" + formatTime(record.createdAtEpochMs())
-                    + " · …" + shortId(record.id());
-            photoButton.setText(label);
-            photoButton.setOnClickListener(v -> {
-                selectedPhotoId = record.id();
-                renderSelectedPhoto();
-            });
-            LinearLayout.LayoutParams photoParams = new LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f);
-            photoParams.setMarginStart(dp(6));
-            row.addView(photoButton, photoParams);
-            pendingList.addView(row);
+        String state = photoStatusLabel(record, unusable, prepared, preparing, remoteBusy);
+        stateText.setText(state);
+        timeText.setText(formatTime(record.createdAtEpochMs()) + " · …" + shortId(record.id()));
+        if (selectedPhotoId != null && selectedPhotoId.equals(record.id())) {
+            row.setBackgroundResource(R.drawable.bg_concept_selected);
         }
-        updateBatchSelectionUi();
-        renderSelectedPhoto();
+        loadThumbnail(thumbnail, record);
+        row.setOnClickListener(v -> {
+            selectedPhotoId = record.id();
+            renderSelectedPhoto();
+            refreshPhotoList();
+        });
+        pendingList.addView(row);
     }
+    updateBatchSelectionUi();
+    renderSelectedPhoto();
+}
 
-    private boolean isBatchUploadEligible(
+private String photoStatusLabel(
+        PendingPhotoRecord record,
+        boolean unusable,
+        boolean prepared,
+        boolean preparing,
+        boolean remoteBusy) {
+    if (unusable) return "Needs photo data";
+    if (remoteBusy && record.state() == PendingPhotoRecord.State.UNCERTAIN) return "Reconciling";
+    if (remoteBusy) return "Uploading";
+    if (preparing) return "Preparing";
+    if (record.state() == PendingPhotoRecord.State.UPLOADED) return "Uploaded";
+    if (record.state() == PendingPhotoRecord.State.UNCERTAIN) return "Needs attention";
+    if (record.state() == PendingPhotoRecord.State.FAILED) return prepared ? "Ready to retry" : "Retry preparation";
+    return prepared ? "Ready to upload" : "Waiting";
+}
+
+private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
+    File source = getPreparedFileOrNull(record.id());
+    try {
+        if (source == null || !source.isFile() || source.length() <= 0) {
+            source = photoStore.imageFile(record);
+        }
+        if (source == null || !source.isFile() || source.length() <= 0) {
+            view.setImageDrawable(null);
+            return;
+        }
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(source.getAbsolutePath(), bounds);
+        int sample = 1;
+        int target = dp(160);
+        while (bounds.outWidth / sample > target * 2 || bounds.outHeight / sample > target * 2) {
+            sample *= 2;
+        }
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = Math.max(1, sample);
+        Bitmap bitmap = BitmapFactory.decodeFile(source.getAbsolutePath(), options);
+        view.setImageBitmap(bitmap);
+    } catch (Exception ignored) {
+        view.setImageDrawable(null);
+    }
+}
+
+
+        private boolean isBatchUploadEligible(
             PendingPhotoRecord record,
             boolean unusable,
             boolean prepared) {
@@ -567,7 +552,7 @@ public final class PhotoCaptureActivity extends Activity {
                     batchSelectedPhotoIds.add(record.id());
                 }
             }
-            statusText.setText(batchSelectedPhotoIds.size() + " ready photo"
+            showPhotoStatus(batchSelectedPhotoIds.size() + " ready photo"
                     + (batchSelectedPhotoIds.size() == 1 ? "" : "s")
                     + " selected. You can uncheck any photo before uploading.");
             refreshPhotoList();
@@ -578,11 +563,11 @@ public final class PhotoCaptureActivity extends Activity {
 
     private void clearBatchSelection() {
         if (UPLOAD_GATE.isBusy()) {
-            statusText.setText("Wait for the active Drive operation to finish before changing this batch.");
+            showPhotoStatus("Wait for the active Drive operation to finish before changing this batch.");
             return;
         }
         batchSelectedPhotoIds.clear();
-        statusText.setText("Batch selection cleared. No photo or Drive state changed.");
+        showPhotoStatus("Batch selection cleared. No photo or Drive state changed.");
         refreshPhotoList();
     }
 
@@ -591,12 +576,12 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
         if (PREPARATION_GATE.isBusy()) {
-            statusText.setText("Wait for photo preparation to finish before starting the selected upload batch.");
+            showPhotoStatus("Wait for photo preparation to finish before starting the selected upload batch.");
             updateBatchSelectionUi();
             return;
         }
         if (UPLOAD_GATE.isBusy()) {
-            statusText.setText("A Drive upload, batch, or reconciliation check is already in progress.");
+            showPhotoStatus("A Drive upload, batch, or reconciliation check is already in progress.");
             updateBatchSelectionUi();
             return;
         }
@@ -612,7 +597,7 @@ public final class PhotoCaptureActivity extends Activity {
         if (snapshot.size() != batchSelectedPhotoIds.size()) {
             batchSelectedPhotoIds.clear();
             batchSelectedPhotoIds.addAll(snapshot);
-            statusText.setText("The ready-photo selection changed before upload. Review the updated "
+            showPhotoStatus("The ready-photo selection changed before upload. Review the updated "
                     + snapshot.size() + " selected photo"
                     + (snapshot.size() == 1 ? "" : "s")
                     + " and tap Upload Selected again.");
@@ -620,19 +605,19 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
         if (snapshot.isEmpty()) {
-            statusText.setText("None of the selected photos are ready for a normal upload attempt.");
+            showPhotoStatus("None of the selected photos are ready for a normal upload attempt.");
             refreshPhotoList();
             return;
         }
 
         if (!UPLOAD_GATE.tryBegin(BATCH_UPLOAD_GATE_ID)) {
-            statusText.setText("A Drive operation is already in progress.");
+            showPhotoStatus("A Drive operation is already in progress.");
             updateBatchSelectionUi();
             return;
         }
 
         activeBatchPhotoId = null;
-        statusText.setText("Starting selected batch: " + snapshot.size()
+        showPhotoStatus("Starting selected batch: " + snapshot.size()
                 + " photo" + (snapshot.size() == 1 ? "" : "s")
                 + ", one Drive upload at a time…");
         updateBatchSelectionUi();
@@ -700,7 +685,7 @@ public final class PhotoCaptureActivity extends Activity {
                     if (isFinishing() || isDestroyed()) {
                         return;
                     }
-                    statusText.setText("Uploading selected photo " + currentPosition + " of "
+                    showPhotoStatus("Uploading selected photo " + currentPosition + " of "
                             + photoIds.size() + " to its stored work-order destination…");
                     refreshPhotoList();
                 });
@@ -727,7 +712,7 @@ public final class PhotoCaptureActivity extends Activity {
                                 : completedFailure);
             } else {
                 batchSelectedPhotoIds.removeAll(completedBatch.confirmedPhotoIds());
-                statusText.setText(formatBatchResult(completedBatch));
+                showPhotoStatus(formatBatchResult(completedBatch));
             }
             refreshPhotoList();
         });
@@ -865,6 +850,7 @@ public final class PhotoCaptureActivity extends Activity {
                 && !preparationBusy);
 
         if (selectedPhotoId == null) {
+            if (selectedActionsPanel != null) selectedActionsPanel.setVisibility(View.GONE);
             selectedPhotoText.setText("Selected temporary photo: none");
             preparedPhotoText.setText("Prepared copy: none selected");
             prepareButton.setEnabled(false);
@@ -894,6 +880,8 @@ public final class PhotoCaptureActivity extends Activity {
             discardButton.setEnabled(false);
             return;
         }
+
+        if (selectedActionsPanel != null) selectedActionsPanel.setVisibility(View.VISIBLE);
 
         String attempt = selected.uploadAttemptCount() > 0
                 ? " · attempt " + selected.uploadAttemptCount()
@@ -964,12 +952,12 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
         if (UPLOAD_GATE.isBusy()) {
-            statusText.setText("Wait for the active Drive operation to finish before preparing another photo.");
+            showPhotoStatus("Wait for the active Drive operation to finish before preparing another photo.");
             renderSelectedPhoto();
             return;
         }
         if (PREPARATION_GATE.isBusy()) {
-            statusText.setText("A photo is already being prepared. Wait for it to finish before starting another.");
+            showPhotoStatus("A photo is already being prepared. Wait for it to finish before starting another.");
             renderSelectedPhoto();
             return;
         }
@@ -977,18 +965,18 @@ public final class PhotoCaptureActivity extends Activity {
         try {
             PendingPhotoRecord record = photoStore.getById(photoId);
             if (record == null) {
-                statusText.setText("The selected temporary photo no longer exists.");
+                showPhotoStatus("The selected temporary photo no longer exists.");
                 refreshPhotoList();
                 return;
             }
             if (record.state() != PendingPhotoRecord.State.WAITING) {
-                statusText.setText("Only a WAITING photo can be prepared. Current state: "
+                showPhotoStatus("Only a WAITING photo can be prepared. Current state: "
                         + record.state().name() + ".");
                 renderSelectedPhoto();
                 return;
             }
             if (!photoStore.hasImageData(record)) {
-                statusText.setText("The protected original is missing or empty. Nothing was prepared.");
+                showPhotoStatus("The protected original is missing or empty. Nothing was prepared.");
                 return;
             }
         } catch (Exception error) {
@@ -997,12 +985,12 @@ public final class PhotoCaptureActivity extends Activity {
         }
 
         if (!PREPARATION_GATE.tryBegin(photoId)) {
-            statusText.setText("A photo is already being prepared. Wait for it to finish before starting another.");
+            showPhotoStatus("A photo is already being prepared. Wait for it to finish before starting another.");
             renderSelectedPhoto();
             return;
         }
 
-        statusText.setText("Preparing photo in the background… Protected original is locked and remains safe.");
+        showPhotoStatus("Preparing photo in the background… Protected original is locked and remains safe.");
         renderSelectedPhoto();
         refreshPhotoList();
 
@@ -1045,7 +1033,7 @@ public final class PhotoCaptureActivity extends Activity {
                 return;
             }
             if (completedFailure == null && completedResult != null) {
-                statusText.setText("Prepared for upload: "
+                showPhotoStatus("Prepared for upload: "
                         + formatBytes(completedResult.originalBytes()) + " → "
                         + formatBytes(completedResult.preparedBytes()) + " · "
                         + completedResult.width() + "×" + completedResult.height()
@@ -1067,12 +1055,12 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
         if (PREPARATION_GATE.isBusy()) {
-            statusText.setText("Wait for photo preparation to finish before uploading.");
+            showPhotoStatus("Wait for photo preparation to finish before uploading.");
             renderSelectedPhoto();
             return;
         }
         if (UPLOAD_GATE.isBusy()) {
-            statusText.setText("A Drive upload or reconciliation check is already in progress.");
+            showPhotoStatus("A Drive upload or reconciliation check is already in progress.");
             renderSelectedPhoto();
             return;
         }
@@ -1080,19 +1068,19 @@ public final class PhotoCaptureActivity extends Activity {
         try {
             PendingPhotoRecord record = photoStore.getById(photoId);
             if (record == null) {
-                statusText.setText("The selected temporary photo no longer exists.");
+                showPhotoStatus("The selected temporary photo no longer exists.");
                 refreshPhotoList();
                 return;
             }
             if (!record.canBeginUploadAttempt()) {
-                statusText.setText("This photo cannot be uploaded from state "
+                showPhotoStatus("This photo cannot be uploaded from state "
                         + record.state().name() + ".");
                 renderSelectedPhoto();
                 return;
             }
             File prepared = photoPreparer.preparedFile(photoId);
             if (!prepared.isFile() || prepared.length() <= 0) {
-                statusText.setText("Prepare this photo before uploading. Queue state was not changed.");
+                showPhotoStatus("Prepare this photo before uploading. Queue state was not changed.");
                 renderSelectedPhoto();
                 return;
             }
@@ -1102,12 +1090,12 @@ public final class PhotoCaptureActivity extends Activity {
         }
 
         if (!UPLOAD_GATE.tryBegin(photoId)) {
-            statusText.setText("A Drive operation is already in progress.");
+            showPhotoStatus("A Drive operation is already in progress.");
             renderSelectedPhoto();
             return;
         }
 
-        statusText.setText("Starting Drive upload to the photo's stored work-order destination…");
+        showPhotoStatus("Starting Drive upload to the photo's stored work-order destination…");
         renderSelectedPhoto();
         refreshPhotoList();
 
@@ -1165,10 +1153,10 @@ public final class PhotoCaptureActivity extends Activity {
                 if (completedCleanupFailure == null
                         && completedCleanup != null
                         && completedCleanup.complete()) {
-                    statusText.setText(remote
+                    showPhotoStatus(remote
                             + "Local original and prepared copy were removed; upload metadata was kept.");
                 } else {
-                    statusText.setText(remote
+                    showPhotoStatus(remote
                             + "Local cleanup is incomplete, but remote success remains confirmed and cleanup can be retried safely.");
                 }
             } else {
@@ -1188,7 +1176,7 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
         if (PREPARATION_GATE.isBusy() || UPLOAD_GATE.isBusy()) {
-            statusText.setText("Wait for the active photo/Drive operation to finish before reconciliation.");
+            showPhotoStatus("Wait for the active photo/Drive operation to finish before reconciliation.");
             renderSelectedPhoto();
             return;
         }
@@ -1196,12 +1184,12 @@ public final class PhotoCaptureActivity extends Activity {
         try {
             PendingPhotoRecord record = photoStore.getById(photoId);
             if (record == null) {
-                statusText.setText("The selected temporary photo no longer exists.");
+                showPhotoStatus("The selected temporary photo no longer exists.");
                 refreshPhotoList();
                 return;
             }
             if (record.state() != PendingPhotoRecord.State.UNCERTAIN) {
-                statusText.setText("Only an UNCERTAIN upload needs remote reconciliation.");
+                showPhotoStatus("Only an UNCERTAIN upload needs remote reconciliation.");
                 renderSelectedPhoto();
                 return;
             }
@@ -1211,12 +1199,12 @@ public final class PhotoCaptureActivity extends Activity {
         }
 
         if (!UPLOAD_GATE.tryBegin(photoId)) {
-            statusText.setText("A Drive operation is already in progress.");
+            showPhotoStatus("A Drive operation is already in progress.");
             renderSelectedPhoto();
             return;
         }
 
-        statusText.setText(
+        showPhotoStatus(
                 "Reconciling UNCERTAIN upload against its stored work-order destination. No remote file will be created, changed, or deleted.");
         renderSelectedPhoto();
         refreshPhotoList();
@@ -1284,20 +1272,20 @@ public final class PhotoCaptureActivity extends Activity {
                         if (completedCleanupFailure == null
                                 && completedCleanup != null
                                 && completedCleanup.complete()) {
-                            statusText.setText(remote
+                            showPhotoStatus(remote
                                     + "Upload is confirmed and local image copies were removed.");
                         } else {
-                            statusText.setText(remote
+                            showPhotoStatus(remote
                                     + "Upload is confirmed; local cleanup is incomplete but can be retried safely.");
                         }
                         break;
                     case CONFIRMED_ABSENT_RETRY_SAFE:
-                        statusText.setText(
+                        showPhotoStatus(
                                 "Two settled Drive checks confirmed the expected remote photo is absent. Retry is now enabled for the original stored destination.");
                         break;
                     case REMAIN_UNCERTAIN:
                     default:
-                        statusText.setText("Upload remains UNCERTAIN: " + completed.detail());
+                        showPhotoStatus("Upload remains UNCERTAIN: " + completed.detail());
                         break;
                 }
             }
@@ -1311,12 +1299,12 @@ public final class PhotoCaptureActivity extends Activity {
             return;
         }
         if (UPLOAD_GATE.isBusy()) {
-            statusText.setText("Wait for the active Drive operation to finish before discarding a protected photo.");
+            showPhotoStatus("Wait for the active Drive operation to finish before discarding a protected photo.");
             renderSelectedPhoto();
             return;
         }
         if (PREPARATION_GATE.isBusy()) {
-            statusText.setText("Wait for photo preparation to finish before discarding a protected photo.");
+            showPhotoStatus("Wait for photo preparation to finish before discarding a protected photo.");
             renderSelectedPhoto();
             return;
         }
@@ -1324,12 +1312,12 @@ public final class PhotoCaptureActivity extends Activity {
         try {
             PendingPhotoRecord record = photoStore.getById(id);
             if (record == null) {
-                statusText.setText("The selected temporary photo no longer exists.");
+                showPhotoStatus("The selected temporary photo no longer exists.");
                 refreshPhotoList();
                 return;
             }
             if (!record.canDiscardLocally()) {
-                statusText.setText("This photo is " + record.state().name()
+                showPhotoStatus("This photo is " + record.state().name()
                         + ". It must be kept because upload/duplicate-protection evidence may still be needed.");
                 renderSelectedPhoto();
                 return;
@@ -1351,12 +1339,12 @@ public final class PhotoCaptureActivity extends Activity {
 
     private void discardSelected(String id) {
         if (UPLOAD_GATE.isBusy()) {
-            statusText.setText("Drive operation is still running. Nothing was discarded.");
+            showPhotoStatus("Drive operation is still running. Nothing was discarded.");
             renderSelectedPhoto();
             return;
         }
         if (PREPARATION_GATE.isBusy()) {
-            statusText.setText("Photo preparation is still running. Nothing was discarded.");
+            showPhotoStatus("Photo preparation is still running. Nothing was discarded.");
             renderSelectedPhoto();
             return;
         }
@@ -1370,7 +1358,7 @@ public final class PhotoCaptureActivity extends Activity {
             if (id.equals(selectedPhotoId)) {
                 selectedPhotoId = null;
             }
-            statusText.setText("Selected temporary photo discarded locally. Drive was unchanged.");
+            showPhotoStatus("Selected temporary photo discarded locally. Drive was unchanged.");
         } catch (Exception error) {
             showError("Could not completely discard the selected temporary photo", error);
         }
@@ -1402,28 +1390,28 @@ public final class PhotoCaptureActivity extends Activity {
 
     private void renderScanWarnings(PendingPhotoStore.ScanResult result) {
         if (!result.corruptMetadataFiles().isEmpty()) {
-            statusText.setText(result.corruptMetadataFiles().size()
+            showPhotoStatus(result.corruptMetadataFiles().size()
                     + " temporary photo metadata record(s) need inspection. Paired image files were preserved.");
         } else if (!result.unusableQueuedPhotoIds().isEmpty()) {
-            statusText.setText(result.unusableQueuedPhotoIds().size()
+            showPhotoStatus(result.unusableQueuedPhotoIds().size()
                     + " queued photo record(s) are missing usable protected image data. They were preserved for inspection.");
         } else if (!result.uncertainPhotoIds().isEmpty()) {
-            statusText.setText(result.uncertainPhotoIds().size()
+            showPhotoStatus(result.uncertainPhotoIds().size()
                     + " upload result(s) are UNCERTAIN after interruption. Select one and use Reconcile Uncertain Upload before retry.");
         } else {
-            statusText.setText("Ready for photos. Use the Send boxes to build a batch or tap a photo for individual details.");
+            showPhotoStatus(null);
         }
     }
 
     private void renderScanWarningsIfNeeded(PendingPhotoStore.ScanResult result) {
         if (!result.corruptMetadataFiles().isEmpty()) {
-            statusText.setText(result.corruptMetadataFiles().size()
+            showPhotoStatus(result.corruptMetadataFiles().size()
                     + " temporary photo metadata record(s) need inspection. Paired image files were preserved.");
         } else if (!result.unusableQueuedPhotoIds().isEmpty()) {
-            statusText.setText(result.unusableQueuedPhotoIds().size()
+            showPhotoStatus(result.unusableQueuedPhotoIds().size()
                     + " queued photo record(s) are missing usable protected image data. They were preserved for inspection.");
         } else if (!result.uncertainPhotoIds().isEmpty()) {
-            statusText.setText(result.uncertainPhotoIds().size()
+            showPhotoStatus(result.uncertainPhotoIds().size()
                     + " upload result(s) are UNCERTAIN. Select one and reconcile it before retry.");
         }
     }
@@ -1455,9 +1443,18 @@ public final class PhotoCaptureActivity extends Activity {
         return id == null ? "unknown" : (id.length() <= 8 ? id : id.substring(id.length() - 8));
     }
 
+
+    private void showPhotoStatus(String message) {
+        if (statusText == null) {
+            return;
+        }
+        statusText.setText(message == null ? "" : message);
+        statusText.setVisibility(message == null || message.trim().isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
     private void showError(String prefix, Throwable error) {
         String detail = error == null ? null : error.getMessage();
-        statusText.setText(prefix + (detail == null ? "." : ": " + detail));
+        showPhotoStatus(prefix + (detail == null ? "." : ": " + detail));
     }
 
     private int dp(int value) {

@@ -61,17 +61,22 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: |
-            gradle connectedDebugAndroidTest
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb shell am force-stop com.inandout.fieldphotoprep.internal
-            adb shell am start -W -n com.inandout.fieldphotoprep.internal/com.inandout.fieldphotoprep.MainActivity
-            sleep 3
-            adb shell pidof com.inandout.fieldphotoprep.internal | grep -q '[0-9]'
-            echo "Field Photo Prep Internal instrumentation and launch smoke tests passed"
+          script: bash scripts/verify-concept3-rendered.sh
       - name: Upload internal APK
         uses: actions/upload-artifact@v4
         with:
           name: field-photo-prep-internal-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Upload rendered screens and test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: concept-3-rendered-verification
+          path: |
+            verification-reports
+            app/build/reports/androidTests/connected
+            app/build/outputs/androidTest-results
+            app/build/test-results/testDebugUnitTest
+            apk-signer.txt
           if-no-files-found: error

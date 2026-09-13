@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/field_bottom_navigation"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:background="@drawable/bg_concept_nav"
+    android:gravity="center"
+    android:orientation="horizontal">
+    <Button
+        android:id="@+id/nav_home"
+        style="@style/FieldNavItem"
+        android:drawableTop="@drawable/ic_field_home"
+        android:text="Home" />
+    <Button
+        android:id="@+id/nav_work_orders"
+        style="@style/FieldNavItem"
+        android:drawableTop="@drawable/ic_field_work_orders"
+        android:text="Work Orders" />
+    <Button
+        android:id="@+id/nav_photos"
+        style="@style/FieldNavItem"
+        android:drawableTop="@drawable/ic_field_camera"
+        android:text="Photos" />
+</LinearLayout>

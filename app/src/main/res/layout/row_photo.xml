@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/photo_row_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="7dp"
+    android:minHeight="60dp"
+    android:background="@drawable/bg_concept_card"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="8dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="6dp">
+    <CheckBox
+        android:id="@+id/photo_row_check"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:buttonTint="@color/home_primary"
+        android:contentDescription="Select photo for upload" />
+    <ImageView
+        android:id="@+id/photo_row_thumb"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:background="@color/home_surface_alt"
+        android:contentDescription="Photo thumbnail"
+        android:scaleType="centerCrop" />
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/photo_row_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/home_text_primary"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:textStyle="normal" />
+        <TextView
+            android:id="@+id/photo_row_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:textColor="@color/home_text_secondary"
+            android:textSize="11sp" />
+    </LinearLayout>
+    <com.inandout.fieldphotoprep.PhotoRowActionsView
+        android:id="@+id/photo_row_actions"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Photo actions"
+        android:focusable="true"
+        android:padding="12dp"
+        android:src="@drawable/ic_home_more_24"
+        android:tint="@color/home_text_secondary" />
+</LinearLayout>
