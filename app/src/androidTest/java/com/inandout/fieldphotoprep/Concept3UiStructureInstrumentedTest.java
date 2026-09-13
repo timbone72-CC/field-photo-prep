@@ -48,7 +48,10 @@ public final class Concept3UiStructureInstrumentedTest {
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT,
                 photos.findViewById(R.id.photos_upload_selected).getLayoutParams().width);
         View row = inflater.inflate(R.layout.row_photo, null, false);
-        assertNotNull(row.findViewById(R.id.photo_row_check));
+        View photoCheck = row.findViewById(R.id.photo_row_check);
+        assertNotNull(photoCheck);
+        assertEquals(dp(context, 48), photoCheck.getLayoutParams().width);
+        assertEquals(dp(context, 48), photoCheck.getLayoutParams().height);
         assertNotNull(row.findViewById(R.id.photo_row_thumb));
     }
 
