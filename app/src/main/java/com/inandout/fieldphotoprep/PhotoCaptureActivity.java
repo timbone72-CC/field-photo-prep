@@ -62,6 +62,7 @@ public final class PhotoCaptureActivity extends Activity {
     private Button selectAllReadyButton;
     private Button clearSelectionButton;
     private Button uploadBatchButton;
+    private Button discardBatchButton;
     private Button prepareButton;
     private Button uploadButton;
     private Button reconcileButton;
@@ -92,6 +93,7 @@ public final class PhotoCaptureActivity extends Activity {
             selectAllReadyButton.setEnabled(false);
             clearSelectionButton.setEnabled(false);
             uploadBatchButton.setEnabled(false);
+            discardBatchButton.setEnabled(false);
             prepareButton.setEnabled(false);
             uploadButton.setEnabled(false);
             reconcileButton.setEnabled(false);
@@ -137,6 +139,7 @@ private void buildUi() {
     selectAllReadyButton = findViewById(R.id.photos_select_all);
     clearSelectionButton = findViewById(R.id.photos_clear_selection);
     uploadBatchButton = findViewById(R.id.photos_upload_selected);
+    discardBatchButton = findViewById(R.id.photos_discard_selected);
     prepareButton = findViewById(R.id.photos_prepare);
     uploadButton = findViewById(R.id.photos_upload_one);
     reconcileButton = findViewById(R.id.photos_reconcile);
@@ -153,6 +156,7 @@ private void buildUi() {
     selectAllReadyButton.setOnClickListener(v -> selectAllReadyPhotos());
     clearSelectionButton.setOnClickListener(v -> clearBatchSelection());
     uploadBatchButton.setOnClickListener(v -> uploadSelectedBatch());
+    discardBatchButton.setOnClickListener(v -> confirmDiscardSelectedBatch());
     prepareButton.setOnClickListener(v -> prepareSelectedPhoto());
     uploadButton.setOnClickListener(v -> uploadSelectedPhoto());
     reconcileButton.setOnClickListener(v -> reconcileSelectedPhoto());
@@ -392,7 +396,8 @@ private void buildUi() {
                 return true;
             }
             boolean unusable = unusableQueuedIds.contains(photoId);
-            return !isBatchUploadEligible(record, unusable, hasPreparedCopy(photoId));
+            return !isBatchUploadEligible(record, unusable, hasPreparedCopy(photoId))
+                    && !isBatchDiscardEligible(record);
         });
     }
 
@@ -410,6 +415,7 @@ private void renderPhotoList(
         boolean preparing = PREPARATION_GATE.isPreparing(record.id());
         boolean remoteBusy = isPhotoRemoteBusy(record.id());
         boolean batchEligible = isBatchUploadEligible(record, unusable, prepared);
+        boolean discardEligible = isBatchDiscardEligible(record);
 
         View row = inflater.inflate(R.layout.row_photo, pendingList, false);
         CheckBox batchCheckBox = row.findViewById(R.id.photo_row_check);
@@ -420,7 +426,7 @@ private void renderPhotoList(
         batchCheckBox.setVisibility(record.state() == PendingPhotoRecord.State.UPLOADED
                 ? View.INVISIBLE : View.VISIBLE);
         batchCheckBox.setChecked(batchSelectedPhotoIds.contains(record.id()));
-        batchCheckBox.setEnabled(batchEligible && !controlsBusy);
+        batchCheckBox.setEnabled((batchEligible || discardEligible) && !controlsBusy);
         batchCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 batchSelectedPhotoIds.add(record.id());
@@ -502,6 +508,10 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
                 && record.canBeginUploadAttempt();
     }
 
+    private boolean isBatchDiscardEligible(PendingPhotoRecord record) {
+        return record != null && record.canDiscardLocally();
+    }
+
     private boolean isPhotoRemoteBusy(String photoId) {
         if (UPLOAD_GATE.isUploading(photoId)) {
             return true;
@@ -511,29 +521,76 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
                 && photoId.equals(activeBatchPhotoId);
     }
 
+    private boolean isCurrentSelectionUploadEligible() {
+        if (batchSelectedPhotoIds.isEmpty() || address == null || workOrder == null) {
+            return false;
+        }
+        try {
+            for (String photoId : batchSelectedPhotoIds) {
+                PendingPhotoRecord record = photoStore.getById(photoId);
+                if (record == null
+                        || !address.id().equals(record.addressId())
+                        || !workOrder.id().equals(record.workOrderId())
+                        || !record.canBeginUploadAttempt()
+                        || !photoStore.hasImageData(record)
+                        || !hasPreparedCopy(photoId)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception error) {
+            return false;
+        }
+    }
+
+    private boolean isCurrentSelectionDiscardEligible() {
+        if (batchSelectedPhotoIds.isEmpty() || address == null || workOrder == null) {
+            return false;
+        }
+        try {
+            for (String photoId : batchSelectedPhotoIds) {
+                PendingPhotoRecord record = photoStore.getById(photoId);
+                if (record == null
+                        || !address.id().equals(record.addressId())
+                        || !workOrder.id().equals(record.workOrderId())
+                        || !record.canDiscardLocally()) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception error) {
+            return false;
+        }
+    }
+
     private void updateBatchSelectionUi() {
         if (batchSelectionText == null
                 || selectAllReadyButton == null
                 || clearSelectionButton == null
-                || uploadBatchButton == null) {
+                || uploadBatchButton == null
+                || discardBatchButton == null) {
             return;
         }
         int selectedCount = batchSelectedPhotoIds.size();
         boolean remoteBusy = UPLOAD_GATE.isBusy();
         boolean preparationBusy = PREPARATION_GATE.isBusy();
         boolean batchRunning = BATCH_UPLOAD_GATE_ID.equals(UPLOAD_GATE.activePhotoId());
+        boolean uploadEligible = selectedCount > 0 && isCurrentSelectionUploadEligible();
+        boolean discardEligible = selectedCount > 0 && isCurrentSelectionDiscardEligible();
 
-        String text = selectedCount + " selected for batch upload";
+        String text = selectedCount + " selected";
         if (batchRunning) {
             text += activeBatchPhotoId == null
-                    ? " · starting"
+                    ? " · starting upload"
                     : " · sending …" + shortId(activeBatchPhotoId);
         }
         batchSelectionText.setText(text);
         uploadBatchButton.setText("Upload Selected (" + selectedCount + ")");
+        discardBatchButton.setText("Discard Selected (" + selectedCount + ")");
         selectAllReadyButton.setEnabled(workOrder != null && !remoteBusy && !preparationBusy);
         clearSelectionButton.setEnabled(selectedCount > 0 && !remoteBusy);
-        uploadBatchButton.setEnabled(selectedCount > 0 && !remoteBusy && !preparationBusy);
+        uploadBatchButton.setEnabled(uploadEligible && !remoteBusy && !preparationBusy);
+        discardBatchButton.setEnabled(discardEligible && !remoteBusy && !preparationBusy);
     }
 
     private void selectAllReadyPhotos() {
@@ -554,7 +611,7 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
             }
             showPhotoStatus(batchSelectedPhotoIds.size() + " ready photo"
                     + (batchSelectedPhotoIds.size() == 1 ? "" : "s")
-                    + " selected. You can uncheck any photo before uploading.");
+                    + " selected. You can uncheck any photo, upload the ready selection, or discard the selected local photos.");
             refreshPhotoList();
         } catch (Exception error) {
             showError("Could not select the ready photos safely", error);
@@ -563,11 +620,92 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
 
     private void clearBatchSelection() {
         if (UPLOAD_GATE.isBusy()) {
-            showPhotoStatus("Wait for the active Drive operation to finish before changing this batch.");
+            showPhotoStatus("Wait for the active Drive operation to finish before changing this selection.");
             return;
         }
         batchSelectedPhotoIds.clear();
-        showPhotoStatus("Batch selection cleared. No photo or Drive state changed.");
+        showPhotoStatus("Selection cleared. No photo or Drive state changed.");
+        refreshPhotoList();
+    }
+
+    private void confirmDiscardSelectedBatch() {
+        if (batchSelectedPhotoIds.isEmpty() || address == null || workOrder == null) {
+            return;
+        }
+        if (UPLOAD_GATE.isBusy()) {
+            showPhotoStatus("Wait for the active Drive operation to finish before discarding selected local photos.");
+            updateBatchSelectionUi();
+            return;
+        }
+        if (PREPARATION_GATE.isBusy()) {
+            showPhotoStatus("Wait for photo preparation to finish before discarding selected local photos.");
+            updateBatchSelectionUi();
+            return;
+        }
+
+        ArrayList<String> requested = new ArrayList<>(batchSelectedPhotoIds);
+        final List<String> snapshot;
+        try {
+            LocalPhotoDiscardCoordinator coordinator =
+                    new LocalPhotoDiscardCoordinator(photoStore, photoPreparer);
+            snapshot = coordinator.validateSnapshot(requested, address.id(), workOrder.id());
+        } catch (Exception error) {
+            showError("Selected photos are no longer safe to discard as one batch", error);
+            refreshPhotoList();
+            return;
+        }
+
+        int count = snapshot.size();
+        new AlertDialog.Builder(this)
+                .setTitle("Discard " + count + " selected photo" + (count == 1 ? "?" : "s?"))
+                .setMessage("Work order: " + workOrder.name()
+                        + "\nSelected local photos: " + count
+                        + "\n\nThis removes only these photos' app-private local originals and prepared copies. It does not delete anything from Drive.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Discard Selected", (dialog, which) -> discardSelectedBatch(snapshot))
+                .show();
+    }
+
+    private void discardSelectedBatch(List<String> snapshot) {
+        if (snapshot == null || snapshot.isEmpty() || address == null || workOrder == null) {
+            return;
+        }
+        if (UPLOAD_GATE.isBusy()) {
+            showPhotoStatus("Drive operation is still running. Nothing was discarded.");
+            updateBatchSelectionUi();
+            return;
+        }
+        if (PREPARATION_GATE.isBusy()) {
+            showPhotoStatus("Photo preparation is still running. Nothing was discarded.");
+            updateBatchSelectionUi();
+            return;
+        }
+
+        LocalPhotoDiscardCoordinator coordinator =
+                new LocalPhotoDiscardCoordinator(photoStore, photoPreparer);
+        LocalPhotoDiscardCoordinator.BatchResult result = coordinator.discardBatch(
+                snapshot, address.id(), workOrder.id());
+
+        for (int index = 0; index < result.discardedCount() && index < snapshot.size(); index++) {
+            String discardedId = snapshot.get(index);
+            batchSelectedPhotoIds.remove(discardedId);
+            if (discardedId.equals(selectedPhotoId)) {
+                selectedPhotoId = null;
+            }
+        }
+
+        if (result.complete()) {
+            showPhotoStatus(result.discardedCount() + " selected temporary photo"
+                    + (result.discardedCount() == 1 ? " was" : "s were")
+                    + " discarded locally. Drive was unchanged.");
+        } else if (result.discardedCount() == 0) {
+            showPhotoStatus("Nothing was discarded. " + result.failureDetail()
+                    + " Drive was unchanged.");
+        } else {
+            showPhotoStatus("Discard stopped after " + result.discardedCount() + " of "
+                    + result.selectedCount() + " selected photos. " + result.failureDetail()
+                    + " Later photos were left untouched. Drive was unchanged.");
+        }
         refreshPhotoList();
     }
 
@@ -595,12 +733,7 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
         }
 
         if (snapshot.size() != batchSelectedPhotoIds.size()) {
-            batchSelectedPhotoIds.clear();
-            batchSelectedPhotoIds.addAll(snapshot);
-            showPhotoStatus("The ready-photo selection changed before upload. Review the updated "
-                    + snapshot.size() + " selected photo"
-                    + (snapshot.size() == 1 ? "" : "s")
-                    + " and tap Upload Selected again.");
+            showPhotoStatus("Every selected photo must be prepared and upload-eligible before Upload Selected can run. Review the current selection or use Discard Selected for local-only removal.");
             refreshPhotoList();
             return;
         }
@@ -1295,7 +1428,7 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
     }
 
     private void confirmDiscardSelected() {
-        if (selectedPhotoId == null || workOrder == null) {
+        if (selectedPhotoId == null || address == null || workOrder == null) {
             return;
         }
         if (UPLOAD_GATE.isBusy()) {
@@ -1349,11 +1482,9 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
             return;
         }
         try {
-            File prepared = photoPreparer.preparedFile(id);
-            if (prepared.exists() && !prepared.delete()) {
-                throw new IllegalStateException("Could not remove the prepared copy. Protected original was left unchanged.");
-            }
-            photoStore.discard(id);
+            LocalPhotoDiscardCoordinator coordinator =
+                    new LocalPhotoDiscardCoordinator(photoStore, photoPreparer);
+            coordinator.discardOne(id, address.id(), workOrder.id());
             batchSelectedPhotoIds.remove(id);
             if (id.equals(selectedPhotoId)) {
                 selectedPhotoId = null;

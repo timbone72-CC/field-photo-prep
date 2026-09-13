@@ -121,6 +121,11 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] Compression/preparation failure does not delete or modify an unconfirmed protected original.
 - [ ] App restart does not delete waiting unconfirmed photos.
 - [ ] Successful cleanup after confirmed upload does not delete the Drive copy.
+- [ ] Checking or unchecking a photo does not itself delete local photo data or change queue state.
+- [ ] **Discard Selected** requires explicit confirmation and removes only selected local photos that still pass exact identity and `canDiscardLocally()` guards.
+- [ ] `UPLOADING`, `UNCERTAIN`, and `UPLOADED` photos cannot be locally discarded through batch or individual discard.
+- [ ] If one selected photo fails whole-batch discard preflight, no selected photo is deleted.
+- [ ] A partial local filesystem failure stops discard and leaves later selected photos untouched.
 
 ## L. Permissions and destructive behavior
 
@@ -128,7 +133,8 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] App does not create public Drive links automatically.
 - [ ] App does not alter Drive sharing permissions automatically.
 - [ ] Ordinary discover/create/upload flow does not move/rename/delete existing Drive content.
-- [ ] Destructive deletion occurs only inside confirmed **Clear & Reuse** for one exact selected work-order folder.
+- [ ] **Drive content deletion** occurs only inside confirmed **Clear & Reuse** for one exact selected work-order folder.
+- [ ] Explicit local-photo discard never calls Drive/provider deletion and cannot delete a Drive photo or folder.
 - [ ] App does not delete the selected work-order folder itself during **Clear & Reuse**.
 - [ ] App does not delete address folders or arbitrary Drive content through the reuse feature.
 - [ ] Persisted provider access data and remote identities are not exposed unnecessarily in logs or exported app data.

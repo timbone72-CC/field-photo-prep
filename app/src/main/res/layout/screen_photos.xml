@@ -213,6 +213,17 @@
             </LinearLayout>
         </ScrollView>
         <Button
+            android:id="@+id/photos_discard_selected"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:text="Discard Selected (0)"
+            android:textAllCaps="false"
+            android:textColor="@color/home_error"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            style="@style/FieldAction" />
+        <Button
             android:id="@+id/photos_upload_selected"
             android:layout_width="match_parent"
             android:layout_height="48dp"
