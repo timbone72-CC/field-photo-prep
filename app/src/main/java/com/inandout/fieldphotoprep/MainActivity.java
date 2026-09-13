@@ -20,7 +20,6 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -234,14 +233,16 @@ private void openSavedPhotosFromHome() {
 }
 
 
-        private void showDriveOptions(View anchor) {
-        PopupMenu menu = new PopupMenu(this, anchor);
-        menu.getMenu().add("Change Drive");
-        menu.setOnMenuItemClickListener(item -> {
-            chooseMasterFolder();
-            return true;
-        });
-        menu.show();
+    private void showDriveOptions(View anchor) {
+        if (busy) {
+            showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Drive options")
+                .setItems(new CharSequence[]{"Change Drive"}, (dialog, which) -> chooseMasterFolder())
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
 private void buildLegacyWorkOrderUi() {
@@ -301,7 +302,7 @@ private void buildLegacyWorkOrderUi() {
 }
 
 
-        private void chooseMasterFolder() {
+    private void chooseMasterFolder() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
                 | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
@@ -1330,6 +1331,9 @@ private void buildLegacyWorkOrderUi() {
         if (refreshAddressButton != null) {
             refreshAddressButton.setEnabled(canRead && !busy);
         }
+        if (driveOptionsButton != null) {
+            driveOptionsButton.setEnabled(master != null && !busy);
+        }
         renderPropertyCountAndEmptyState();
     }
 
@@ -1378,6 +1382,7 @@ private void buildLegacyWorkOrderUi() {
         }
         chooseMasterButton.setEnabled(false);
         refreshAddressButton.setEnabled(false);
+        driveOptionsButton.setEnabled(false);
         useCreateAddressButton.setEnabled(false);
         backButton.setEnabled(false);
         refreshWorkOrdersButton.setEnabled(false);
