@@ -50,7 +50,7 @@ The passing gate included:
 Internal APK artifact: `10318179463`.
 Rendered/test evidence artifact: `10318159339`.
 
-An earlier CI run failed only because the newly added test used an overly strict pixel-level tolerance for Android `sp` rounding. The runtime layout compiled and rendered; the test was corrected to compare the effective text size in `sp`, then the complete suite passed.
+An earlier CI run failed only because the newly added test used an overly strict pixel-level tolerance for Android `sp` rounding. The runtime layout compiled and rendered; the test was corrected to compare effective text size in `sp`, then the complete suite passed.
 
 ## Physical Samsung verification
 
