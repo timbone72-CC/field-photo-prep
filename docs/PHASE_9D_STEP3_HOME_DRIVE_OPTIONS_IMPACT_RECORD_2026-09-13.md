@@ -37,8 +37,10 @@ No Settings entry was added.
 - `app/src/androidTest/java/com/inandout/fieldphotoprep/HomeDriveOptionsInstrumentedTest.java`
   - presses the production Home overflow;
   - verifies `Change Drive` is exposed and `Settings` is absent;
-  - selects `Change Drive` and monitors the real `ACTION_OPEN_DOCUMENT_TREE` launch path without opening or changing real Drive data;
+  - verifies the dialog remains dismissible without touching Android's external document picker;
   - verifies the overflow is disabled by the existing busy-state owner.
+
+The first test draft attempted to intercept the external `ACTION_OPEN_DOCUMENT_TREE` activity from instrumentation. That made the emulator run hang instead of testing the app-local UI deterministically, so that external-system dependency was removed. The runtime `chooseMasterFolder()` implementation and its existing SAF flags were not changed; actual picker launch remains part of the focused Samsung reality check below.
 
 ## Protected behavior
 
