@@ -46,8 +46,9 @@ public final class Concept3UiStructureInstrumentedTest {
         assertNotNull(workCreate);
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, workDate.getLayoutParams().width);
         assertEquals(dp(context, 48), workDate.getLayoutParams().height);
-        assertEquals(14 * context.getResources().getDisplayMetrics().scaledDensity,
-                workDate.getTextSize(), 1.0f);
+        float dateTextSp = workDate.getTextSize()
+                / context.getResources().getDisplayMetrics().scaledDensity;
+        assertEquals(14f, dateTextSp, 0.6f); // Android rounds sp resources to device pixels.
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, workCreate.getLayoutParams().width);
         assertNotNull(work.findViewById(R.id.work_order_photos));
         assertEquals(View.GONE, work.findViewById(R.id.work_order_maintenance).getVisibility());
