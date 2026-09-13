@@ -28,8 +28,12 @@ adb exec-out run-as com.inandout.fieldphotoprep.internal tar -C files -cf - conc
 for visual_variant in dark large-font; do
   if [ "$visual_variant" = dark ]; then adb shell cmd uimode night yes; else adb shell cmd uimode night no; fi
   if [ "$visual_variant" = large-font ]; then adb shell settings put system font_scale 1.3; else adb shell settings put system font_scale 1.0; fi
-  gradle connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -Pandroid.testInstrumentationRunnerArguments.class=com.inandout.fieldphotoprep.Concept3UiStructureInstrumentedTest,com.inandout.fieldphotoprep.Concept3RenderedScreensInstrumentedTest -Pandroid.testInstrumentationRunnerArguments.visualVariant="$visual_variant"
-  cp -R app/build/reports/androidTests/connected "verification-reports/$visual_variant-instrumentation"
+  # Direct runner arguments preserve the comma-separated classes and variant name.
+  adb shell am instrument -w -e class com.inandout.fieldphotoprep.Concept3UiStructureInstrumentedTest,com.inandout.fieldphotoprep.Concept3RenderedScreensInstrumentedTest -e visualVariant "$visual_variant" com.inandout.fieldphotoprep.internal.test/androidx.test.runner.AndroidJUnitRunner | tee "verification-reports/$visual_variant-instrumentation.txt"
+  grep -q '^OK (2 tests)' "verification-reports/$visual_variant-instrumentation.txt"
+  adb shell run-as com.inandout.fieldphotoprep.internal test -f "files/concept3-screens/$visual_variant-home.png"
+  adb shell run-as com.inandout.fieldphotoprep.internal test -f "files/concept3-screens/$visual_variant-work-orders.png"
+  adb shell run-as com.inandout.fieldphotoprep.internal test -f "files/concept3-screens/$visual_variant-photos.png"
   adb exec-out run-as com.inandout.fieldphotoprep.internal tar -C files -cf - concept3-screens > "verification-reports/$visual_variant-screens.tar"
 done
 adb shell cmd uimode night no
