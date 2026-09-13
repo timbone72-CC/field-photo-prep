@@ -62,7 +62,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             adb shell wm size 1080x2400
             adb shell wm density 440
             adb shell cmd uimode night no
