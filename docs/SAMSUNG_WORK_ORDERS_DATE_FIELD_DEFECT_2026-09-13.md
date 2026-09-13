@@ -1,10 +1,11 @@
 # Samsung Work Orders Date Field Defect
 
 Date: 2026-09-13
-Status: **RESOLVED — AUTOMATED PASS + SAMSUNG DEVICE PASS**
+Status: **RESOLVED + MERGED — AUTOMATED PASS + SAMSUNG DEVICE PASS**
 Original branch recorded from: `feat/concept-3-ui-makeover-20260912`
 Repair branch: `fix/work-order-date-readability-20260913`
 Repair PR: #37
+Main merge commit: `4043f5476ae5637151fe5c6b68287079c3b5d478`
 Observed device: Samsung Galaxy S21
 
 ## Confirmed defect
@@ -36,7 +37,7 @@ This was a **Level 2 UI fix**. It changed presentation/layout only and did not a
 
 ## Automated verification
 
-Android CI run `34760292364` passed on exact runtime head `079bb722b61ab5f33d264de71d964cadd49f70b5`.
+Android CI run `34760292364` passed on exact date-runtime head `079bb722b61ab5f33d264de71d964cadd49f70b5`.
 
 The passing gate included:
 
@@ -52,9 +53,11 @@ Rendered/test evidence artifact: `10318159339`.
 
 An earlier CI run failed only because the newly added test used an overly strict pixel-level tolerance for Android `sp` rounding. The runtime layout compiled and rendered; the test was corrected to compare effective text size in `sp`, then the complete suite passed.
 
+Final version reconciliation then advanced the app to versionCode 18 / `0.13-field-ui` (`0.13-field-ui-internal` for debug/internal). The exact version-reconciled head `64339686ae0be08a2148b9b73390c35575e30584` passed Android CI run `34761274823` before merge.
+
 ## Physical Samsung verification
 
-Samsung Galaxy S21 physical-device gate: **PASS** on 2026-09-13 using the APK built from runtime head `079bb722b61ab5f33d264de71d964cadd49f70b5`.
+Samsung Galaxy S21 physical-device gate: **PASS** on 2026-09-13 using the APK built from date-runtime head `079bb722b61ab5f33d264de71d964cadd49f70b5`.
 
 Operator result: **works**.
 
@@ -66,11 +69,11 @@ The operator confirmed:
 
 This physical gate is complete and should not be repeated unless the date-layout implementation changes.
 
-## Order / next step
+## Merge result
 
-The two Samsung follow-up defects are now resolved and physically verified:
+The two Samsung follow-up defects were resolved and physically verified before merge:
 
 1. Batch Discard / multi-photo local deletion — automated PASS + Samsung PASS.
 2. Work Orders date-field readability — automated PASS + Samsung PASS.
 
-The next locked work is **version/docs reconciliation and merge review**. No merge is authorized by this record.
+The operator explicitly approved the complete merge sequence on 2026-09-13. PR #37 was retargeted to `main`, its four-file diff was verified as the date repair/test/doc plus version reconciliation only, and it merged successfully as `4043f5476ae5637151fe5c6b68287079c3b5d478`.

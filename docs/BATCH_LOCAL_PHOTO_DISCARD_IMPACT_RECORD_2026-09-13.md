@@ -1,13 +1,15 @@
 # Batch Local Photo Discard — Level 3 Impact Record
 
 Date: 2026-09-13
-Status: IMPLEMENTED + AUTOMATED PASS + SAMSUNG DEVICE PASS — PRE-MERGE APPROVAL PENDING
+Status: **MERGED — AUTOMATED PASS + SAMSUNG DEVICE PASS + OPERATOR APPROVAL**
 Branch: `feat/batch-local-photo-discard-20260913`
-Stacked base: `feat/concept-3-ui-makeover-20260912` at `4e8bc4e678d2fbc898b0e78b4b3bfe8a566e1a91`
+Original stacked base: `feat/concept-3-ui-makeover-20260912` at `4e8bc4e678d2fbc898b0e78b4b3bfe8a566e1a91`
+Merged PR: #36
+Main merge commit: `eebf71a16fa1d704a522ed6f6e5a4a592ec61e40`
 
 ## Problem
 
-Physical Samsung testing confirmed that a camera session can produce several photos, but the Photos screen can discard only one photo at a time through the per-photo action menu. Field use needs the operator to select multiple bad local photos and discard them with one confirmation.
+Physical Samsung testing confirmed that a camera session can produce several photos, but the Photos screen could discard only one photo at a time through the per-photo action menu. Field use needs the operator to select multiple bad local photos and discard them with one confirmation.
 
 ## Approved behavior
 
@@ -15,7 +17,7 @@ Physical Samsung testing confirmed that a camera session can produce several pho
 2. A checkbox is available only when the photo is eligible for at least one safe selected action. Current approved selected actions are upload and local discard.
 3. `Select All Ready` keeps its existing meaning: it selects currently upload-eligible prepared photos only.
 4. `Upload Selected (N)` is enabled only when every currently selected photo is still a valid normal-upload item.
-5. A new `Discard Selected (N)` action is enabled only when every currently selected photo is locally discard-safe.
+5. `Discard Selected (N)` is enabled only when every currently selected photo is locally discard-safe.
 6. Local discard remains limited by the existing `PendingPhotoRecord.canDiscardLocally()` rule: `WAITING` and retry-safe `FAILED` are allowed; `CAPTURING`, `UPLOADING`, `UNCERTAIN`, and `UPLOADED` are refused.
 7. One confirmation identifies the selected work order and exact selected count and states that the action removes app-private local original/prepared copies only and never deletes Drive content.
 8. Immediately before deletion begins, the complete selected ID snapshot is re-read. Every item must still exist, belong to the currently open exact work order/address, and remain locally discard-safe. Any failed preflight aborts the whole batch before deletion starts.
@@ -30,14 +32,14 @@ Level 3 because the feature intentionally deletes unconfirmed app-private origin
 
 ## Owning surfaces
 
-Expected runtime owners:
+Runtime owners:
 
 - `PhotoCaptureActivity.java` — selected-action gating, confirmation, preflight, sequential local-discard orchestration, and result reporting.
 - `PendingPhotoStore.discard(...)` — remains authoritative for refusing unsafe queue states and deleting protected local original/metadata.
 - `PhotoPreparer.preparedFile(...)` — existing prepared derivative path; local prepared copy is removed only as part of an approved local discard.
-- `screen_photos.xml` — adds `Discard Selected (N)` beside the existing selected upload action.
+- `screen_photos.xml` — provides `Discard Selected (N)` beside the existing selected upload action.
 
-No Drive class, SAF owner, queue schema, camera class, or destination identity owner is to change.
+No Drive class, SAF owner, queue schema, camera class, or destination identity owner changed.
 
 ## Read surfaces
 
@@ -79,7 +81,7 @@ The feature is local-only and may operate offline. It does not rely on Drive/pro
 
 ## Focused automated coverage
 
-Coverage now proves:
+Coverage proves:
 
 - general selection permits an unprepared `WAITING` photo to be selected for local discard;
 - `Select All Ready` still selects only upload-eligible prepared photos;
@@ -91,11 +93,11 @@ Coverage now proves:
 - unselected photos remain intact;
 - individual discard uses the same guarded deletion owner.
 
-Final Android CI PASS on exact head `b5b19b0f6ffddd58e5c0040c1012896edf1a5dd3`, workflow run `34759380078`.
+Final Android CI PASS on exact runtime head `b5b19b0f6ffddd58e5c0040c1012896edf1a5dd3`, workflow run `34759380078`.
 
 ## Physical smoke check
 
-Samsung physical-device gate: **PASS** on 2026-09-13 using the internal APK built from exact head `b5b19b0f6ffddd58e5c0040c1012896edf1a5dd3` (artifact `10318910069`).
+Samsung physical-device gate: **PASS** on 2026-09-13 using the internal APK built from exact runtime head `b5b19b0f6ffddd58e5c0040c1012896edf1a5dd3` (artifact `10318910069`).
 
 Operator result: **pass**.
 
@@ -119,8 +121,8 @@ This physical gate is complete and should not be repeated unless the discard imp
 
 ## Rollback
 
-Rollback target is the stacked Concept 3 head `4e8bc4e678d2fbc898b0e78b4b3bfe8a566e1a91`. Reverting the batch-discard commits must not remove or rewrite surviving queued-photo records.
+Original rollback target was the stacked Concept 3 head `4e8bc4e678d2fbc898b0e78b4b3bfe8a566e1a91`. After merge, prefer reverting PR #36 / merge commit `eebf71a16fa1d704a522ed6f6e5a4a592ec61e40` rather than altering surviving queued-photo records.
 
-## Merge approval
+## Merge approval and result
 
-Implementation, automated verification, and the Samsung physical smoke gate are complete. Because this is Level 3 deletion behavior, explicit operator approval is still required before this branch is merged.
+The operator explicitly granted Level 3 pre-merge approval on 2026-09-13 after the automated and Samsung gates passed. PR #36 was retargeted to `main`, its diff was verified as the nine Batch Discard files only, and it merged successfully as `eebf71a16fa1d704a522ed6f6e5a4a592ec61e40`.
