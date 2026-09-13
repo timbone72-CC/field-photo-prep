@@ -279,7 +279,7 @@ private void buildLegacyWorkOrderUi() {
 
     ViewCompat.setOnApplyWindowInsetsListener(legacyRoot, (view, insets) -> {
         var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-        view.setPadding(0, bars.top, 0, bars.bottom);
+        view.setPadding(dp(14), bars.top, dp(14), bars.bottom);
         return insets;
     });
     ViewCompat.requestApplyInsets(legacyRoot);
@@ -1301,7 +1301,7 @@ private void buildLegacyWorkOrderUi() {
                 chooseMasterButton.setVisibility(View.GONE);
                 refreshAddressButton.setVisibility(View.VISIBLE);
                 driveOptionsButton.setVisibility(View.VISIBLE);
-                tintDriveStatusDot(R.color.home_primary);
+                tintDriveStatusDot(R.color.home_on_primary);
             } else {
                 homeMasterNameText.setText(master.name());
                 homeDriveStateText.setText("Drive access expired");
