@@ -417,6 +417,8 @@ private void renderPhotoList(
         TextView stateText = row.findViewById(R.id.photo_row_status);
         TextView timeText = row.findViewById(R.id.photo_row_time);
 
+        batchCheckBox.setVisibility(record.state() == PendingPhotoRecord.State.UPLOADED
+                ? View.INVISIBLE : View.VISIBLE);
         batchCheckBox.setChecked(batchSelectedPhotoIds.contains(record.id()));
         batchCheckBox.setEnabled(batchEligible && !controlsBusy);
         batchCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {

@@ -54,6 +54,7 @@ public final class Concept3RenderedScreensInstrumentedTest {
             writeJpeg(store.imageFile(photo), i);
             photo = store.finishCaptureIfImageExists(photo.id());
             preparer.prepare(store, photo);
+            if (i == 5) { store.beginUploadAttempt(photo.id()); store.markUploadConfirmed(photo.id(), "render-uploaded-file"); }
             if (i == 6) { store.beginUploadAttempt(photo.id()); store.markUploadFailed(photo.id(), "Test safe failure"); }
             if (i == 7) { store.beginUploadAttempt(photo.id()); store.markUploadUncertain(photo.id(), "Test uncertain outcome"); }
             photos.add(store.getById(photo.id()));
@@ -114,6 +115,12 @@ public final class Concept3RenderedScreensInstrumentedTest {
                     assertNotNull(((ImageView)row.findViewById(R.id.photo_row_thumb)).getDrawable());
                     ((CheckBox)row.findViewById(R.id.photo_row_check)).setChecked(true);
                     assertEquals("Upload Selected (1)", ((Button)activity.findViewById(R.id.photos_upload_selected)).getText().toString());
+                    View uploaded = ((android.widget.LinearLayout)activity.findViewById(R.id.photos_pending_list)).getChildAt(5);
+                    assertEquals(View.INVISIBLE, uploaded.findViewById(R.id.photo_row_check).getVisibility());
+                    assertFalse(uploaded.findViewById(R.id.photo_row_check).isEnabled());
+                    assertEquals("Uploaded", ((TextView) uploaded.findViewById(R.id.photo_row_status)).getText().toString());
+                    assertEquals(View.VISIBLE, row.findViewById(R.id.photo_row_check).getVisibility());
+                    assertTrue(row.findViewById(R.id.photo_row_check).isEnabled());
                     View uncertain = ((android.widget.LinearLayout)activity.findViewById(R.id.photos_pending_list)).getChildAt(7);
                     assertFalse(uncertain.findViewById(R.id.photo_row_check).isEnabled());
                     assertEquals("render-work", store.getById(photos.get(0).id()).workOrderId());
