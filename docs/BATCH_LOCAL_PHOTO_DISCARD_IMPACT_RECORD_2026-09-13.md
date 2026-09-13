@@ -1,7 +1,7 @@
 # Batch Local Photo Discard — Level 3 Impact Record
 
 Date: 2026-09-13
-Status: IMPLEMENTATION AUTHORIZED — PRE-MERGE APPROVAL PENDING
+Status: IMPLEMENTED + AUTOMATED PASS + SAMSUNG DEVICE PASS — PRE-MERGE APPROVAL PENDING
 Branch: `feat/batch-local-photo-discard-20260913`
 Stacked base: `feat/concept-3-ui-makeover-20260912` at `4e8bc4e678d2fbc898b0e78b4b3bfe8a566e1a91`
 
@@ -79,33 +79,36 @@ The feature is local-only and may operate offline. It does not rely on Drive/pro
 
 ## Focused automated coverage
 
-Add focused coverage proving:
+Coverage now proves:
 
 - general selection permits an unprepared `WAITING` photo to be selected for local discard;
 - `Select All Ready` still selects only upload-eligible prepared photos;
 - Upload Selected disables when the selection contains a non-upload-ready item;
 - Discard Selected enables only when every selected item is locally discard-safe;
-- an unsafe `UNCERTAIN`, `UPLOADING`, or `UPLOADED` item cannot be batch-discarded;
-- complete preflight aborts before any deletion when one selected ID is unsafe/missing/wrong-work-order;
+- unsafe `UNCERTAIN`, `UPLOADING`, and `UPLOADED` states are protected;
+- complete preflight aborts before deletion when a selected item is unsafe/missing/wrong-work-order;
 - a valid multi-photo local batch removes only its selected local originals/metadata/prepared copies;
 - unselected photos remain intact;
-- no Drive owner is invoked by the local discard path;
-- individual discard continues to use the same safety/deletion helper.
+- individual discard uses the same guarded deletion owner.
 
-Then run the complete Android CI suite once on the final runtime head.
+Final Android CI PASS on exact head `b5b19b0f6ffddd58e5c0040c1012896edf1a5dd3`, workflow run `34759380078`.
 
 ## Physical smoke check
 
-On Samsung, using disposable newly captured local photos only:
+Samsung physical-device gate: **PASS** on 2026-09-13 using the internal APK built from exact head `b5b19b0f6ffddd58e5c0040c1012896edf1a5dd3` (artifact `10318910069`).
 
-1. capture several photos in one work order;
+Operator result: **pass**.
+
+The approved smoke path was:
+
+1. capture several disposable photos in one work order;
 2. select at least two local discard-safe photos;
 3. verify `Discard Selected (N)` shows the exact count;
 4. confirm once;
 5. verify exactly those photos disappear locally and an unselected photo remains;
-6. do not use an `UNCERTAIN` or live customer Drive scenario to prove this local-only behavior.
+6. no Drive upload/delete scenario is required because this feature is local-only.
 
-No Drive upload/delete reality gate is required because the implementation must not touch Drive/provider code.
+This physical gate is complete and should not be repeated unless the discard implementation changes.
 
 ## Primary risks and mitigations
 
@@ -120,4 +123,4 @@ Rollback target is the stacked Concept 3 head `4e8bc4e678d2fbc898b0e78b4b3bfe8a5
 
 ## Merge approval
 
-Implementation is authorized by the operator request to continue. Because this is Level 3 deletion behavior, explicit operator approval is still required before this branch is merged.
+Implementation, automated verification, and the Samsung physical smoke gate are complete. Because this is Level 3 deletion behavior, explicit operator approval is still required before this branch is merged.
