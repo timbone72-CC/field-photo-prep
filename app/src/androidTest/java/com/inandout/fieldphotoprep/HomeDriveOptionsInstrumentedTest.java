@@ -38,15 +38,12 @@ public final class HomeDriveOptionsInstrumentedTest {
                 assertTrue(overflow.performClick());
             });
 
-            instrumentation.waitForIdleSync();
-            AccessibilityNodeInfo root = instrumentation.getUiAutomation().getRootInActiveWindow();
-            assertNotNull(root);
-            List<AccessibilityNodeInfo> changeDrive = root.findAccessibilityNodeInfosByText("Change Drive");
+            List<AccessibilityNodeInfo> changeDrive = awaitText(instrumentation, "Change Drive");
             assertFalse("Drive options must expose Change Drive", changeDrive.isEmpty());
             assertTrue("Step 3 must not add a Settings option",
-                    root.findAccessibilityNodeInfosByText("Settings").isEmpty());
+                    findText(instrumentation, "Settings").isEmpty());
 
-            List<AccessibilityNodeInfo> cancelNodes = root.findAccessibilityNodeInfosByText("Cancel");
+            List<AccessibilityNodeInfo> cancelNodes = awaitText(instrumentation, "Cancel");
             assertFalse("Drive options must remain dismissible", cancelNodes.isEmpty());
             AccessibilityNodeInfo cancel = clickableAncestor(cancelNodes.get(0));
             assertNotNull(cancel);
@@ -70,6 +67,30 @@ public final class HomeDriveOptionsInstrumentedTest {
         } finally {
             context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
         }
+    }
+
+    private static List<AccessibilityNodeInfo> awaitText(
+            Instrumentation instrumentation,
+            String text) throws InterruptedException {
+        for (int attempt = 0; attempt < 40; attempt++) {
+            instrumentation.waitForIdleSync();
+            List<AccessibilityNodeInfo> nodes = findText(instrumentation, text);
+            if (!nodes.isEmpty()) {
+                return nodes;
+            }
+            Thread.sleep(50);
+        }
+        return findText(instrumentation, text);
+    }
+
+    private static List<AccessibilityNodeInfo> findText(
+            Instrumentation instrumentation,
+            String text) {
+        AccessibilityNodeInfo root = instrumentation.getUiAutomation().getRootInActiveWindow();
+        if (root == null) {
+            return List.of();
+        }
+        return root.findAccessibilityNodeInfosByText(text);
     }
 
     private static AccessibilityNodeInfo clickableAncestor(AccessibilityNodeInfo node) {
