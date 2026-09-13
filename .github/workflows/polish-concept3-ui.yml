@@ -1,0 +1,34 @@
+name: Polish Concept 3 UI
+
+on:
+  push:
+    branches:
+      - feat/concept-3-ui-makeover-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply final UI polish
+        run: python3 ci/polish_concept3_ui.py
+      - name: Commit polish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app
+          if git diff --cached --quiet; then
+            echo "No polish changes"
+            exit 0
+          fi
+          git commit -m "Polish Concept 3 UI behavior"
+          git push origin HEAD:feat/concept-3-ui-makeover-20260912
