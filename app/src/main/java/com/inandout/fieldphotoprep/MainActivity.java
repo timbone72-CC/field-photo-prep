@@ -559,7 +559,7 @@ private void buildLegacyWorkOrderUi() {
                     visibleFolders.addAll(folders);
                     reconcileSelectedWorkOrder(folders);
                     notifyFolderAdapters();
-                    statusText.setText(folders.size() + " work order" + (folders.size() == 1 ? "" : "s") + " available");
+                    setStatusText(folders.size() + " work order" + (folders.size() == 1 ? "" : "s") + " available");
                     statusText.setVisibility(View.GONE);
                     setNotBusy();
                 });
@@ -663,7 +663,7 @@ private void buildLegacyWorkOrderUi() {
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
                         notifyFolderAdapters();
-                        statusText.setText(matches.size() + " folders named " + requestedName
+                        setStatusText(matches.size() + " folders named " + requestedName
                                 + " already exist. Select the intended one; no folder was created.");
                         setNotBusy();
                     });
@@ -704,7 +704,7 @@ private void buildLegacyWorkOrderUi() {
                         visibleFolders.clear();
                         visibleFolders.addAll(afterCreate);
                         notifyFolderAdapters();
-                        statusText.setText("Work-order create result is ambiguous. Select the intended same-named folder; no additional folder will be created until refresh.");
+                        setStatusText("Work-order create result is ambiguous. Select the intended same-named folder; no additional folder will be created until refresh.");
                         setNotBusy();
                     });
                     return;
@@ -792,7 +792,7 @@ private void buildLegacyWorkOrderUi() {
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
                         notifyFolderAdapters();
-                        statusText.setText(requestedMatches.size() + " folders named " + requestedName
+                        setStatusText(requestedMatches.size() + " folders named " + requestedName
                                 + " already exist. No old folder was renamed; select the intended existing folder.");
                         setNotBusy();
                     });
@@ -931,7 +931,7 @@ private void buildLegacyWorkOrderUi() {
                         visibleFolders.clear();
                         visibleFolders.addAll(folders);
                         notifyFolderAdapters();
-                        statusText.setText(requestedMatches.size() + " folders named " + requestedName
+                        setStatusText(requestedMatches.size() + " folders named " + requestedName
                                 + " already exist. Nothing was deleted; select the intended existing folder.");
                         setNotBusy();
                     });
@@ -1193,7 +1193,7 @@ private void buildLegacyWorkOrderUi() {
         folderPrefs.setCurrentWorkOrder(folder);
         renderCurrentWorkOrder();
         if (workOrderAdapter != null) { workOrderAdapter.setSelectedId(folder.id()); }
-        statusText.setText(message + ": " + PropertyDisplayName.fromDriveFolderName(folder.name()));
+        setStatusText(message + ": " + PropertyDisplayName.fromDriveFolderName(folder.name()));
         statusText.setVisibility(View.VISIBLE);
         setNotBusy();
     }
@@ -1360,7 +1360,7 @@ private void buildLegacyWorkOrderUi() {
                 homeProgress.setVisibility(View.VISIBLE);
             }
         } else {
-            statusText.setText(message);
+            setStatusText(message);
         }
         chooseMasterButton.setEnabled(false);
         refreshAddressButton.setEnabled(false);
@@ -1414,11 +1414,21 @@ private void buildLegacyWorkOrderUi() {
         renderPropertyCountAndEmptyState();
     }
 
+    private void setStatusText(String message) {
+        if (statusText == null) {
+            return;
+        }
+        statusText.setText(message == null ? "" : message);
+        if (screen == Screen.WORK_ORDERS) {
+            statusText.setVisibility(message == null || message.isBlank() ? View.GONE : View.VISIBLE);
+        }
+    }
+
     private void showMessage(String message) {
         if (screen == Screen.ADDRESSES) {
             showHomeInlineMessage(message);
         } else {
-            statusText.setText(message);
+            setStatusText(message);
             statusText.setVisibility(View.VISIBLE);
         }
         setNotBusy();
@@ -1430,7 +1440,7 @@ private void buildLegacyWorkOrderUi() {
         if (screen == Screen.ADDRESSES) {
             showHomeInlineMessage(message);
         } else {
-            statusText.setText(message);
+            setStatusText(message);
             statusText.setVisibility(View.VISIBLE);
         }
         setNotBusy();
@@ -1448,10 +1458,11 @@ private void buildLegacyWorkOrderUi() {
             getWindow().setStatusBarColor(color);
             getWindow().setNavigationBarColor(color);
         } else {
-            controller.setAppearanceLightStatusBars(true);
-            controller.setAppearanceLightNavigationBars(true);
-            getWindow().setStatusBarColor(Color.WHITE);
-            getWindow().setNavigationBarColor(Color.WHITE);
+            controller.setAppearanceLightStatusBars(!night);
+            controller.setAppearanceLightNavigationBars(!night);
+            int color = ContextCompat.getColor(this, R.color.home_background);
+            getWindow().setStatusBarColor(color);
+            getWindow().setNavigationBarColor(color);
         }
     }
 
