@@ -82,7 +82,6 @@ public final class MainActivity extends Activity {
     private Button useCreateAddressButton;
     private Button backButton;
     private Button refreshWorkOrdersButton;
-    private Button selectWorkOrderButton;
     private Button dateButton;
     private Button useCreateButton;
     private Button reuseEmptyButton;
@@ -256,7 +255,6 @@ private void buildLegacyWorkOrderUi() {
     workOrderInput = legacyRoot.findViewById(R.id.work_order_name_input);
     backButton = legacyRoot.findViewById(R.id.work_order_back);
     refreshWorkOrdersButton = legacyRoot.findViewById(R.id.work_order_refresh);
-    selectWorkOrderButton = legacyRoot.findViewById(R.id.work_order_select_existing);
     dateButton = legacyRoot.findViewById(R.id.work_order_date_button);
     useCreateButton = legacyRoot.findViewById(R.id.work_order_create_button);
     reuseEmptyButton = legacyRoot.findViewById(R.id.work_order_reuse_empty);
@@ -281,7 +279,6 @@ private void buildLegacyWorkOrderUi() {
 
     backButton.setOnClickListener(v -> showAddressScreen(true));
     refreshWorkOrdersButton.setOnClickListener(v -> refreshWorkOrderFolders());
-    selectWorkOrderButton.setOnClickListener(v -> showWorkOrderPicker());
     dateButton.setOnClickListener(v -> chooseWorkOrderDate());
     useCreateButton.setOnClickListener(v -> useOrCreateWorkOrder());
     reuseEmptyButton.setOnClickListener(v -> reuseSelectedEmptyFolder());
@@ -521,7 +518,6 @@ private void buildLegacyWorkOrderUi() {
         legacyRoot.setVisibility(View.VISIBLE);
         addressText.setText(PropertyDisplayName.fromDriveFolderName(address.name()));
         renderCurrentWorkOrder();
-        renderWorkOrderPickerButton();
         applySystemBarAppearance(false);
         refreshWorkOrderFolders();
     }
@@ -582,38 +578,6 @@ private void buildLegacyWorkOrderUi() {
                 runOnUiThread(() -> showError("Could not read work-order folders", error));
             }
         });
-    }
-
-    private void showWorkOrderPicker() {
-        if (screen != Screen.WORK_ORDERS || visibleFolders.isEmpty()) {
-            showMessage("No work-order folders are available to select.");
-            return;
-        }
-
-        CharSequence[] labels = new CharSequence[visibleFolders.size()];
-        for (int i = 0; i < visibleFolders.size(); i++) {
-            labels[i] = folderLabel(visibleFolders.get(i));
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle("Select existing work-order folder")
-                .setItems(labels, (dialog, which) -> {
-                    if (which >= 0 && which < visibleFolders.size()) {
-                        selectWorkOrder(visibleFolders.get(which), "Work order selected");
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void renderWorkOrderPickerButton() {
-        if (selectWorkOrderButton == null) {
-            return;
-        }
-        int count = screen == Screen.WORK_ORDERS ? visibleFolders.size() : 0;
-        selectWorkOrderButton.setText(count == 0
-                ? "Select Existing Work Order"
-                : "Select Existing Work Order (" + count + ")");
     }
 
     private void chooseWorkOrderDate() {
@@ -1386,7 +1350,6 @@ private void buildLegacyWorkOrderUi() {
         useCreateAddressButton.setEnabled(false);
         backButton.setEnabled(false);
         refreshWorkOrdersButton.setEnabled(false);
-        selectWorkOrderButton.setEnabled(false);
         workOrderInput.setEnabled(false);
         dateButton.setEnabled(false);
         useCreateButton.setEnabled(false);
@@ -1406,19 +1369,16 @@ private void buildLegacyWorkOrderUi() {
         if (homeProgress != null) {
             homeProgress.setVisibility(View.GONE);
         }
-        renderWorkOrderPickerButton();
         folderList.setEnabled(canRead);
         if (screen == Screen.ADDRESSES) {
             chooseMasterButton.setEnabled(true);
             refreshAddressButton.setEnabled(canRead);
             useCreateAddressButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
-            selectWorkOrderButton.setEnabled(false);
             photosButton.setEnabled(false);
             renderSavedMaster();
         } else {
             backButton.setEnabled(true);
             refreshWorkOrdersButton.setEnabled(canRead);
-            selectWorkOrderButton.setEnabled(canRead && !visibleFolders.isEmpty());
             workOrderInput.setEnabled(canRead);
             dateButton.setEnabled(canRead);
             useCreateButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
