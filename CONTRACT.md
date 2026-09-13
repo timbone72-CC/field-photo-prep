@@ -134,7 +134,7 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 14. Work-order-folder rename and child deletion are permitted only through the approved empty-folder reuse or confirmed **Clear & Reuse** workflow in Section 2.
 15. A folder reuse operation must operate by exact stable remote folder identity; visible folder names alone may never authorize deletion or rename.
 
-## 6. Upload queue, selection, batch execution, and retry
+## 6. Upload queue, selection, batch execution, local discard, and retry
 
 1. Photos may remain temporarily queued locally when the device is offline or Drive is unavailable.
 2. Each queued photo keeps its own immutable local identity and its bound work-order remote folder identity.
@@ -144,19 +144,28 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 6. Restarting the app must not discard queued photos that have not been safely uploaded or intentionally removed.
 7. A successful upload changes only that photo's queue state.
 8. Once Drive success is confirmed and local bookkeeping is safely committed, the temporary image may be removed automatically.
-9. The operator may build a manual upload batch by selecting any subset of currently upload-eligible prepared photos for the open work order.
-10. Batch selection is UI/session convenience only. Selection state is not durable queue authority and must not change a photo's stored destination or upload state merely because a box is checked or unchecked.
-11. **Select All Ready** may select all currently eligible prepared photos for the open work order, and **Clear Selection** may remove that selection without changing photo, queue, or Drive state.
+9. The operator may build a temporary UI selection from photos in the open work order that are eligible for at least one approved selected action: normal upload or explicit local discard.
+10. Selection is UI/session convenience only. Selection state is not durable queue authority and must not change a photo's stored destination, upload state, or local files merely because a box is checked or unchecked.
+11. **Select All Ready** retains its upload meaning: it selects all currently upload-eligible prepared photos for the open work order. **Clear Selection** removes the current selection without changing photo, queue, or Drive state.
 12. A selected normal-upload batch may contain only photos that have a usable prepared copy and are eligible to begin an upload attempt. `CAPTURING`, `UPLOADING`, `UNCERTAIN`, already `UPLOADED`, missing-image, or unprepared photos are not eligible for normal batch upload.
-13. One **Upload Selected (N)** action snapshots the selected photo IDs. Each selected photo ID may be attempted at most once during that batch run.
+13. **Upload Selected (N)** may run only when every currently selected photo is normal-upload eligible. It snapshots the selected photo IDs, and each selected photo ID may be attempted at most once during that batch run.
 14. A batch must perform at most one Drive upload attempt at a time. “Upload Selected” is one operator action, not permission to issue simultaneous remote creates.
-15. Every photo in a batch must use that photo's own already-stored immutable work-order provider identity. The currently visible address/work-order state may not redirect any selected item.
+15. Every photo in an upload batch must use that photo's own already-stored immutable work-order provider identity. The currently visible address/work-order state may not redirect any selected item.
 16. A confirmed upload may continue to the next selected photo. A confirmed upload with incomplete local cleanup may also continue because remote success is already durable.
-17. A known retry-safe failure that leaves the photo in `FAILED` or pre-attempt `WAITING` state may be reported and the batch may continue to later selected photos.
-18. If an attempted photo becomes `UNCERTAIN`, remains `UPLOADING`, disappears from readable queue state, or otherwise has an unverified remote outcome, the batch must stop immediately. No later selected photo may be intentionally attempted.
-19. Stopping a batch must leave all later unattempted selected photos in their prior local/queue state.
-20. Process death during an active batch does not make the batch selection authoritative after restart. Existing per-photo restart recovery governs the active photo; photos not yet attempted remain unchanged and may be selected again later.
+17. A known retry-safe failure that leaves the photo in `FAILED` or pre-attempt `WAITING` state may be reported and the upload batch may continue to later selected photos.
+18. If an attempted photo becomes `UNCERTAIN`, remains `UPLOADING`, disappears from readable queue state, or otherwise has an unverified remote outcome, the upload batch must stop immediately. No later selected photo may be intentionally attempted.
+19. Stopping an upload batch must leave all later unattempted selected photos in their prior local/queue state.
+20. Process death during an active upload batch does not make the selection authoritative after restart. Existing per-photo restart recovery governs the active photo; photos not yet attempted remain unchanged and may be selected again later.
 21. The existing individual-photo upload and UNCERTAIN reconciliation paths remain available; batch upload does not weaken or replace them.
+22. A `WAITING` or retry-safe `FAILED` photo may be selected for explicit local discard even when it is not prepared or otherwise not eligible for upload.
+23. **Discard Selected (N)** may run only when every currently selected photo still belongs to the exact open address/work-order identities and `canDiscardLocally()` remains true for every selected photo.
+24. Batch local discard requires one explicit confirmation showing the work order and exact selected count and stating that only app-private local photo data will be removed and Drive will not be changed.
+25. Before any selected local photo is deleted, the entire selected ID snapshot must be re-read and validated. A missing photo, wrong stored address/work-order identity, duplicate selection, or unsafe queue state aborts the whole batch before deletion starts.
+26. Each selected photo must be re-read again before its local deletion. If it has become unsafe, that item and all later items remain untouched.
+27. Local discard removes only the selected photo's app-private prepared derivative, protected local original, and pending local metadata. It must not perform a Drive/provider delete, upload, move, rename, permission change, retry, or reconciliation operation.
+28. If a local filesystem deletion fails after earlier selected photos were already removed, the batch stops, reports the completed count, and leaves all later photos untouched rather than pretending the whole batch succeeded.
+29. `CAPTURING`, `UPLOADING`, `UNCERTAIN`, and `UPLOADED` photos are never eligible for explicit local discard because capture/upload/duplicate-protection evidence must be preserved.
+30. Individual-photo discard remains available and must enforce the same exact stored-identity and `canDiscardLocally()` safety rules as batch local discard.
 
 ## 7. Photo naming and duplicate protection
 
@@ -178,6 +187,9 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 6. Deleting a local remembered-folder entry must not automatically delete its Drive folder or Drive photos.
 7. General-purpose Drive photo, work-order-folder, or address-folder deletion from inside the app is not part of the initial approved scope.
 8. The only initial app-driven deletion of existing Drive content is the explicit, confirmed child-item removal required by **Clear & Reuse** for one selected work-order folder.
+9. Explicit operator discard of a temporary local photo is separate from Drive deletion. It may remove only app-private local photo data that is still in a discard-safe queue state.
+10. A local photo discard must fail closed if the persisted record cannot be read, no longer matches the intended address/work-order identity, or is no longer `WAITING`/retry-safe `FAILED`.
+11. Local discard must never be implemented by deleting the remote Drive photo or its work-order folder.
 
 ## 9. Initial user interface scope
 
@@ -198,10 +210,11 @@ The first working app needs only the surfaces required for the core workflow:
 - take multiple photos in one camera session and use **Done** to return once;
 - see each captured photo retained separately under the same exact work-order destination identity;
 - allow prepared upload copies to be created automatically in the background;
-- use a per-photo **Send** checkbox for upload-eligible photos;
+- use per-photo selection checkboxes for the approved selected actions available to that local photo;
 - use **Select All Ready**, **Clear Selection**, and a visible selected count;
-- use **Upload Selected (N)** to send the chosen subset sequentially while preserving per-photo destination and retry safety;
-- keep individual-photo upload/reconciliation controls available; and
+- use **Upload Selected (N)** only when the complete selection is upload-ready;
+- use **Discard Selected (N)** with one explicit confirmation when the complete selection is locally discard-safe;
+- keep individual-photo upload/reconciliation/discard controls available; and
 - see temporary upload/preparation status.
 
 The app should keep this workflow direct and field-friendly rather than presenting one long configuration page.
@@ -227,4 +240,4 @@ The following are not required for the first working version unless separately a
 
 ## 11. Safety priority
 
-When two behaviors conflict, preserve any photo not yet confirmed in Drive and preserve its exact work-order-folder destination identity before optimizing convenience, speed, cleanup, or storage use. Destructive Drive reuse must remain operator-initiated, narrowly scoped, and fail closed. A selected upload batch must stop rather than continue through an uncertain or unverified remote result. After confirmed Drive storage, the app should favor removing unnecessary local image copies rather than becoming a second photo archive.
+When two behaviors conflict, preserve any photo not yet confirmed in Drive and preserve its exact work-order-folder destination identity before optimizing convenience, speed, cleanup, or storage use. The only exception for an unconfirmed local photo is an explicit operator discard that passes the approved stored-identity and discard-safe queue-state guards immediately before local deletion. Destructive Drive reuse must remain operator-initiated, narrowly scoped, and fail closed. A selected upload batch must stop rather than continue through an uncertain or unverified remote result. After confirmed Drive storage, the app should favor removing unnecessary local image copies rather than becoming a second photo archive.
