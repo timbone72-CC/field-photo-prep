@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/home_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/home_background">
-
     <LinearLayout
         android:id="@+id/home_content"
         android:layout_width="match_parent"
@@ -12,22 +12,18 @@
         android:orientation="vertical"
         android:paddingStart="14dp"
         android:paddingEnd="14dp">
-
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="48dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Field Photo Prep"
                 android:textColor="@color/home_text_primary"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
+                style="@style/FieldAppTitle" />
             <ImageButton
                 android:id="@+id/home_drive_options_button"
                 android:layout_width="48dp"
@@ -37,30 +33,26 @@
                 android:padding="12dp"
                 android:src="@drawable/ic_home_more_24" />
         </LinearLayout>
-
         <LinearLayout
             android:id="@+id/drive_status_strip"
             android:layout_width="match_parent"
-            android:layout_height="78dp"
-            android:background="@drawable/bg_concept_green_card"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_concept_soft_green"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
+            android:paddingStart="12dp"
             android:paddingEnd="8dp">
-
             <View
                 android:id="@+id/drive_status_dot"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:layout_marginEnd="12dp"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginEnd="10dp"
                 android:background="@drawable/bg_home_status_dot" />
-
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
-
                 <TextView
                     android:id="@+id/home_master_name"
                     android:layout_width="match_parent"
@@ -68,10 +60,10 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text="Google Drive"
-                    android:textColor="@color/home_on_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
+                    android:textColor="@color/home_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="normal"
+                    android:fontFamily="sans-serif-medium" />
                 <TextView
                     android:id="@+id/home_drive_state"
                     android:layout_width="match_parent"
@@ -80,10 +72,9 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text="Not connected"
-                    android:textColor="#E8FFF2"
-                    android:textSize="12sp" />
+                    android:textColor="@color/home_text_secondary"
+                    android:textSize="11sp" />
             </LinearLayout>
-
             <ProgressBar
                 android:id="@+id/home_progress"
                 style="?android:attr/progressBarStyleSmall"
@@ -91,7 +82,6 @@
                 android:layout_height="40dp"
                 android:padding="9dp"
                 android:visibility="gone" />
-
             <ImageButton
                 android:id="@+id/home_refresh_button"
                 android:layout_width="48dp"
@@ -99,20 +89,20 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Refresh properties"
                 android:padding="12dp"
-                android:src="@drawable/ic_home_refresh_24" />
-
+                android:src="@drawable/ic_home_refresh_24"
+                android:tint="@color/home_primary" />
             <Button
                 android:id="@+id/home_connect_button"
                 android:layout_width="wrap_content"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
                 android:minWidth="0dp"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:text="Connect"
                 android:textAllCaps="false"
-                android:visibility="gone" />
+                android:visibility="gone"
+                style="@style/FieldAction" />
         </LinearLayout>
-
         <TextView
             android:id="@+id/home_status_text"
             android:layout_width="match_parent"
@@ -123,57 +113,57 @@
             android:textColor="@color/home_error"
             android:textSize="12sp"
             android:visibility="gone" />
-
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="58dp"
+            android:layout_height="56dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
-
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Properties"
                     android:textColor="@color/home_text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
-
+                    android:textSize="15sp"
+                    android:textStyle="normal"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginEnd="6dp" />
                 <TextView
                     android:id="@+id/home_property_count"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="1dp"
+                    android:layout_marginTop="0dp"
                     android:text="0 properties"
                     android:textColor="@color/home_text_secondary"
-                    android:textSize="12sp" />
+                    android:textSize="11sp"
+                    android:layout_weight="1"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
             </LinearLayout>
-
             <Button
                 android:id="@+id/home_new_address_button"
                 android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_concept_blue_button"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_field_compact_blue_button"
                 android:minWidth="0dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:text="+ New Address"
                 android:textAllCaps="false"
-                android:textColor="@android:color/white"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:textColor="@color/home_on_primary"
+                android:textSize="12sp"
+                android:textStyle="normal"
+                style="@style/FieldAction" />
         </LinearLayout>
-
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
-
             <ListView
                 android:id="@+id/home_property_list"
                 android:layout_width="match_parent"
@@ -183,7 +173,6 @@
                 android:dividerHeight="7dp"
                 android:paddingBottom="8dp"
                 android:scrollbars="vertical" />
-
             <TextView
                 android:id="@+id/home_empty_text"
                 android:layout_width="match_parent"
@@ -195,44 +184,7 @@
                 android:textSize="14sp"
                 android:visibility="gone" />
         </FrameLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:background="@drawable/bg_concept_nav"
-            android:gravity="center"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/home_nav_home"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:text="Home"
-                android:textAllCaps="false"
-                android:textColor="@color/home_primary"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/home_nav_work_orders"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:text="Work Orders"
-                android:textAllCaps="false"
-                android:textColor="@color/home_text_secondary" />
-
-            <Button
-                android:id="@+id/home_nav_photos"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:text="Photos"
-                android:textAllCaps="false"
-                android:textColor="@color/home_text_secondary" />
-        </LinearLayout>
+        <include
+            layout="@layout/field_bottom_navigation" />
     </LinearLayout>
 </FrameLayout>

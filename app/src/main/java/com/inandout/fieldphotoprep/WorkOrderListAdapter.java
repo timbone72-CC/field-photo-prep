@@ -38,7 +38,7 @@ final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
             state.setVisibility(View.GONE);
             return row;
         }
-        String name = PropertyDisplayName.fromDriveFolderName(folder.name());
+        String name = PropertyDisplayName.readableFolderName(folder.name());
         int split = name.lastIndexOf(" - ");
         if (split > 0 && split + 3 < name.length()) {
             title.setText(name.substring(0, split));
@@ -46,6 +46,17 @@ final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
         } else {
             title.setText(name);
             date.setText("Existing work order");
+        }
+        int sameDisplayCount = 0;
+        for (int i = 0; i < getCount(); i++) {
+            DriveFolder other = getItem(i);
+            if (other != null && PropertyDisplayName.readableFolderName(other.name()).equals(name)) {
+                sameDisplayCount++;
+            }
+        }
+        if (sameDisplayCount > 1) {
+            String id = folder.id();
+            date.setText(date.getText() + " · ID …" + id.substring(Math.max(0, id.length() - 8)));
         }
         boolean selected = selectedId != null && selectedId.equals(folder.id());
         row.setBackgroundResource(selected ? R.drawable.bg_concept_selected : R.drawable.bg_concept_card);

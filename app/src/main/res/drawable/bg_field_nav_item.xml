@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <inset android:insetLeft="6dp" android:insetRight="6dp" android:insetTop="5dp" android:insetBottom="5dp" android:drawable="@drawable/bg_concept_soft_green" />
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>

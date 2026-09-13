@@ -125,6 +125,7 @@ public final class PhotoCaptureActivity extends Activity {
 private void buildUi() {
     setContentView(R.layout.screen_photos);
     View root = findViewById(R.id.photos_root);
+    findViewById(R.id.nav_photos).setSelected(true);
     statusText = findViewById(R.id.photos_status);
     pendingCountText = findViewById(R.id.photos_pending_count);
     batchSelectionText = findViewById(R.id.photos_batch_selection);
@@ -146,7 +147,7 @@ private void buildUi() {
     addressText.setText(address == null ? "No property selected"
             : PropertyDisplayName.fromDriveFolderName(address.name()));
     workOrderText.setText(workOrder == null ? "No work order selected"
-            : PropertyDisplayName.fromDriveFolderName(workOrder.name()));
+            : PropertyDisplayName.readableFolderName(workOrder.name()));
 
     takePhotoButton.setOnClickListener(v -> beginCameraCapture());
     selectAllReadyButton.setOnClickListener(v -> selectAllReadyPhotos());
@@ -157,13 +158,20 @@ private void buildUi() {
     reconcileButton.setOnClickListener(v -> reconcileSelectedPhoto());
     discardButton.setOnClickListener(v -> confirmDiscardSelected());
     findViewById(R.id.photos_back).setOnClickListener(v -> finish());
-    findViewById(R.id.photos_nav_home).setOnClickListener(v -> {
+    findViewById(R.id.nav_home).setOnClickListener(v -> {
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("field_tab", "home");
         startActivity(intent);
         finish();
     });
-    findViewById(R.id.photos_nav_work_orders).setOnClickListener(v -> finish());
+    findViewById(R.id.nav_work_orders).setOnClickListener(v -> {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("field_tab", "work_orders");
+        startActivity(intent);
+        finish();
+    });
 
     ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
         var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());

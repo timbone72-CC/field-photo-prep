@@ -121,6 +121,18 @@ public final class MainActivity extends Activity {
     }
 
     @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String destination = intent.getStringExtra("field_tab");
+        if ("home".equals(destination)) {
+            showAddressScreen(true);
+        } else if ("work_orders".equals(destination) && screen == Screen.ADDRESSES) {
+            openSavedPropertyFromHome();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         executor.shutdownNow();
         super.onDestroy();
@@ -169,8 +181,9 @@ private void buildHomeUi() {
     refreshAddressButton = homeRoot.findViewById(R.id.home_refresh_button);
     useCreateAddressButton = homeRoot.findViewById(R.id.home_new_address_button);
     folderList = homeRoot.findViewById(R.id.home_property_list);
-    homeNavWorkOrdersButton = homeRoot.findViewById(R.id.home_nav_work_orders);
-    homeNavPhotosButton = homeRoot.findViewById(R.id.home_nav_photos);
+    homeNavWorkOrdersButton = homeRoot.findViewById(R.id.nav_work_orders);
+    homeNavPhotosButton = homeRoot.findViewById(R.id.nav_photos);
+    homeRoot.findViewById(R.id.nav_home).setSelected(true);
 
     chooseMasterButton.setOnClickListener(v -> chooseMasterFolder());
     refreshAddressButton.setOnClickListener(v -> refreshAddressFolders());
@@ -251,8 +264,9 @@ private void buildLegacyWorkOrderUi() {
     workOrderList = legacyRoot.findViewById(R.id.work_order_list);
     maintenanceControls = legacyRoot.findViewById(R.id.work_order_maintenance);
     maintenanceButton = legacyRoot.findViewById(R.id.work_order_maintenance_toggle);
-    workNavHomeButton = legacyRoot.findViewById(R.id.work_nav_home);
-    workNavPhotosButton = legacyRoot.findViewById(R.id.work_nav_photos);
+    workNavHomeButton = legacyRoot.findViewById(R.id.nav_home);
+    workNavPhotosButton = legacyRoot.findViewById(R.id.nav_photos);
+    legacyRoot.findViewById(R.id.nav_work_orders).setSelected(true);
 
     workOrderControls = (LinearLayout) workOrderScroll.getChildAt(0);
     workOrderAdapter = new WorkOrderListAdapter(this, visibleFolders);
@@ -1193,7 +1207,7 @@ private void buildLegacyWorkOrderUi() {
         folderPrefs.setCurrentWorkOrder(folder);
         renderCurrentWorkOrder();
         if (workOrderAdapter != null) { workOrderAdapter.setSelectedId(folder.id()); }
-        setStatusText(message + ": " + PropertyDisplayName.fromDriveFolderName(folder.name()));
+        setStatusText(message + ": " + PropertyDisplayName.readableFolderName(folder.name()));
         statusText.setVisibility(View.VISIBLE);
         setNotBusy();
     }
@@ -1230,7 +1244,7 @@ private void buildLegacyWorkOrderUi() {
         }
         currentWorkOrderText.setText(selectedWorkOrder == null
                 ? "Select a work order below"
-                : "Selected: " + PropertyDisplayName.fromDriveFolderName(selectedWorkOrder.name()));
+                : "Selected: " + PropertyDisplayName.readableFolderName(selectedWorkOrder.name()));
         if (workOrderAdapter != null) {
             workOrderAdapter.setSelectedId(selectedWorkOrder == null ? null : selectedWorkOrder.id());
         }
