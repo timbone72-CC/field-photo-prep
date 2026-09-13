@@ -1315,7 +1315,7 @@ private void buildLegacyWorkOrderUi() {
                 chooseMasterButton.setVisibility(View.GONE);
                 refreshAddressButton.setVisibility(View.VISIBLE);
                 driveOptionsButton.setVisibility(View.VISIBLE);
-                tintDriveStatusDot(R.color.home_on_primary);
+                tintDriveStatusDot(R.color.home_primary);
             } else {
                 homeMasterNameText.setText(master.name());
                 homeDriveStateText.setText("Drive access expired");
