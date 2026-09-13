@@ -48,11 +48,14 @@
             android:textColor="@color/home_text_secondary"
             android:textSize="11sp" />
     </LinearLayout>
-    <TextView
-        android:layout_width="32dp"
-        android:layout_height="40dp"
-        android:gravity="center"
-        android:text="⋯"
-        android:textColor="@color/home_text_secondary"
-        android:textSize="22sp" />
+    <com.inandout.fieldphotoprep.PhotoRowActionsView
+        android:id="@+id/photo_row_actions"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Photo actions"
+        android:focusable="true"
+        android:padding="12dp"
+        android:src="@drawable/ic_home_more_24"
+        android:tint="@color/home_text_secondary" />
 </LinearLayout>
