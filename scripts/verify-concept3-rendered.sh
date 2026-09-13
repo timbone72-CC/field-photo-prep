@@ -22,12 +22,12 @@ adb shell wm size 1080x2400
 adb shell wm density 440
 adb shell cmd uimode night no
 adb shell settings put system font_scale 1.0
-gradle connectedDebugAndroidTest
+gradle connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true
 cp -R app/build/reports/androidTests/connected verification-reports/full-instrumentation
 for visual_variant in dark large-font; do
   if [ "$visual_variant" = dark ]; then adb shell cmd uimode night yes; else adb shell cmd uimode night no; fi
   if [ "$visual_variant" = large-font ]; then adb shell settings put system font_scale 1.3; else adb shell settings put system font_scale 1.0; fi
-  gradle connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.inandout.fieldphotoprep.Concept3UiStructureInstrumentedTest,com.inandout.fieldphotoprep.Concept3RenderedScreensInstrumentedTest -Pandroid.testInstrumentationRunnerArguments.visualVariant="$visual_variant"
+  gradle connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -Pandroid.testInstrumentationRunnerArguments.class=com.inandout.fieldphotoprep.Concept3UiStructureInstrumentedTest,com.inandout.fieldphotoprep.Concept3RenderedScreensInstrumentedTest -Pandroid.testInstrumentationRunnerArguments.visualVariant="$visual_variant"
   cp -R app/build/reports/androidTests/connected "verification-reports/$visual_variant-instrumentation"
 done
 adb shell cmd uimode night no

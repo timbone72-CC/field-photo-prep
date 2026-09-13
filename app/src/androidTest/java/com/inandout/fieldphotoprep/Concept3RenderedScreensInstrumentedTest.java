@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -94,7 +95,9 @@ public final class Concept3RenderedScreensInstrumentedTest {
             screenshot("work-orders");
             main.onActivity(activity -> assertTrue(activity.findViewById(R.id.work_order_photos).isEnabled()));
             // Launch explicitly because ActivityScenario remains tied to MainActivity.
-            try (ActivityScenario<PhotoCaptureActivity> photoScreen = ActivityScenario.launch(PhotoCaptureActivity.class)) {
+            // The class-based launch uses CLEAR_TASK; keep the real Main → Photos task instead.
+            Intent photoIntent = new Intent(context, PhotoCaptureActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try (ActivityScenario<PhotoCaptureActivity> photoScreen = ActivityScenario.launch(photoIntent)) {
                 photoScreen.onActivity(activity -> {
                     try {
                         setField(activity,"photoStore",store); setField(activity,"photoPreparer",preparer);

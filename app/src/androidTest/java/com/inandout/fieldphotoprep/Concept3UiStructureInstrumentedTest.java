@@ -30,7 +30,7 @@ public final class Concept3UiStructureInstrumentedTest {
                 assertNotNull(item.getCompoundDrawables()[1]);
                 assertEquals(1, item.getMaxLines());
                 assertEquals(11 * context.getResources().getDisplayMetrics().scaledDensity,
-                        item.getTextSize(), 0.1f);
+                        item.getTextSize(), 1.0f); // Android rounds resource dimensions to pixels.
             }
         }
         View home = inflater.inflate(R.layout.screen_home_properties, null, false);
