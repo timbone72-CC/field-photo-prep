@@ -123,12 +123,6 @@
                 android:divider="@android:color/transparent"
                 android:dividerHeight="7dp"
                 android:nestedScrollingEnabled="false" />
-            <Button
-                android:id="@+id/work_order_select_existing"
-                android:layout_width="1dp"
-                android:layout_height="1dp"
-                android:visibility="gone"
-                style="@style/FieldAction" />
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
