@@ -15,7 +15,7 @@
     android:paddingBottom="6dp">
     <CheckBox
         android:id="@+id/photo_row_check"
-        android:layout_width="44dp"
+        android:layout_width="48dp"
         android:layout_height="48dp"
         android:buttonTint="@color/home_primary"
         android:contentDescription="Select photo for upload" />
