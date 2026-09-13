@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="home_background">#F5F8F6</color>
+    <color name="home_surface">#FFFFFF</color>
+    <color name="home_surface_alt">#EEF4F0</color>
+    <color name="home_text_primary">#17211B</color>
+    <color name="home_text_secondary">#66736B</color>
+    <color name="home_primary">#0B8B5C</color>
+    <color name="home_primary_dark">#076D49</color>
+    <color name="home_primary_soft">#E3F4EC</color>
+    <color name="home_blue">#1473E6</color>
+    <color name="home_blue_dark">#0D5CBD</color>
+    <color name="home_blue_soft">#E9F2FF</color>
+    <color name="home_on_primary">#FFFFFF</color>
+    <color name="home_outline">#D8E0DA</color>
+    <color name="home_error">#B42318</color>
+    <color name="home_error_container">#FDECEA</color>
+    <color name="home_warning">#B35C00</color>
+    <color name="home_warning_container">#FFF3E0</color>
+</resources>
