@@ -145,31 +145,28 @@
                 android:textColor="@color/home_text_primary"
                 android:textColorHint="@color/home_text_secondary"
                 android:textSize="14sp" />
-            <LinearLayout
+            <Button
+                android:id="@+id/work_order_date_button"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-                <Button
-                    android:id="@+id/work_order_date_button"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:textAllCaps="false"
-                    style="@style/FieldAction" />
-                <Button
-                    android:id="@+id/work_order_create_button"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_concept_blue_button"
-                    android:text="Add Work Order"
-                    android:textAllCaps="false"
-                    android:textColor="@color/home_on_primary"
-                    android:textStyle="bold"
-                    style="@style/FieldAction" />
-            </LinearLayout>
+                android:gravity="center_vertical|start"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:textAllCaps="false"
+                android:textSize="14sp"
+                style="@style/FieldAction" />
+            <Button
+                android:id="@+id/work_order_create_button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_concept_blue_button"
+                android:text="Add Work Order"
+                android:textAllCaps="false"
+                android:textColor="@color/home_on_primary"
+                android:textStyle="bold"
+                style="@style/FieldAction" />
             <Button
                 android:id="@+id/work_order_maintenance_toggle"
                 android:layout_width="match_parent"
