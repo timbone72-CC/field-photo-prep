@@ -12,7 +12,9 @@ import android.widget.PopupMenu;
  * Row-level doorway to the existing per-photo action owners.
  *
  * This view does not own photo state or Drive behavior. It first invokes the row's existing
- * selection handler, then exposes only the already-enabled action buttons from PhotoCaptureActivity.
+ * selection handler, then exposes only the already-enabled action owners from
+ * PhotoCaptureActivity. Those owner buttons may be visually hidden because the row popup is the
+ * normal action surface.
  */
 public final class PhotoRowActionsView extends ImageButton {
     private static final int[] ACTION_BUTTON_IDS = {
@@ -57,7 +59,7 @@ public final class PhotoRowActionsView extends ImageButton {
         int order = 0;
         for (int actionId : ACTION_BUTTON_IDS) {
             Button action = activityRoot.findViewById(actionId);
-            if (action != null && action.getVisibility() == View.VISIBLE && action.isEnabled()) {
+            if (action != null && action.isEnabled()) {
                 menu.getMenu().add(0, actionId, order++, action.getText());
             }
         }

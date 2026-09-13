@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 
 import androidx.test.core.app.ActivityScenario;
@@ -29,12 +30,12 @@ import java.util.UUID;
 @RunWith(AndroidJUnit4.class)
 public final class PhotoRowActionsViewInstrumentedTest {
     @Test
-    public void photoActionsControlSelectsExactPhotoAndUsesExistingActionSurface() throws Exception {
+    public void photoActionsControlSelectsExactPhotoAndUsesHiddenExistingActionOwners() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
 
         DriveFolder property = new DriveFolder("actions-property", "101_TEST_ST");
-        DriveFolder workOrder = new DriveFolder("actions-work", "Inspection - 2026-09-12");
+        DriveFolder workOrder = new DriveFolder("actions-work", "Inspection - 2026-09-13");
         FolderPrefs prefs = new FolderPrefs(context);
         prefs.setCurrentAddress(property);
         prefs.setCurrentWorkOrder(workOrder);
@@ -68,8 +69,19 @@ public final class PhotoRowActionsViewInstrumentedTest {
                     assertTrue(actions.performClick());
 
                     assertEquals(expected.id(), field(activity, "selectedPhotoId"));
-                    assertEquals(View.VISIBLE,
-                            activity.findViewById(R.id.photos_selected_panel).getVisibility());
+
+                    View detailsPanel = activity.findViewById(R.id.photos_selected_panel);
+                    assertEquals(View.VISIBLE, detailsPanel.getVisibility());
+                    assertEquals(R.id.photos_content, ((View) detailsPanel.getParent()).getId());
+
+                    Button uploadOwner = activity.findViewById(R.id.photos_upload_one);
+                    assertEquals(View.GONE, uploadOwner.getVisibility());
+                    assertTrue("Prepared waiting photo should retain the existing upload owner state",
+                            uploadOwner.isEnabled());
+                    assertEquals(View.GONE,
+                            activity.findViewById(R.id.photos_prepare).getVisibility());
+                    assertEquals(View.GONE,
+                            activity.findViewById(R.id.photos_discard).getVisibility());
                 } catch (Exception error) {
                     throw new AssertionError(error);
                 }

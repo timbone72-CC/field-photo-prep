@@ -136,6 +136,65 @@
             android:paddingBottom="5dp"
             android:textColor="@color/home_text_secondary"
             android:textSize="12sp" />
+        <LinearLayout
+            android:id="@+id/photos_selected_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_concept_card"
+            android:orientation="vertical"
+            android:padding="10dp"
+            android:visibility="gone">
+            <TextView
+                android:id="@+id/photos_selected_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/home_text_primary"
+                android:textSize="13sp"
+                android:textStyle="normal"
+                android:fontFamily="sans-serif-medium" />
+            <TextView
+                android:id="@+id/photos_prepared_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:textColor="@color/home_text_secondary"
+                android:textSize="12sp" />
+            <Button
+                android:id="@+id/photos_prepare"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:text="Prepare selected photo"
+                android:textAllCaps="false"
+                android:visibility="gone"
+                style="@style/FieldAction" />
+            <Button
+                android:id="@+id/photos_upload_one"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Upload this photo"
+                android:textAllCaps="false"
+                android:visibility="gone"
+                style="@style/FieldAction" />
+            <Button
+                android:id="@+id/photos_reconcile"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Reconcile uncertain upload"
+                android:textAllCaps="false"
+                android:visibility="gone"
+                style="@style/FieldAction" />
+            <Button
+                android:id="@+id/photos_discard"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Discard temporary photo"
+                android:textAllCaps="false"
+                android:visibility="gone"
+                style="@style/FieldAction" />
+        </LinearLayout>
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -151,60 +210,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical" />
-                <LinearLayout
-                    android:id="@+id/photos_selected_panel"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/bg_concept_card"
-                    android:orientation="vertical"
-                    android:padding="12dp"
-                    android:visibility="gone">
-                    <TextView
-                        android:id="@+id/photos_selected_text"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/home_text_primary"
-                        android:textSize="13sp"
-                        android:textStyle="normal"
-                        android:fontFamily="sans-serif-medium" />
-                    <TextView
-                        android:id="@+id/photos_prepared_text"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:textColor="@color/home_text_secondary"
-                        android:textSize="12sp" />
-                    <Button
-                        android:id="@+id/photos_prepare"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_marginTop="6dp"
-                        android:text="Prepare selected photo"
-                        android:textAllCaps="false"
-                        style="@style/FieldAction" />
-                    <Button
-                        android:id="@+id/photos_upload_one"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="Upload this photo"
-                        android:textAllCaps="false"
-                        style="@style/FieldAction" />
-                    <Button
-                        android:id="@+id/photos_reconcile"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="Reconcile uncertain upload"
-                        android:textAllCaps="false"
-                        style="@style/FieldAction" />
-                    <Button
-                        android:id="@+id/photos_discard"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="Discard temporary photo"
-                        android:textAllCaps="false"
-                        style="@style/FieldAction" />
-                </LinearLayout>
             </LinearLayout>
         </ScrollView>
         <Button
