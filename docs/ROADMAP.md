@@ -209,6 +209,32 @@ This deferral does not invalidate the already proven single-device core workflow
 
 Development may continue on work that does not depend on second-device provider identity behavior. The next roadmap phase should be defined from actual remaining field needs rather than inventing a substitute for the missing second-phone gate.
 
+## Phase 9 — Concept 3 Field UI — COMPLETE
+
+Goal: replace the non-camera development-style presentation with a compact, field-first Home / Work Orders / Photos interface while preserving the proven camera, Drive, photo-identity, queue, upload, retry, reconciliation, and cleanup core.
+
+Delivered and validated:
+- purpose-built compact Home, Work Orders, and Photos layouts with shared bottom navigation;
+- field-readable property/work-order presentation and real photo thumbnails/selection controls;
+- Photos row `⋯` now provides immediate state-safe actions for that exact photo;
+- selected-photo details/actions no longer require scrolling below a long photo list;
+- Home `⋯` reliably exposes only the existing **Change Drive** path;
+- focused interaction coverage for property/work-order/photo navigation and batch selection;
+- 48dp photo-selection touch target and removal of the obsolete hidden work-order selector;
+- operator-confirmed **Discard Selected (N)** for locally discard-safe temporary photos only, with complete preflight and no Drive deletion path;
+- Work Orders date control repaired for Samsung readability without changing date semantics or folder naming;
+- Settings remains deferred; photo-list performance remains an evidence-only risk rather than a speculative rewrite.
+
+Verification and merge evidence:
+- Phase 9D UI repair automated gate passed and the focused Samsung Galaxy S21 field gate passed on 2026-09-13;
+- Batch Local Photo Discard Level 3 automated gate and Samsung disposable-photo smoke passed on 2026-09-13;
+- Work Orders date readability automated gate and Samsung visual/date-picker smoke passed on 2026-09-13;
+- final version-reconciled head `64339686ae0be08a2148b9b73390c35575e30584` passed Android CI run `34761274823`;
+- PR #35 (Concept 3 + Phase 9D), PR #36 (guarded batch local discard), and PR #37 (date readability + version reconciliation) merged to `main` on 2026-09-13;
+- current internal build version is versionCode 18 / `0.13-field-ui-internal` with the existing internal package identity and stable non-production test signer.
+
+Phase 8C remains independently deferred; completing Phase 9 does not claim cross-device/account provider-ID portability.
+
 ## Phase development staging rule
 
 The governed process is recorded in:
