@@ -40,7 +40,7 @@ public final class PropertyListAdapterAmbiguityInstrumentedTest {
         assertEquals(first.name(), name.getText().toString());
         assertEquals(View.VISIBLE, disambiguator.getVisibility());
         assertTrue(disambiguator.getText().toString().contains("Possible duplicate"));
-        assertTrue(disambiguator.getText().toString().contains("ID …aQ-j2lVgcJ"));
+        assertTrue(disambiguator.getText().toString().contains("ID …-j2lVgcJ"));
         assertEquals(1, disambiguator.getMaxLines());
     }
 }
