@@ -38,8 +38,12 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
         String display = PropertyDisplayName.fromDriveFolderName(folder.name());
         name.setText(display);
 
-        if (hasDuplicateDisplayName(display)) {
-            disambiguator.setText("ID …" + shortId(folder.id()));
+        if (AddressFolderAmbiguity.hasAmbiguousPeer(folder, folders)) {
+            disambiguator.setText("Possible duplicate · Drive: "
+                    + folder.name() + " · ID …" + shortId(folder.id()));
+            disambiguator.setVisibility(View.VISIBLE);
+        } else if (hasDuplicateDisplayName(display)) {
+            disambiguator.setText("Drive: " + folder.name() + " · ID …" + shortId(folder.id()));
             disambiguator.setVisibility(View.VISIBLE);
         } else {
             disambiguator.setText("");
