@@ -98,6 +98,19 @@ Use the existing disposable property `1607_CRESTVIEW_DR_CORDELL_PRESSURE_TEST`, 
 8. Return home and reopen the same property; confirm the stored real work-order selection is retained with the same exact address binding.
 9. Confirm Drive shows no new folders and unrelated test content is unchanged.
 
+## Physical-device reality-gate result — child discovery
+
+On the Samsung test phone with the CI-tested cumulative APK, the operator reopened `1607_CRESTVIEW_DR_CORDELL_PRESSURE_TEST` after refreshing Properties.
+
+Observed result:
+
+- the Work Orders screen showed only the expected real child folders `FULL PROPERTY C...`, `GRASS CUT`, and `POOL CARE`;
+- root-level property addresses were no longer present;
+- the property itself was no longer shown as a work order;
+- the previous invalid selected-work-order banner was gone and the screen instead showed `Select a work order below`.
+
+This is a **PASS** for reality-gate steps 3 through 6. Steps 7 through 9 remain to be completed before merge approval.
+
 ## Dependency / merge status
 
 This branch is stacked on `fix/address-folder-ambiguity-20260915` only so the physical phone can continue testing one cumulative APK. This defect remains a separate Level-3 change and must not be silently folded into the address-ambiguity PR.
