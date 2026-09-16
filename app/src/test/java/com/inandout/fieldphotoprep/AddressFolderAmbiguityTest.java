@@ -66,6 +66,19 @@ public final class AddressFolderAmbiguityTest {
     }
 
     @Test
+    public void exactProviderNameTakesPrecedenceOverFuzzyAlias() {
+        DriveFolder alias = new DriveFolder("alias-id", "509_W_SOUTH_BOUNDARY_WALTERS_OK");
+        DriveFolder exact = new DriveFolder("exact-id", "509 SOUTH BOUNDARY WALTERS OK");
+
+        List<DriveFolder> matches = AddressFolderAmbiguity.findPossibleMatches(
+                Arrays.asList(alias, exact),
+                "509 SOUTH BOUNDARY WALTERS OK");
+
+        assertEquals(1, matches.size());
+        assertEquals("exact-id", matches.get(0).id());
+    }
+
+    @Test
     public void ambiguousPeerRequiresDifferentProviderIdentity() {
         DriveFolder first = new DriveFolder("id-a", "509_W_SOUTH_BOUNDARY_WALTERS_OK");
         DriveFolder sameIdentity = new DriveFolder("id-a", "509 SOUTH BOUNDARY WALTERS OK");
