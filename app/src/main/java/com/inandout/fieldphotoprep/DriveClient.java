@@ -97,8 +97,8 @@ public final class DriveClient {
             String parentDocumentId) throws IOException {
         Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocumentId);
         FolderQueryResult result = queryFolders(resolver, childrenUri);
-        if (result.loading) {
-            throw new IOException("Drive is still loading this folder. Refresh and try again.");
+        if (result.loading || containsFolderId(result.folders, parentDocumentId)) {
+            return listFoldersFresh(resolver, treeUri, parentDocumentId);
         }
         return result.folders;
     }
@@ -119,7 +119,7 @@ public final class DriveClient {
         List<DriveFolder> previousSettled = null;
         for (int attempt = 0; attempt < FRESH_FOLDER_MAX_ATTEMPTS; attempt++) {
             FolderQueryResult result = queryFolders(resolver, childrenUri);
-            if (!result.loading) {
+            if (!result.loading && !containsFolderId(result.folders, parentDocumentId)) {
                 if (previousSettled != null && sameFolders(previousSettled, result.folders)) {
                     return result.folders;
                 }
@@ -134,7 +134,7 @@ public final class DriveClient {
         }
 
         throw new IOException(
-                "Drive did not return two matching settled folder checks. Nothing was created or changed; wait for Drive to sync and try again.");
+                "Drive did not return two matching settled child-folder checks for the selected parent. Nothing was created or changed; wait for Drive to sync and try again.");
     }
 
     public ChildSnapshot listDirectChildren(
@@ -250,6 +250,10 @@ public final class DriveClient {
             }
         }
         return null;
+    }
+
+    static boolean containsFolderId(List<DriveFolder> folders, String documentId) {
+        return findById(folders, documentId) != null;
     }
 
     static boolean sameFolders(List<DriveFolder> first, List<DriveFolder> second) {
