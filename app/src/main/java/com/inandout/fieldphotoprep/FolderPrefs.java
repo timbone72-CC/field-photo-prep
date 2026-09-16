@@ -13,6 +13,7 @@ public final class FolderPrefs {
     private static final String ADDRESS_NAME = "current_address_folder_name";
     private static final String WORK_ORDER_ID = "current_work_order_folder_id";
     private static final String WORK_ORDER_NAME = "current_work_order_folder_name";
+    private static final String WORK_ORDER_ADDRESS_ID = "current_work_order_address_folder_id";
 
     private final SharedPreferences prefs;
 
@@ -34,7 +35,19 @@ public final class FolderPrefs {
     }
 
     public DriveFolder getCurrentWorkOrder() {
-        return getFolder(WORK_ORDER_ID, WORK_ORDER_NAME);
+        DriveFolder folder = getFolder(WORK_ORDER_ID, WORK_ORDER_NAME);
+        if (folder == null) {
+            return null;
+        }
+        String addressId = prefs.getString(ADDRESS_ID, null);
+        String boundAddressId = prefs.getString(WORK_ORDER_ADDRESS_ID, null);
+        if (addressId == null
+                || boundAddressId == null
+                || !addressId.equals(boundAddressId)
+                || folder.id().equals(addressId)) {
+            return null;
+        }
+        return folder;
     }
 
     public void setMasterFolder(Uri treeUri, DriveFolder folder) {
@@ -46,6 +59,7 @@ public final class FolderPrefs {
                 .remove(ADDRESS_NAME)
                 .remove(WORK_ORDER_ID)
                 .remove(WORK_ORDER_NAME)
+                .remove(WORK_ORDER_ADDRESS_ID)
                 .apply();
     }
 
@@ -55,20 +69,32 @@ public final class FolderPrefs {
                 .putString(ADDRESS_ID, folder.id())
                 .putString(ADDRESS_NAME, folder.name());
         if (!folder.id().equals(previousId)) {
-            editor.remove(WORK_ORDER_ID).remove(WORK_ORDER_NAME);
+            editor.remove(WORK_ORDER_ID)
+                    .remove(WORK_ORDER_NAME)
+                    .remove(WORK_ORDER_ADDRESS_ID);
         }
         editor.apply();
     }
 
     public void setCurrentWorkOrder(DriveFolder folder) {
+        String addressId = prefs.getString(ADDRESS_ID, null);
+        if (addressId == null || folder.id().equals(addressId)) {
+            clearCurrentWorkOrder();
+            return;
+        }
         prefs.edit()
                 .putString(WORK_ORDER_ID, folder.id())
                 .putString(WORK_ORDER_NAME, folder.name())
+                .putString(WORK_ORDER_ADDRESS_ID, addressId)
                 .apply();
     }
 
     public void clearCurrentWorkOrder() {
-        prefs.edit().remove(WORK_ORDER_ID).remove(WORK_ORDER_NAME).apply();
+        prefs.edit()
+                .remove(WORK_ORDER_ID)
+                .remove(WORK_ORDER_NAME)
+                .remove(WORK_ORDER_ADDRESS_ID)
+                .apply();
     }
 
     private DriveFolder getFolder(String idKey, String nameKey) {

@@ -79,6 +79,16 @@ public final class DriveClientTest {
     }
 
     @Test
+    public void impossibleSelfChildListingIsDetectedByProviderId() {
+        List<DriveFolder> folders = Arrays.asList(
+                new DriveFolder("selected-address", "1607_CRESTVIEW_DR_CORDELL_PRESSURE_TEST"),
+                new DriveFolder("sibling-address", "1611_NW_SMITH_AVE"));
+
+        assertTrue(DriveClient.containsFolderId(folders, "selected-address"));
+        assertFalse(DriveClient.containsFolderId(folders, "real-work-order"));
+    }
+
+    @Test
     public void settledFolderSnapshotsMatchRegardlessOfOrder() {
         List<DriveFolder> first = Arrays.asList(
                 new DriveFolder("2", "B Address"),
