@@ -16,20 +16,34 @@ final class AddressFolderAmbiguity {
     private AddressFolderAmbiguity() {
     }
 
+    /**
+     * Exact provider names retain contract precedence. Fuzzy candidates are returned only when no
+     * exact provider display-name match exists, so an approved exact unique reuse is never weakened.
+     */
     static List<DriveFolder> findPossibleMatches(
             List<DriveFolder> folders,
             String requestedName) {
-        List<DriveFolder> matches = new ArrayList<>();
+        List<DriveFolder> exact = new ArrayList<>();
+        List<DriveFolder> possible = new ArrayList<>();
         if (folders == null || requestedName == null) {
-            return matches;
+            return possible;
         }
         for (DriveFolder folder : folders) {
-            if (folder != null && possibleSameProperty(folder.name(), requestedName)) {
-                matches.add(folder);
+            if (folder == null) {
+                continue;
+            }
+            if (folder.name().equals(requestedName)) {
+                exact.add(folder);
+            } else if (possibleSameProperty(folder.name(), requestedName)) {
+                possible.add(folder);
             }
         }
-        Collections.sort(matches);
-        return matches;
+        if (!exact.isEmpty()) {
+            Collections.sort(exact);
+            return exact;
+        }
+        Collections.sort(possible);
+        return possible;
     }
 
     static boolean hasAmbiguousPeer(DriveFolder selected, List<DriveFolder> folders) {
