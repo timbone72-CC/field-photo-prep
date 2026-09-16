@@ -91,15 +91,20 @@ Add tests proving at least:
 
 On the operator's Samsung phone, the first CI-tested ambiguity build successfully detected both live 509 South Boundary folders and visibly labeled both rows `Possible duplicate`. This proves the conservative matching logic reached the real Google Drive-backed property list without changing Drive data.
 
-The same screenshot exposed a presentation defect: `property_disambiguator` was limited to one line, so the text clipped after `Possible duplicate · Drive:` and hid the raw provider folder name and short ID that the operator needs to distinguish stable identities.
+The same screenshot exposed a presentation defect: the one-line disambiguator clipped after `Possible duplicate · Drive:` and hid the raw provider folder name and short ID that the operator needs to distinguish stable identities.
 
-Follow-up patch on the same isolated branch:
+A first follow-up attempt expanded the disambiguator to multiple lines. That compiled and passed unit tests, but the rendered Android gate failed because the taller duplicate rows reduced the normal-scale property list below the existing six-row visibility requirement. The layout test was kept intact rather than weakened.
 
-- split the ambiguity detail into separate `Possible duplicate`, `Drive: <raw folder name>`, and `ID …<short id>` lines;
-- allow the disambiguator view to grow to four lines;
-- make no change to matching, provider IDs, Drive writes, photo behavior, or selection behavior.
+The compact revision therefore keeps the original row height:
 
-The first device observation is therefore **logic PASS / presentation FAIL**, requiring one updated APK check before the row-presentation requirement can pass.
+- for a possible duplicate, the main property title shows the raw provider folder name exactly as returned by Drive;
+- the existing one-line sublabel shows `Possible duplicate · ID …<short id>`;
+- the disambiguator remains one line;
+- no Drive data, provider IDs, matching rules, photo behavior, or selection behavior changes.
+
+A focused Android instrumentation test now verifies the observed Walters pair renders with the raw provider name, visible short ID, and one-line disambiguator.
+
+The first device observation remains **logic PASS / presentation FAIL** until the compact revision is re-tested on the physical phone.
 
 ## Safe Drive reality gate
 
