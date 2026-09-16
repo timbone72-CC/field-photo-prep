@@ -49,7 +49,7 @@ Read surfaces:
 - persisted master tree URI;
 - selected address provider document ID;
 - provider work-order child-folder metadata under that selected address;
-- locally saved current work-order identity plus its exact parent-address binding.
+- locally saved current-work-order identity plus its exact parent-address binding.
 
 Write surfaces:
 
@@ -109,7 +109,20 @@ Observed result:
 - the property itself was no longer shown as a work order;
 - the previous invalid selected-work-order banner was gone and the screen instead showed `Select a work order below`.
 
-This is a **PASS** for reality-gate steps 3 through 6. Steps 7 through 9 remain to be completed before merge approval.
+This is a **PASS** for reality-gate steps 3 through 6.
+
+## Physical-device reality-gate result — real child selection
+
+The operator then selected the real existing child work order `GRASS CUT` under the 1607 Crestview test property.
+
+Observed result:
+
+- the top card changed to `Selected: GRASS CUT`;
+- the `GRASS CUT` row showed the selected state;
+- the Work Orders list still contained only the three real child folders;
+- the Photos action was available only after this real child selection.
+
+This is a **PASS** for reality-gate step 7. Steps 8 and 9 remain to be completed before merge approval.
 
 ## Dependency / merge status
 
