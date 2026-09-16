@@ -36,6 +36,7 @@ public final class PhotoCaptureActivity extends Activity {
     private static final String STATE_PENDING_CAPTURE_ID = "pending_capture_id";
     private static final String STATE_BATCH_SELECTION_IDS = "batch_selection_ids";
     private static final String BATCH_UPLOAD_GATE_ID = "__selected_batch_upload__";
+    private static final String BATCH_RECONCILE_GATE_ID = "__all_uncertain_reconcile__";
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, h:mm a");
     private static final PhotoPreparationGate PREPARATION_GATE = new PhotoPreparationGate();
@@ -51,6 +52,9 @@ public final class PhotoCaptureActivity extends Activity {
     private String pendingCaptureId;
     private String selectedPhotoId;
     private volatile String activeBatchPhotoId;
+    private volatile String activeReconcilePhotoId;
+    private volatile int activeReconcilePosition;
+    private volatile int activeReconcileTotal;
 
     private TextView statusText;
     private TextView pendingCountText;
@@ -63,6 +67,7 @@ public final class PhotoCaptureActivity extends Activity {
     private Button clearSelectionButton;
     private Button uploadBatchButton;
     private Button discardBatchButton;
+    private Button reconcileAllButton;
     private Button prepareButton;
     private Button uploadButton;
     private Button reconcileButton;
@@ -94,6 +99,7 @@ public final class PhotoCaptureActivity extends Activity {
             clearSelectionButton.setEnabled(false);
             uploadBatchButton.setEnabled(false);
             discardBatchButton.setEnabled(false);
+            reconcileAllButton.setEnabled(false);
             prepareButton.setEnabled(false);
             uploadButton.setEnabled(false);
             reconcileButton.setEnabled(false);
@@ -140,6 +146,7 @@ private void buildUi() {
     clearSelectionButton = findViewById(R.id.photos_clear_selection);
     uploadBatchButton = findViewById(R.id.photos_upload_selected);
     discardBatchButton = findViewById(R.id.photos_discard_selected);
+    reconcileAllButton = findViewById(R.id.photos_reconcile_all);
     prepareButton = findViewById(R.id.photos_prepare);
     uploadButton = findViewById(R.id.photos_upload_one);
     reconcileButton = findViewById(R.id.photos_reconcile);
@@ -157,6 +164,7 @@ private void buildUi() {
     clearSelectionButton.setOnClickListener(v -> clearBatchSelection());
     uploadBatchButton.setOnClickListener(v -> uploadSelectedBatch());
     discardBatchButton.setOnClickListener(v -> confirmDiscardSelectedBatch());
+    reconcileAllButton.setOnClickListener(v -> reconcileAllUncertain());
     prepareButton.setOnClickListener(v -> prepareSelectedPhoto());
     uploadButton.setOnClickListener(v -> uploadSelectedPhoto());
     reconcileButton.setOnClickListener(v -> reconcileSelectedPhoto());
@@ -380,6 +388,7 @@ private void buildUi() {
             if (!UPLOAD_GATE.isBusy()) {
                 pruneBatchSelection(matching, scan.unusableQueuedPhotoIds());
             }
+            updateReconcileAllUi(scan);
             renderPhotoList(matching, scan.unusableQueuedPhotoIds());
             renderScanWarningsIfNeeded(scan);
         } catch (Exception error) {
@@ -516,9 +525,13 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
         if (UPLOAD_GATE.isUploading(photoId)) {
             return true;
         }
-        return BATCH_UPLOAD_GATE_ID.equals(UPLOAD_GATE.activePhotoId())
+        String active = UPLOAD_GATE.activePhotoId();
+        if (BATCH_UPLOAD_GATE_ID.equals(active)) {
+            return photoId != null && photoId.equals(activeBatchPhotoId);
+        }
+        return BATCH_RECONCILE_GATE_ID.equals(active)
                 && photoId != null
-                && photoId.equals(activeBatchPhotoId);
+                && photoId.equals(activeReconcilePhotoId);
     }
 
     private boolean isCurrentSelectionUploadEligible() {
@@ -591,6 +604,30 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
         clearSelectionButton.setEnabled(selectedCount > 0 && !remoteBusy);
         uploadBatchButton.setEnabled(uploadEligible && !remoteBusy && !preparationBusy);
         discardBatchButton.setEnabled(discardEligible && !remoteBusy && !preparationBusy);
+    }
+
+    private void updateReconcileAllUi(PendingPhotoStore.ScanResult scan) {
+        if (reconcileAllButton == null || scan == null) {
+            return;
+        }
+        boolean running = BATCH_RECONCILE_GATE_ID.equals(UPLOAD_GATE.activePhotoId());
+        int uncertainCount = scan.uncertainPhotoIds().size();
+        if (running) {
+            reconcileAllButton.setVisibility(View.VISIBLE);
+            reconcileAllButton.setEnabled(false);
+            if (activeReconcilePosition > 0 && activeReconcileTotal > 0) {
+                reconcileAllButton.setText("Reconciling " + activeReconcilePosition
+                        + " of " + activeReconcileTotal + "…");
+            } else {
+                reconcileAllButton.setText("Starting Reconciliation…");
+            }
+            return;
+        }
+        reconcileAllButton.setText("Reconcile All Uncertain (" + uncertainCount + ")");
+        reconcileAllButton.setVisibility(uncertainCount > 0 ? View.VISIBLE : View.GONE);
+        reconcileAllButton.setEnabled(uncertainCount > 0
+                && !PREPARATION_GATE.isBusy()
+                && !UPLOAD_GATE.isBusy());
     }
 
     private void selectAllReadyPhotos() {
@@ -1051,7 +1088,11 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
                         : "Prepared copy: not created";
             }
             if (selected.state() == PendingPhotoRecord.State.UNCERTAIN) {
-                preparedStatus += "\nUpload result: UNCERTAIN — reconcile before retry.";
+                preparedStatus += "\nUpload result: UNCERTAIN"
+                        + (selected.statusDetail() == null
+                        ? "."
+                        : " — " + selected.statusDetail())
+                        + "\nReconcile before retry.";
             } else if (selected.state() == PendingPhotoRecord.State.UPLOADED) {
                 preparedStatus += "\nUpload result: confirmed"
                         + (selected.remoteFileId() == null
@@ -1427,6 +1468,174 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
         });
     }
 
+    private void reconcileAllUncertain() {
+        if (PREPARATION_GATE.isBusy()) {
+            showPhotoStatus("Wait for photo preparation to finish before reconciling the backlog.");
+            return;
+        }
+        if (UPLOAD_GATE.isBusy()) {
+            showPhotoStatus("A Drive upload or reconciliation check is already in progress.");
+            return;
+        }
+
+        final List<String> snapshot = new ArrayList<>();
+        try {
+            PendingPhotoStore.ScanResult scan = photoStore.scan();
+            for (PendingPhotoRecord record : scan.records()) {
+                if (record.state() == PendingPhotoRecord.State.UNCERTAIN) {
+                    snapshot.add(record.id());
+                }
+            }
+        } catch (Exception error) {
+            showError("Could not read the UNCERTAIN backlog safely", error);
+            return;
+        }
+
+        if (snapshot.isEmpty()) {
+            showPhotoStatus("There are no UNCERTAIN uploads to reconcile.");
+            refreshPhotoList();
+            return;
+        }
+
+        if (!UPLOAD_GATE.tryBegin(BATCH_RECONCILE_GATE_ID)) {
+            showPhotoStatus("A Drive operation is already in progress.");
+            return;
+        }
+
+        activeReconcilePhotoId = null;
+        activeReconcilePosition = 0;
+        activeReconcileTotal = snapshot.size();
+        refreshPhotoList();
+        showPhotoStatus("Starting read-only reconciliation of " + snapshot.size()
+                + " UNCERTAIN photo" + (snapshot.size() == 1 ? "" : "s")
+                + ". No Drive file will be created, changed, or deleted.");
+
+        Thread worker = new Thread(
+                () -> reconcileAllInBackground(snapshot),
+                "FieldPhotoPrep-reconcile-all");
+        try {
+            worker.start();
+        } catch (RuntimeException | Error error) {
+            activeReconcilePhotoId = null;
+            activeReconcilePosition = 0;
+            activeReconcileTotal = 0;
+            UPLOAD_GATE.finish(BATCH_RECONCILE_GATE_ID);
+            showError("Could not start bulk Drive reconciliation; queue state was not changed", error);
+            refreshPhotoList();
+        }
+    }
+
+    private void reconcileAllInBackground(List<String> photoIds) {
+        PhotoReconciliationBatchRunner.BatchResult batchResult = null;
+        Throwable batchFailure = null;
+        try {
+            DrivePhotoUploader uploader = new DrivePhotoUploader(
+                    getContentResolver(),
+                    folderPrefs.getMasterTreeUri());
+            DrivePhotoReconciler reconciler = new DrivePhotoReconciler(
+                    getContentResolver(),
+                    folderPrefs.getMasterTreeUri());
+            PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
+                    photoStore,
+                    photoPreparer,
+                    uploader,
+                    reconciler);
+            PhotoReconciliationBatchRunner runner = new PhotoReconciliationBatchRunner();
+            final int[] position = {0};
+            batchResult = runner.run(photoIds, photoId -> {
+                position[0]++;
+                activeReconcilePhotoId = photoId;
+                activeReconcilePosition = position[0];
+                int currentPosition = position[0];
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+                    refreshPhotoList();
+                    showPhotoStatus("Reconciling UNCERTAIN photo " + currentPosition + " of "
+                            + photoIds.size() + " against its stored work-order destination…");
+                });
+                return attemptOneReconciliation(coordinator, photoId);
+            });
+        } catch (Throwable error) {
+            batchFailure = error;
+        } finally {
+            activeReconcilePhotoId = null;
+            activeReconcilePosition = 0;
+            activeReconcileTotal = 0;
+            UPLOAD_GATE.finish(BATCH_RECONCILE_GATE_ID);
+        }
+
+        final PhotoReconciliationBatchRunner.BatchResult completedBatch = batchResult;
+        final Throwable completedFailure = batchFailure;
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            refreshPhotoList();
+            if (completedFailure != null || completedBatch == null) {
+                showError("Bulk Drive reconciliation stopped unexpectedly; unresolved photos remain protected",
+                        completedFailure == null
+                                ? new IllegalStateException("Bulk reconciliation did not return a result.")
+                                : completedFailure);
+            } else {
+                showPhotoStatus(formatReconciliationBatchResult(completedBatch));
+            }
+        });
+    }
+
+    private PhotoReconciliationBatchRunner.AttemptResult attemptOneReconciliation(
+            PhotoUploadCoordinator coordinator,
+            String photoId) throws Exception {
+        PhotoUploadCoordinator.ReconciliationResult result = coordinator.reconcileUncertain(photoId);
+        switch (result.outcome()) {
+            case CONFIRMED_MATCH:
+                boolean cleanupComplete = false;
+                try {
+                    ConfirmedPhotoCleanup.Result cleanup =
+                            coordinator.cleanupConfirmedLocalData(photoId);
+                    cleanupComplete = cleanup != null && cleanup.complete();
+                } catch (Throwable ignored) {
+                    cleanupComplete = false;
+                }
+                return PhotoReconciliationBatchRunner.AttemptResult.confirmed(cleanupComplete);
+            case CONFIRMED_ABSENT_RETRY_SAFE:
+                return PhotoReconciliationBatchRunner.AttemptResult.retrySafe();
+            case REMAIN_UNCERTAIN:
+            default:
+                return PhotoReconciliationBatchRunner.AttemptResult.uncertain(result.detail());
+        }
+    }
+
+    private String formatReconciliationBatchResult(
+            PhotoReconciliationBatchRunner.BatchResult result) {
+        StringBuilder summary = new StringBuilder();
+        summary.append("Reconciliation finished: ")
+                .append(result.checkedCount())
+                .append(" checked · ")
+                .append(result.confirmedCount())
+                .append(" confirmed · ")
+                .append(result.retrySafeCount())
+                .append(" missing/retry-safe · ")
+                .append(result.unresolvedCount())
+                .append(" still unresolved.");
+        if (result.errorCount() > 0) {
+            summary.append(" ")
+                    .append(result.errorCount())
+                    .append(" check")
+                    .append(result.errorCount() == 1 ? " had" : "s had")
+                    .append(" an error and stayed protected.");
+        }
+        if (result.cleanupPendingCount() > 0) {
+            summary.append(" ")
+                    .append(result.cleanupPendingCount())
+                    .append(" confirmed upload")
+                    .append(result.cleanupPendingCount() == 1 ? " has" : "s have")
+                    .append(" local cleanup pending; remote identity remains confirmed.");
+        }
+        return summary.toString();
+    }
+
     private void confirmDiscardSelected() {
         if (selectedPhotoId == null || address == null || workOrder == null) {
             return;
@@ -1528,13 +1737,16 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
                     + " queued photo record(s) are missing usable protected image data. They were preserved for inspection.");
         } else if (!result.uncertainPhotoIds().isEmpty()) {
             showPhotoStatus(result.uncertainPhotoIds().size()
-                    + " upload result(s) are UNCERTAIN after interruption. Select one and use Reconcile Uncertain Upload before retry.");
+                    + " upload result(s) are UNCERTAIN. Use Reconcile All Uncertain to check them without retrying or changing Drive files.");
         } else {
             showPhotoStatus(null);
         }
     }
 
     private void renderScanWarningsIfNeeded(PendingPhotoStore.ScanResult result) {
+        if (UPLOAD_GATE.isBusy()) {
+            return;
+        }
         if (!result.corruptMetadataFiles().isEmpty()) {
             showPhotoStatus(result.corruptMetadataFiles().size()
                     + " temporary photo metadata record(s) need inspection. Paired image files were preserved.");
@@ -1543,7 +1755,7 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
                     + " queued photo record(s) are missing usable protected image data. They were preserved for inspection.");
         } else if (!result.uncertainPhotoIds().isEmpty()) {
             showPhotoStatus(result.uncertainPhotoIds().size()
-                    + " upload result(s) are UNCERTAIN. Select one and reconcile it before retry.");
+                    + " upload result(s) are UNCERTAIN. Use Reconcile All Uncertain or select one for an individual check.");
         }
     }
 
