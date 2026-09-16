@@ -39,11 +39,11 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
         name.setText(display);
 
         if (AddressFolderAmbiguity.hasAmbiguousPeer(folder, folders)) {
-            disambiguator.setText("Possible duplicate · Drive: "
-                    + folder.name() + " · ID …" + shortId(folder.id()));
+            disambiguator.setText("Possible duplicate\nDrive: "
+                    + folder.name() + "\nID …" + shortId(folder.id()));
             disambiguator.setVisibility(View.VISIBLE);
         } else if (hasDuplicateDisplayName(display)) {
-            disambiguator.setText("Drive: " + folder.name() + " · ID …" + shortId(folder.id()));
+            disambiguator.setText("Drive: " + folder.name() + "\nID …" + shortId(folder.id()));
             disambiguator.setVisibility(View.VISIBLE);
         } else {
             disambiguator.setText("");
