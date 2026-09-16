@@ -72,7 +72,8 @@ public final class PhotoRowActionsViewInstrumentedTest {
 
                     View detailsPanel = activity.findViewById(R.id.photos_selected_panel);
                     assertEquals(View.VISIBLE, detailsPanel.getVisibility());
-                    assertEquals(R.id.photos_content, ((View) detailsPanel.getParent()).getId());
+                    assertEquals("Selected photo actions and remaining photo rows must share the same scroll content",
+                            list.getParent(), detailsPanel.getParent());
 
                     Button uploadOwner = activity.findViewById(R.id.photos_upload_one);
                     assertEquals(View.GONE, uploadOwner.getVisibility());
