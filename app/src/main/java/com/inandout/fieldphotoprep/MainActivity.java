@@ -429,6 +429,8 @@ private void buildLegacyWorkOrderUi() {
                 List<DriveFolder> folders = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, masterId);
                 List<DriveFolder> matches = DriveClient.findExactNameMatches(folders, requestedName);
+                List<DriveFolder> possibleMatches =
+                        AddressFolderAmbiguity.findPossibleMatches(folders, requestedName);
 
                 if (matches.size() > 1) {
                     runOnUiThread(() -> {
@@ -448,6 +450,22 @@ private void buildLegacyWorkOrderUi() {
 
                 if (matches.size() == 1) {
                     DriveFolder existing = matches.get(0);
+                    if (possibleMatches.size() != 1
+                            || !possibleMatches.get(0).id().equals(existing.id())) {
+                        runOnUiThread(() -> {
+                            if (screen != Screen.ADDRESSES) {
+                                return;
+                            }
+                            visibleFolders.clear();
+                            visibleFolders.addAll(folders);
+                            notifyFolderAdapters();
+                            renderPropertyCountAndEmptyState();
+                            showHomeInlineMessage("More than one possible version of this property exists. "
+                                    + "Choose the intended property from the list; no folder was created.");
+                            setNotBusy();
+                        });
+                        return;
+                    }
                     runOnUiThread(() -> {
                         if (screen != Screen.ADDRESSES) {
                             return;
@@ -461,18 +479,42 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                if (!possibleMatches.isEmpty()) {
+                    String candidateName = possibleMatches.size() == 1
+                            ? possibleMatches.get(0).name()
+                            : possibleMatches.size() + " possible property folders";
+                    runOnUiThread(() -> {
+                        if (screen != Screen.ADDRESSES) {
+                            return;
+                        }
+                        visibleFolders.clear();
+                        visibleFolders.addAll(folders);
+                        notifyFolderAdapters();
+                        renderPropertyCountAndEmptyState();
+                        showHomeInlineMessage("Possible existing property match: " + candidateName
+                                + ". Choose the intended property from the list; no folder was created.");
+                        setNotBusy();
+                    });
+                    return;
+                }
+
                 DriveFolder created = driveClient.createFolder(
                         getContentResolver(), treeUri, masterId, requestedName);
                 List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, masterId);
                 DriveFolder verified = DriveClient.findById(afterCreate, created.id());
                 List<DriveFolder> verifiedMatches = DriveClient.findExactNameMatches(afterCreate, requestedName);
+                List<DriveFolder> verifiedPossibleMatches =
+                        AddressFolderAmbiguity.findPossibleMatches(afterCreate, requestedName);
 
                 if (verified == null || !verified.name().equals(requestedName)) {
                     throw new IOException("Drive returned an address ID that could not be verified under the selected master.");
                 }
 
-                if (verifiedMatches.size() != 1 || !verifiedMatches.get(0).id().equals(created.id())) {
+                if (verifiedMatches.size() != 1
+                        || !verifiedMatches.get(0).id().equals(created.id())
+                        || verifiedPossibleMatches.size() != 1
+                        || !verifiedPossibleMatches.get(0).id().equals(created.id())) {
                     runOnUiThread(() -> {
                         if (screen != Screen.ADDRESSES) {
                             return;
@@ -482,7 +524,7 @@ private void buildLegacyWorkOrderUi() {
                         visibleFolders.addAll(afterCreate);
                         notifyFolderAdapters();
                         renderPropertyCountAndEmptyState();
-                        showHomeInlineMessage("Address create result is ambiguous. Choose the intended same-named property; no additional folder will be created until refresh.");
+                        showHomeInlineMessage("Address create result is ambiguous. Choose the intended property; no additional folder will be created until refresh.");
                         setNotBusy();
                     });
                     return;
