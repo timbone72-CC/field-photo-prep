@@ -122,10 +122,25 @@ Observed result:
 - the Work Orders list still contained only the three real child folders;
 - the Photos action was available only after this real child selection.
 
-This is a **PASS** for reality-gate step 7. Steps 8 and 9 remain to be completed before merge approval.
+This is a **PASS** for reality-gate step 7.
+
+## Physical-device reality-gate result — retained parent-bound identity and Drive verification
+
+The operator returned Home, reopened the same `1607_CRESTVIEW_DR_CORDELL_PRESSURE_TEST` property, and did not reselect a work order.
+
+Observed result:
+
+- `GRASS CUT` was automatically restored as the selected work order;
+- the Work Orders list still showed only the three real child folders;
+- the selected child remained under the same 1607 Crestview property context;
+- Drive inspection confirmed the property retained the same stable folder identity and the same three child folders: `FULL PROPERTY CONDITION INSP`, `GRASS CUT`, and `POOL CARE`;
+- the `GRASS CUT` child retained the same stable Drive folder identity;
+- the blocked spaced-name duplicate property was not created.
+
+This is a **PASS** for reality-gate steps 8 and 9. The safe Android/Google Drive reality gate for this repair is complete.
 
 ## Dependency / merge status
 
 This branch is stacked on `fix/address-folder-ambiguity-20260915` only so the physical phone can continue testing one cumulative APK. This defect remains a separate Level-3 change and must not be silently folded into the address-ambiguity PR.
 
-**Not approved for merge.**
+Automated CI and the safe Android/Google Drive reality gate are complete. **Explicit operator approval is still required before merge.**
