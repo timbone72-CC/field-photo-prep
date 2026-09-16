@@ -133,7 +133,7 @@ public final class PhotoReconciliationBatchRunner {
         int cleanupPending = 0;
 
         for (String photoId : photoIds) {
-            final AttemptResult result;
+            AttemptResult result;
             try {
                 AttemptResult attempted = attempt.reconcile(photoId);
                 result = attempted == null
