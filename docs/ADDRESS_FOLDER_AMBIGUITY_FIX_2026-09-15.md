@@ -28,9 +28,9 @@ The home property list also prettifies provider names for display by replacing u
 Narrowly harden address-folder ambiguity handling without changing existing remote identities or Drive content:
 
 1. Keep exact provider document IDs authoritative.
-2. Keep exact-name matching as the only automatic reuse path.
-3. Add a conservative **possible-same-property** comparison used only as a safety guard.
-4. A possible match may block automatic address creation or automatic exact-match opening when another distinct possible candidate exists, but it must never auto-select, merge, rename, move, delete, or rewrite a provider identity.
+2. Keep exact-name matching as the only automatic reuse path, with exact unique matches retaining precedence exactly as the existing contract requires.
+3. Add a conservative **possible-same-property** comparison used only as a safety guard when there is no exact provider-name match and for visible ambiguity labeling.
+4. A possible match may block a new address-folder creation and require operator choice, but it must never auto-select, merge, rename, move, delete, or rewrite a provider identity.
 5. Surface ambiguous address rows with their raw Drive folder names and short provider-ID context so the operator can deliberately choose the intended stable identity.
 6. Preserve unrelated camera, preparation, queue, work-order, upload, retry, cleanup, Drive permission, and master-tree behavior.
 
@@ -46,7 +46,9 @@ For comparison only:
 
 No street/city parsing, geocoding, abbreviation expansion, fuzzy edit distance, or automatic folder substitution is authorized.
 
-Example: `509_W_SOUTH_BOUNDARY_WALTERS_OK` and `509 SOUTH BOUNDARY WALTERS OK` may be flagged as possible aliases because the only material comparison difference after separator normalization is the first post-number `W`. The app must still require operator choice because software cannot safely prove those two provider identities represent the same property.
+Example: `509_W_SOUTH_BOUNDARY_WALTERS_OK` and `509 SOUTH BOUNDARY WALTERS OK` may be flagged as possible aliases because the only material comparison difference after separator normalization is the first post-number `W`. The app must still require operator choice when a new folder would otherwise be created because software cannot safely prove those two provider identities represent the same property.
+
+If the operator requests a name that already has one exact provider-name match, that exact match retains precedence and is reused through the existing approved path. A fuzzy candidate never overrides an exact provider-name match.
 
 ## Read surfaces
 
@@ -59,7 +61,7 @@ Example: `509_W_SOUTH_BOUNDARY_WALTERS_OK` and `509 SOUTH BOUNDARY WALTERS OK` m
 - no new persisted schema;
 - no existing Drive folder modification;
 - no Drive photo modification;
-- address folder create remains the only remote write in this path, and the new guard can only prevent that write when ambiguity exists.
+- address folder create remains the only remote write in this path, and the new guard can only prevent that write when no exact match exists and ambiguity is detected.
 
 ## Protected behavior
 
@@ -67,7 +69,7 @@ Example: `509_W_SOUTH_BOUNDARY_WALTERS_OK` and `509 SOUTH BOUNDARY WALTERS OK` m
 - no automatic migration between the two live 509 South Boundary identities;
 - no move, rename, delete, permission change, or merge of live Drive folders;
 - queued/captured photos keep their immutable stored work-order destination;
-- exact unique address names continue to reuse their exact existing identity when no competing possible alias exists;
+- an exact unique address name continues to reuse its exact existing identity, even when a separate fuzzy candidate exists;
 - unique non-ambiguous new names may still create exactly one folder under the selected master;
 - provider freshness/fail-closed behavior remains unchanged;
 - no changes to photo capture, compression, upload, reconciliation, or cleanup.
@@ -76,13 +78,14 @@ Example: `509_W_SOUTH_BOUNDARY_WALTERS_OK` and `509 SOUTH BOUNDARY WALTERS OK` m
 
 Add tests proving at least:
 
-1. case/separator-only variants are possible aliases but not automatic exact matches;
+1. case/separator-only numbered-address variants are possible aliases but not automatic exact matches;
 2. the observed `509_W_SOUTH_BOUNDARY_WALTERS_OK` vs `509 SOUTH BOUNDARY WALTERS OK` pair is treated as ambiguous;
 3. clearly different house numbers remain distinct;
 4. opposite explicit directions (`509 E ...` vs `509 W ...`) are not automatically equated as one property when both directions are present;
-5. an exact unique name with no competing possible alias remains eligible for ordinary exact reuse;
-6. a create request with one or more distinct possible aliases is blocked for operator choice;
-7. property-row ambiguity labeling does not mutate folder IDs or names.
+5. exact provider-name matching retains precedence over a fuzzy candidate;
+6. a no-exact-match create request with one or more possible aliases is blocked for operator choice;
+7. property-row ambiguity labeling does not mutate folder IDs or names;
+8. non-address labels are not fuzzy matched merely because punctuation differs.
 
 ## Safe Drive reality gate
 
@@ -90,11 +93,12 @@ Use only a disposable address-folder fixture under the approved FPP test master,
 
 1. Create or reuse safe test folders whose names reproduce separator/directional ambiguity.
 2. Refresh through the real Android/Google Drive DocumentsProvider path.
-3. Attempt a new address create using the ambiguous variant.
+3. Attempt a new address create using an ambiguous variant for which no exact name exists.
 4. Confirm FPP performs **no create** and instead requires operator choice.
 5. Select one existing candidate and confirm its exact provider identity is retained for subsequent work-order discovery.
 6. Confirm an unrelated unique test address can still be created once under the correct master.
-7. Confirm unrelated test content is unchanged.
+7. Confirm an exact unique provider-name request still reuses that exact identity.
+8. Confirm unrelated test content is unchanged.
 
 ## Rollback
 
