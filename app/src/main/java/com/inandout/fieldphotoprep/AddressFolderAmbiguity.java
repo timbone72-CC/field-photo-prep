@@ -48,19 +48,26 @@ final class AddressFolderAmbiguity {
     }
 
     static boolean possibleSameProperty(String first, String second) {
+        if (first == null || second == null) {
+            return false;
+        }
+        if (first.equals(second)) {
+            return true;
+        }
+
         List<String> a = tokens(first);
         List<String> b = tokens(second);
         if (a.isEmpty() || b.isEmpty()) {
             return false;
-        }
-        if (a.equals(b)) {
-            return true;
         }
         if (!looksLikeNumberedAddress(a) || !looksLikeNumberedAddress(b)) {
             return false;
         }
         if (!a.get(0).equals(b.get(0))) {
             return false;
+        }
+        if (a.equals(b)) {
+            return true;
         }
 
         if (sameLeadingDirectionSpelling(a, b)) {
