@@ -274,7 +274,18 @@ private void buildLegacyWorkOrderUi() {
         if (busy || position < 0 || position >= visibleFolders.size()) {
             return;
         }
-        selectWorkOrder(visibleFolders.get(position), "Work order selected");
+        DriveFolder candidate = visibleFolders.get(position);
+        if (selectedAddress == null || candidate.id().equals(selectedAddress.id())) {
+            visibleFolders.clear();
+            selectedWorkOrder = null;
+            folderPrefs.clearCurrentWorkOrder();
+            createBlockedUntilRefresh = true;
+            notifyFolderAdapters();
+            renderCurrentWorkOrder();
+            showMessage("Drive returned the selected property as a work order. Refresh before continuing.");
+            return;
+        }
+        selectWorkOrder(candidate, "Work order selected");
     });
 
     backButton.setOnClickListener(v -> showAddressScreen(true));
@@ -556,6 +567,8 @@ private void buildLegacyWorkOrderUi() {
         createBlockedUntilRefresh = false;
         screen = Screen.WORK_ORDERS;
         statusText = legacyStatusText;
+        visibleFolders.clear();
+        notifyFolderAdapters();
         homeRoot.setVisibility(View.GONE);
         legacyRoot.setVisibility(View.VISIBLE);
         addressText.setText(PropertyDisplayName.fromDriveFolderName(address.name()));
@@ -617,7 +630,13 @@ private void buildLegacyWorkOrderUi() {
                     setNotBusy();
                 });
             } catch (Exception error) {
-                runOnUiThread(() -> showError("Could not read work-order folders", error));
+                runOnUiThread(() -> {
+                    if (!isStillOnAddress(addressId)) {
+                        return;
+                    }
+                    createBlockedUntilRefresh = true;
+                    showError("Could not read work-order folders", error);
+                });
             }
         });
     }
@@ -1210,6 +1229,14 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void selectWorkOrder(DriveFolder folder, String message) {
+        if (selectedAddress == null || folder.id().equals(selectedAddress.id())) {
+            selectedWorkOrder = null;
+            folderPrefs.clearCurrentWorkOrder();
+            createBlockedUntilRefresh = true;
+            renderCurrentWorkOrder();
+            showMessage("The selected property cannot be used as its own work order. Refresh before continuing.");
+            return;
+        }
         selectedWorkOrder = folder;
         folderPrefs.setCurrentWorkOrder(folder);
         renderCurrentWorkOrder();
