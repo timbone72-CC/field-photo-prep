@@ -87,6 +87,20 @@ Add tests proving at least:
 7. property-row ambiguity labeling does not mutate folder IDs or names;
 8. non-address labels are not fuzzy matched merely because punctuation differs.
 
+## Physical-device observation — first Walters refresh
+
+On the operator's Samsung phone, the first CI-tested ambiguity build successfully detected both live 509 South Boundary folders and visibly labeled both rows `Possible duplicate`. This proves the conservative matching logic reached the real Google Drive-backed property list without changing Drive data.
+
+The same screenshot exposed a presentation defect: `property_disambiguator` was limited to one line, so the text clipped after `Possible duplicate · Drive:` and hid the raw provider folder name and short ID that the operator needs to distinguish stable identities.
+
+Follow-up patch on the same isolated branch:
+
+- split the ambiguity detail into separate `Possible duplicate`, `Drive: <raw folder name>`, and `ID …<short id>` lines;
+- allow the disambiguator view to grow to four lines;
+- make no change to matching, provider IDs, Drive writes, photo behavior, or selection behavior.
+
+The first device observation is therefore **logic PASS / presentation FAIL**, requiring one updated APK check before the row-presentation requirement can pass.
+
 ## Safe Drive reality gate
 
 Use only a disposable address-folder fixture under the approved FPP test master, never the live 509 South Boundary folders.
