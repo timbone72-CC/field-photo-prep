@@ -27,7 +27,7 @@ public final class PendingPhotoProvisionalIdentityTest {
     public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
-    public void schema2UploadingRecordLoadsWithNullProvisionalAndNextWriteUsesSchema3()
+    public void schema2UploadingRecordLoadsWithNullProvisionalAndNextWriteUsesCurrentSchema()
             throws Exception {
         File root = temporaryFolder.newFolder("schema2");
         Properties schema2 = schema2Properties(
@@ -50,7 +50,7 @@ public final class PendingPhotoProvisionalIdentityTest {
         PendingPhotoRecord updated = store.recordProvisionalRemoteFileId(ID1, "provider-created-1");
         Properties persisted = loadProperties(new File(root, updated.metadataFileName()));
 
-        assertEquals("3", persisted.getProperty("schemaVersion"));
+        assertEquals("4", persisted.getProperty("schemaVersion"));
         assertEquals("provider-created-1", persisted.getProperty("provisionalRemoteFileId"));
         assertEquals("", persisted.getProperty("remoteFileId"));
         assertEquals("work-1", updated.workOrderId());
