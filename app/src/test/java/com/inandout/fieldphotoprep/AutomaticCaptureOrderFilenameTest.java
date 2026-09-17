@@ -28,6 +28,8 @@ public final class AutomaticCaptureOrderFilenameTest {
             new DriveFolder("work-a", "Inspection - 2026-09-24");
     private static final DriveFolder WORK_A_REUSED_AGAIN =
             new DriveFolder("work-a", "Inspection - 2026-10-01");
+    private static final DriveFolder WORK_A_RENAMED =
+            new DriveFolder("work-a", "Inspection - renamed in Drive");
     private static final DriveFolder WORK_B = new DriveFolder("work-b", "Grass Cut - 2026-09-17");
 
     @Rule
@@ -270,6 +272,21 @@ public final class AutomaticCaptureOrderFilenameTest {
         PendingPhotoRecord newest = store.beginCapture(ADDRESS, WORK_A_REUSED_AGAIN);
 
         assertEquals(1, newest.captureSequence());
+    }
+
+    @Test
+    public void completedReuseContinuesByProviderIdentityAfterVisibleRename() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-visible-rename");
+        PendingPhotoStore store = store(root, ID1, ID2, ID3);
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A), "remote-old");
+        store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        store.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+
+        PendingPhotoRecord firstNew = store.beginCapture(ADDRESS, WORK_A_REUSED);
+        PendingPhotoRecord afterVisibleRename = store.beginCapture(ADDRESS, WORK_A_RENAMED);
+
+        assertEquals(1, firstNew.captureSequence());
+        assertEquals(2, afterVisibleRename.captureSequence());
     }
 
     @Test
