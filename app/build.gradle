@@ -12,8 +12,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 23
-        versionName '0.18-reused-work-order-sequence-reset'
+        versionCode 24
+        versionName '0.19-reuse-routing-fix'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }

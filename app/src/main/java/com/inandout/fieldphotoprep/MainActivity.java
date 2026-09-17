@@ -688,6 +688,15 @@ private void buildLegacyWorkOrderUi() {
             return;
         }
 
+        if (selectedWorkOrder != null
+                && WorkOrderFolderName.shouldRouteSelectedFolderToReuse(
+                        selectedWorkOrder.name(),
+                        workOrderInput.getText().toString(),
+                        selectedDate.toString())) {
+            prepareClearAndReuse();
+            return;
+        }
+
         final String addressId = selectedAddress.id();
         setBusy("Checking for " + requestedName + "…");
         executor.execute(() -> {
@@ -1020,8 +1029,7 @@ private void buildLegacyWorkOrderUi() {
                 DriveClient.ChildSnapshot snapshot = driveClient.listDirectChildren(
                         getContentResolver(), treeUri, candidateId);
                 if (snapshot.count() == 0) {
-                    runOnUiThread(() -> showMessage(
-                            "Selected folder is empty. Use Reuse Selected Empty Folder; nothing was deleted."));
+                    runOnUiThread(this::reuseSelectedEmptyFolder);
                     return;
                 }
 

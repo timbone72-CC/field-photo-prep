@@ -182,3 +182,24 @@ Must remain unchanged:
 Implementation authorization: **APPROVED** by the operator in chat on 2026-09-17 (`Let's fix it.`).
 
 Level 3 explicit pre-merge approval: **PENDING** until final complete CI and the required disposable real-device/Drive gate pass.
+
+
+## Physical gate attempt 1 — failed safely
+
+The first disposable phone + Drive gate exposed a workflow-routing defect before merge. The operator selected an older work order intending to Clear & Reuse, but **Add Work Order** created the requested new dated folder first. The later Clear & Reuse preflight then correctly saw that the requested dated folder already existed and left the old folder and its photos unchanged.
+
+Observed disposable evidence:
+
+- old `TREE TRIM 3 - 2026-09-17` folder remained with its photos;
+- a separate empty `TREE TRIM 3 - 2026-09-18` folder was created with a different provider ID;
+- no live customer folder was used;
+- no old photos were deleted by the failed path.
+
+Corrective behavior added after this failed gate:
+
+- if **Add Work Order** is pressed while an older same-work-order occurrence is selected, it routes into the approved reuse path instead of creating a second folder;
+- an empty selected old folder is routed through verified empty-folder reuse;
+- a non-empty selected old folder still reaches the explicit Clear & Reuse confirmation before deletion;
+- ordinary Add Work Order behavior is unchanged when no eligible older same-work-order occurrence is selected.
+
+The physical gate must be repeated on the corrected APK before merge approval can be requested.

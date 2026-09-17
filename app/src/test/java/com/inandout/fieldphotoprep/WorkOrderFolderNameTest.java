@@ -70,4 +70,18 @@ public final class WorkOrderFolderNameTest {
         assertTrue(WorkOrderFolderName.isOlderSameWorkOrderFolder(
                 "Debris - Trash - 2026-09-06", "Debris - Trash", "2026-09-13"));
     }
+    @Test
+    public void addWorkOrderRoutesSelectedOlderSameOccurrenceToReuse() {
+        assertTrue(WorkOrderFolderName.shouldRouteSelectedFolderToReuse(
+                "TREE TRIM 3 - 2026-09-17", "TREE TRIM 3", "2026-09-18"));
+    }
+
+    @Test
+    public void addWorkOrderDoesNotRouteCurrentOrDifferentWorkOrderToReuse() {
+        assertFalse(WorkOrderFolderName.shouldRouteSelectedFolderToReuse(
+                "TREE TRIM 3 - 2026-09-18", "TREE TRIM 3", "2026-09-18"));
+        assertFalse(WorkOrderFolderName.shouldRouteSelectedFolderToReuse(
+                "TREE TRIM 2 - 2026-09-17", "TREE TRIM 3", "2026-09-18"));
+    }
+
 }
