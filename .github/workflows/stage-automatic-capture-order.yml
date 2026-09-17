@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/stage-automatic-capture-order.yml
       - scripts/stage_automatic_capture_order.py
+      - scripts/fix_stage_automatic_capture_order.py
 
 permissions:
   contents: write
@@ -29,7 +30,9 @@ jobs:
           gradle-version: '9.6.0'
 
       - name: Apply automatic capture-order patch
-        run: python3 scripts/stage_automatic_capture_order.py
+        run: |
+          python3 scripts/stage_automatic_capture_order.py
+          python3 scripts/fix_stage_automatic_capture_order.py
 
       - name: Validate narrow diff
         shell: bash
@@ -76,7 +79,9 @@ jobs:
           set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git rm scripts/stage_automatic_capture_order.py .github/workflows/stage-automatic-capture-order.yml
+          git rm scripts/stage_automatic_capture_order.py \
+            scripts/fix_stage_automatic_capture_order.py \
+            .github/workflows/stage-automatic-capture-order.yml
           git add app/build.gradle \
             app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoRecord.java \
             app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoStore.java \
