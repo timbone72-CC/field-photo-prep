@@ -7,7 +7,7 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     return text.replace(old, new, 1)
 
 
-# PendingPhotoRecord: schema v4 with optional legacy-compatible captureSequence.
+# PendingPhotoRecord: schema v4 stores an optional capture sequence while schema 1-3 stay readable.
 path = Path('app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoRecord.java')
 text = path.read_text()
 text = replace_once(text, 'static final int CURRENT_SCHEMA_VERSION = 3;',
@@ -23,12 +23,54 @@ text = replace_once(text,
                     '    private final int captureSequence;\n',
                     'capture sequence field')
 text = replace_once(text,
-                    '                createdAtEpochMs,\n                addressId,\n',
-                    '                createdAtEpochMs,\n                0,\n                addressId,\n',
+                    '''        this(
+                id,
+                imageFileName,
+                state,
+                createdAtEpochMs,
+                addressId,
+                addressName,
+                workOrderId,
+                workOrderName,
+                0,
+                0L,
+                null,
+                null,
+                null);
+''',
+                    '''        this(
+                id,
+                imageFileName,
+                state,
+                createdAtEpochMs,
+                0,
+                addressId,
+                addressName,
+                workOrderId,
+                workOrderName,
+                0,
+                0L,
+                null,
+                null,
+                null);
+''',
                     'public constructor default sequence')
 text = replace_once(text,
-                    '            State state,\n            long createdAtEpochMs,\n            String addressId,\n',
-                    '            State state,\n            long createdAtEpochMs,\n            int captureSequence,\n            String addressId,\n',
+                    '''    private PendingPhotoRecord(
+            String id,
+            String imageFileName,
+            State state,
+            long createdAtEpochMs,
+            String addressId,
+''',
+                    '''    private PendingPhotoRecord(
+            String id,
+            String imageFileName,
+            State state,
+            long createdAtEpochMs,
+            int captureSequence,
+            String addressId,
+''',
                     'private constructor sequence arg')
 text = replace_once(text,
                     '        this.createdAtEpochMs = createdAtEpochMs;\n        this.addressId = requireText(addressId, "addressId");\n',
@@ -112,68 +154,139 @@ text = replace_once(text,
                     '        properties.setProperty(KEY_CAPTURE_SEQUENCE, Integer.toString(captureSequence));\n',
                     'persist capture sequence')
 text = replace_once(text,
-                    '        long createdAt = parsePositiveLong(properties, KEY_CREATED_AT,\n                "Invalid pending-photo createdAtEpochMs.");\n\n',
-                    '        long createdAt = parsePositiveLong(properties, KEY_CREATED_AT,\n'
-                    '                "Invalid pending-photo createdAtEpochMs.");\n'
-                    '        int captureSequence = schemaVersion >= 4\n'
-                    '                ? parseNonNegativeInt(properties, KEY_CAPTURE_SEQUENCE)\n'
-                    '                : 0;\n\n',
+                    '''        long createdAt = parsePositiveLong(properties, KEY_CREATED_AT,
+                "Invalid pending-photo createdAtEpochMs.");
+
+''',
+                    '''        long createdAt = parsePositiveLong(properties, KEY_CREATED_AT,
+                "Invalid pending-photo createdAtEpochMs.");
+        int captureSequence = schemaVersion >= 4
+                ? parseNonNegativeInt(properties, KEY_CAPTURE_SEQUENCE)
+                : 0;
+
+''',
                     'load capture sequence')
 text = replace_once(text,
-                    '                    state,\n                    createdAt,\n                    requiredProperty(properties, KEY_ADDRESS_ID),\n',
-                    '                    state,\n                    createdAt,\n                    0,\n                    requiredProperty(properties, KEY_ADDRESS_ID),\n',
-                    'legacy constructor sequence')
+                    '''                    state,
+                    createdAt,
+                    requiredProperty(properties, KEY_ADDRESS_ID),
+''',
+                    '''                    state,
+                    createdAt,
+                    0,
+                    requiredProperty(properties, KEY_ADDRESS_ID),
+''',
+                    'schema1 constructor sequence')
 text = replace_once(text,
-                    '                state,\n                createdAt,\n                requiredProperty(properties, KEY_ADDRESS_ID),\n',
-                    '                state,\n                createdAt,\n                captureSequence,\n                requiredProperty(properties, KEY_ADDRESS_ID),\n',
-                    'current constructor sequence')
+                    '''                state,
+                createdAt,
+                requiredProperty(properties, KEY_ADDRESS_ID),
+''',
+                    '''                state,
+                createdAt,
+                captureSequence,
+                requiredProperty(properties, KEY_ADDRESS_ID),
+''',
+                    'schema2plus constructor sequence')
 text = replace_once(text,
-                    '                nextState,\n                createdAtEpochMs,\n                addressId,\n',
-                    '                nextState,\n                createdAtEpochMs,\n                captureSequence,\n                addressId,\n',
+                    '''                nextState,
+                createdAtEpochMs,
+                addressId,
+''',
+                    '''                nextState,
+                createdAtEpochMs,
+                captureSequence,
+                addressId,
+''',
                     'copy preserves sequence')
 text = replace_once(text,
-                    '    @Override\n    public int compareTo(PendingPhotoRecord other) {\n        int byTime = Long.compare(createdAtEpochMs, other.createdAtEpochMs);\n        return byTime != 0 ? byTime : id.compareTo(other.id);\n    }\n',
-                    '    @Override\n'
-                    '    public int compareTo(PendingPhotoRecord other) {\n'
-                    '        if (workOrderId.equals(other.workOrderId)\n'
-                    '                && captureSequence > 0\n'
-                    '                && other.captureSequence > 0) {\n'
-                    '            int bySequence = Integer.compare(captureSequence, other.captureSequence);\n'
-                    '            if (bySequence != 0) {\n'
-                    '                return bySequence;\n'
-                    '            }\n'
-                    '        }\n'
-                    '        int byTime = Long.compare(createdAtEpochMs, other.createdAtEpochMs);\n'
-                    '        return byTime != 0 ? byTime : id.compareTo(other.id);\n'
-                    '    }\n',
-                    'sequence ordering')
+                    '        if (version != 1 && version != 2 && version != CURRENT_SCHEMA_VERSION) {\n',
+                    '        if (version != 1 && version != 2 && version != 3\n'
+                    '                && version != CURRENT_SCHEMA_VERSION) {\n',
+                    'schema3 remains supported')
 path.write_text(text)
 
 
-# PendingPhotoStore: allocate sequence durably before accepting a shot.
+# PendingPhotoStore: reserve sequence through a durable app-private ledger before accepting capture.
 path = Path('app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoStore.java')
 text = path.read_text()
 text = replace_once(text,
                     'public final class PendingPhotoStore {\n',
                     'public final class PendingPhotoStore {\n'
-                    '    static final int MAX_CAPTURE_SEQUENCE = 999;\n',
-                    'store max sequence')
-text = replace_once(text,
-                    '    public PendingPhotoRecord beginCapture(DriveFolder address, DriveFolder workOrder) throws IOException {\n',
-                    '    public synchronized PendingPhotoRecord beginCapture(DriveFolder address, DriveFolder workOrder) throws IOException {\n',
-                    'synchronized capture reservation')
-text = replace_once(text,
-                    '        ensureRoot();\n\n        String id = idSource.nextId();\n',
-                    '        ensureRoot();\n\n'
-                    '        int captureSequence = nextCaptureSequenceForWorkOrder(workOrder.id());\n'
-                    '        String id = idSource.nextId();\n',
-                    'allocate sequence before id')
-text = replace_once(text,
-                    '                workOrder.id(),\n                workOrder.name());\n',
-                    '                workOrder.id(),\n                workOrder.name(),\n                captureSequence);\n',
-                    'bind sequence to record')
-anchor = '    public PendingPhotoRecord finishCaptureIfImageExists(String id) throws IOException {\n'
-methods = '''    private int nextCaptureSequenceForWorkOrder(String workOrderId) throws IOException {
+                    '    static final String CAPTURE_SEQUENCE_LEDGER_FILE = "capture-sequences.properties";\n'
+                    '    private static final Object CAPTURE_SEQUENCE_LOCK = new Object();\n',
+                    'capture sequence ledger constants')
+old_begin = '''    public PendingPhotoRecord beginCapture(DriveFolder address, DriveFolder workOrder) throws IOException {
+        if (address == null || workOrder == null) {
+            throw new IOException("An exact address and work order are required before capture.");
+        }
+        ensureRoot();
+
+        String id = idSource.nextId();
+        PendingPhotoRecord record = PendingPhotoRecord.createCapturing(
+                id,
+                timeSource.nowEpochMs(),
+                address.id(),
+                address.name(),
+                workOrder.id(),
+                workOrder.name());
+        File image = imageFile(record);
+        File metadata = metadataFile(record);
+
+        if (image.exists() || metadata.exists() || !image.createNewFile()) {
+            throw new IOException("Could not reserve a unique local photo file.");
+        }
+
+        try {
+            writeRecord(record);
+            return record;
+        } catch (IOException | RuntimeException error) {
+            if (image.length() == 0) {
+                image.delete();
+            }
+            throw error;
+        }
+    }
+
+'''
+new_begin = '''    public PendingPhotoRecord beginCapture(DriveFolder address, DriveFolder workOrder) throws IOException {
+        if (address == null || workOrder == null) {
+            throw new IOException("An exact address and work order are required before capture.");
+        }
+        synchronized (CAPTURE_SEQUENCE_LOCK) {
+            ensureRoot();
+            int captureSequence = reserveNextCaptureSequence(workOrder.id());
+            String id = idSource.nextId();
+            PendingPhotoRecord record = PendingPhotoRecord.createCapturing(
+                    id,
+                    timeSource.nowEpochMs(),
+                    address.id(),
+                    address.name(),
+                    workOrder.id(),
+                    workOrder.name(),
+                    captureSequence);
+            File image = imageFile(record);
+            File metadata = metadataFile(record);
+
+            if (image.exists() || metadata.exists() || !image.createNewFile()) {
+                throw new IOException("Could not reserve a unique local photo file.");
+            }
+
+            try {
+                writeRecord(record);
+                return record;
+            } catch (IOException | RuntimeException error) {
+                if (image.length() == 0) {
+                    image.delete();
+                }
+                throw error;
+            }
+        }
+    }
+
+    private int reserveNextCaptureSequence(String workOrderId) throws IOException {
+        Properties ledger = readCaptureSequenceLedger();
+        int persistedLast = readLedgerSequence(ledger, workOrderId);
         ScanResult existing = scan();
         int retainedCount = 0;
         int maxStoredSequence = 0;
@@ -184,28 +297,86 @@ methods = '''    private int nextCaptureSequenceForWorkOrder(String workOrderId)
             retainedCount++;
             maxStoredSequence = Math.max(maxStoredSequence, record.captureSequence());
         }
-        return nextCaptureSequenceValue(retainedCount, maxStoredSequence);
+        int baseline = Math.max(persistedLast, Math.max(retainedCount, maxStoredSequence));
+        if (baseline == Integer.MAX_VALUE) {
+            throw new IOException("Capture-order sequence is exhausted for this work order.");
+        }
+        int next = baseline + 1;
+        ledger.setProperty(workOrderId, Integer.toString(next));
+        writeCaptureSequenceLedger(ledger);
+        return next;
     }
 
-    static int nextCaptureSequenceValue(int retainedCount, int maxStoredSequence)
-            throws IOException {
-        if (retainedCount < 0 || maxStoredSequence < 0) {
-            throw new IOException("Capture-order history is invalid.");
+    private Properties readCaptureSequenceLedger() throws IOException {
+        File ledgerFile = new File(root, CAPTURE_SEQUENCE_LEDGER_FILE);
+        ensureDirectChild(ledgerFile);
+        Properties ledger = new Properties();
+        if (!ledgerFile.exists()) {
+            return ledger;
         }
-        int baseline = Math.max(retainedCount, maxStoredSequence);
-        if (baseline >= MAX_CAPTURE_SEQUENCE) {
-            throw new IOException(
-                    "This work order already has 999 retained photo positions. Start a new work order before taking another photo so Drive order remains exact.");
+        if (!ledgerFile.isFile()) {
+            throw new IOException("Capture-order sequence ledger is not a readable file.");
         }
-        return baseline + 1;
+        try (FileInputStream input = new FileInputStream(ledgerFile)) {
+            ledger.load(input);
+        } catch (IOException | RuntimeException error) {
+            throw new IOException("Capture-order sequence ledger could not be read safely.", error);
+        }
+        return ledger;
+    }
+
+    private int readLedgerSequence(Properties ledger, String workOrderId) throws IOException {
+        String raw = ledger.getProperty(workOrderId);
+        if (raw == null || raw.isBlank()) {
+            return 0;
+        }
+        final int value;
+        try {
+            value = Integer.parseInt(raw.trim());
+        } catch (NumberFormatException error) {
+            throw new IOException("Capture-order sequence ledger contains an invalid value.", error);
+        }
+        if (value < 0) {
+            throw new IOException("Capture-order sequence ledger contains a negative value.");
+        }
+        return value;
+    }
+
+    private void writeCaptureSequenceLedger(Properties ledger) throws IOException {
+        File target = new File(root, CAPTURE_SEQUENCE_LEDGER_FILE);
+        ensureDirectChild(target);
+        File temp = new File(root, CAPTURE_SEQUENCE_LEDGER_FILE + ".tmp-" + UUID.randomUUID());
+        ensureDirectChild(temp);
+        try (FileOutputStream output = new FileOutputStream(temp)) {
+            ledger.store(output, "Field Photo Prep capture sequence ledger");
+            output.getFD().sync();
+        } catch (IOException | RuntimeException error) {
+            temp.delete();
+            throw new IOException("Capture-order sequence ledger could not be written safely.", error);
+        }
+        try {
+            try {
+                Files.move(
+                        temp.toPath(),
+                        target.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            if (temp.exists()) {
+                temp.delete();
+            }
+        }
     }
 
 '''
-text = replace_once(text, anchor, methods + anchor, 'sequence allocator methods')
+text = replace_once(text, old_begin, new_begin, 'durable sequence reservation')
 path.write_text(text)
 
 
-# DrivePhotoUploader: new records get NNN_ prefix; legacy records keep old names.
+# DrivePhotoUploader: sequenced records get sortable names; legacy records retain old names.
 path = Path('app/src/main/java/com/inandout/fieldphotoprep/DrivePhotoUploader.java')
 text = path.read_text()
 text = replace_once(text,
@@ -236,17 +407,15 @@ new_helper = '''    static String remoteFileNameFor(String photoId) {
         if (!record.hasCaptureSequence()) {
             return legacyName;
         }
-        if (record.captureSequence() > PendingPhotoStore.MAX_CAPTURE_SEQUENCE) {
-            throw new IllegalArgumentException("Capture sequence exceeds supported Drive ordering range.");
-        }
-        return String.format(Locale.US, "%03d_%s", record.captureSequence(), legacyName);
+        int width = Math.max(3, Integer.toString(record.captureSequence()).length());
+        return String.format(Locale.US, "%0" + width + "d_%s", record.captureSequence(), legacyName);
     }
 '''
 text = replace_once(text, old_helper, new_helper, 'record-based remote filename')
 path.write_text(text)
 
 
-# Reconciler must use exactly the same deterministic record-based name.
+# Reconciler must prove the exact record-based deterministic filename.
 path = Path('app/src/main/java/com/inandout/fieldphotoprep/DrivePhotoReconciler.java')
 text = path.read_text()
 text = replace_once(text,
@@ -256,7 +425,7 @@ text = replace_once(text,
 path.write_text(text)
 
 
-# Capture-order diagnostic export reports stored sequence/name when present.
+# Capture-order diagnostic export reports the persisted sequence/name for new records.
 path = Path('app/src/main/java/com/inandout/fieldphotoprep/CaptureOrderManifest.java')
 text = path.read_text()
 text = replace_once(text,
@@ -273,197 +442,32 @@ text = replace_once(text,
 path.write_text(text)
 
 
-# Exercise sequenced uploader behavior through the existing upload safety suite.
+# Existing uploader safety suite now exercises a sequenced new photo while retaining legacy helper coverage.
 path = Path('app/src/test/java/com/inandout/fieldphotoprep/DrivePhotoUploaderTest.java')
 text = path.read_text()
 text = replace_once(text,
                     '        assertEquals(DrivePhotoUploader.remoteFileNameFor(PHOTO_ID), provider.createDisplayName);\n',
                     '        assertEquals("012_field-photo-" + PHOTO_ID + ".jpg", provider.createDisplayName);\n',
-                    'uploader expected sequenced name')
+                    'sequenced create name assertion')
 text = replace_once(text,
-                    '                        "work-provider-id",\n                        "Cut Grass - 2026-09-09")\n',
-                    '                        "work-provider-id",\n                        "Cut Grass - 2026-09-09",\n                        12)\n',
-                    'uploader sequenced fixture')
+                    '''                        "work-provider-id",
+                        "Cut Grass - 2026-09-09")
+''',
+                    '''                        "work-provider-id",
+                        "Cut Grass - 2026-09-09",
+                        12)
+''',
+                    'sequenced uploader fixture')
 path.write_text(text)
 
 
-# New focused regression suite for schema/allocator/legacy/new naming.
-path = Path('app/src/test/java/com/inandout/fieldphotoprep/AutomaticCaptureOrderFilenameTest.java')
-path.write_text(r'''package com.inandout.fieldphotoprep;
-
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Properties;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-public final class AutomaticCaptureOrderFilenameTest {
-    private static final String ID1 = "11111111-1111-4111-8111-111111111111";
-    private static final String ID2 = "22222222-2222-4222-8222-222222222222";
-    private static final String ID3 = "33333333-3333-4333-8333-333333333333";
-    private static final String ID4 = "44444444-4444-4444-8444-444444444444";
-
-    @Rule
-    public final TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-    @Test
-    public void schemaV4RoundTripPreservesCaptureSequenceAndRemoteName() {
-        PendingPhotoRecord record = sequenced(ID1, "work-a", 7);
-
-        PendingPhotoRecord restored = PendingPhotoRecord.fromProperties(record.toProperties());
-
-        assertEquals(7, restored.captureSequence());
-        assertTrue(restored.hasCaptureSequence());
-        assertEquals("007_field-photo-" + ID1 + ".jpg",
-                DrivePhotoUploader.remoteFileNameFor(restored));
-    }
-
-    @Test
-    public void legacySchemaV3LoadsUnsequencedAndKeepsLegacyRemoteName() {
-        PendingPhotoRecord record = sequenced(ID1, "work-a", 7);
-        Properties legacy = record.toProperties();
-        legacy.setProperty("schemaVersion", "3");
-        legacy.remove("captureSequence");
-
-        PendingPhotoRecord restored = PendingPhotoRecord.fromProperties(legacy);
-
-        assertEquals(0, restored.captureSequence());
-        assertFalse(restored.hasCaptureSequence());
-        assertEquals("field-photo-" + ID1 + ".jpg",
-                DrivePhotoUploader.remoteFileNameFor(restored));
-    }
-
-    @Test
-    public void captureSequenceIncrementsPerWorkOrderAndSurvivesStoreReopen() throws Exception {
-        File root = temporaryFolder.newFolder("pending");
-        SequenceIds ids = new SequenceIds(ID1, ID2, ID3, ID4);
-        PendingPhotoStore store = new PendingPhotoStore(
-                root,
-                ids,
-                new IncrementingTime(1_700_000_000_000L));
-        DriveFolder address = new DriveFolder("address", "Address");
-        DriveFolder workA = new DriveFolder("work-a", "Work A - 2026-09-17");
-        DriveFolder workB = new DriveFolder("work-b", "Work B - 2026-09-17");
-
-        PendingPhotoRecord first = store.beginCapture(address, workA);
-        PendingPhotoRecord second = store.beginCapture(address, workA);
-        PendingPhotoRecord otherWork = store.beginCapture(address, workB);
-
-        PendingPhotoStore reopened = new PendingPhotoStore(
-                root,
-                ids,
-                new IncrementingTime(1_700_000_100_000L));
-        PendingPhotoRecord third = reopened.beginCapture(address, workA);
-
-        assertEquals(1, first.captureSequence());
-        assertEquals(2, second.captureSequence());
-        assertEquals(1, otherWork.captureSequence());
-        assertEquals(3, third.captureSequence());
-    }
-
-    @Test
-    public void legacyRetainedRecordsAdvanceFirstNewSequence() throws Exception {
-        File root = temporaryFolder.newFolder("legacy-pending");
-        PendingPhotoStore legacyWriter = new PendingPhotoStore(
-                root,
-                new SequenceIds(ID1, ID2),
-                new IncrementingTime(1_700_000_000_000L));
-        DriveFolder address = new DriveFolder("address", "Address");
-        DriveFolder work = new DriveFolder("work-a", "Work A - 2026-09-17");
-        PendingPhotoRecord first = legacyWriter.beginCapture(address, work);
-        PendingPhotoRecord second = legacyWriter.beginCapture(address, work);
-
-        downgradeToLegacy(root, first);
-        downgradeToLegacy(root, second);
-
-        PendingPhotoStore upgraded = new PendingPhotoStore(
-                root,
-                new SequenceIds(ID3),
-                new IncrementingTime(1_700_000_100_000L));
-        PendingPhotoRecord next = upgraded.beginCapture(address, work);
-
-        assertEquals(3, next.captureSequence());
-    }
-
-    @Test
-    public void sequenceLimitFailsClosedBeforeOrderingCanBecomeAmbiguous() throws Exception {
-        assertEquals(999, PendingPhotoStore.nextCaptureSequenceValue(998, 998));
-        try {
-            PendingPhotoStore.nextCaptureSequenceValue(999, 999);
-            fail("Expected 1000th-position refusal.");
-        } catch (IOException expected) {
-            assertTrue(expected.getMessage().contains("999"));
-        }
-    }
-
-    private static PendingPhotoRecord sequenced(String id, String workId, int sequence) {
-        return PendingPhotoRecord.createCapturing(
-                id,
-                1_700_000_000_000L + sequence,
-                "address",
-                "Address",
-                workId,
-                "Work - 2026-09-17",
-                sequence);
-    }
-
-    private static void downgradeToLegacy(File root, PendingPhotoRecord record) throws Exception {
-        File metadata = new File(root, record.metadataFileName());
-        Properties properties = new Properties();
-        try (java.io.FileInputStream input = new java.io.FileInputStream(metadata)) {
-            properties.load(input);
-        }
-        properties.setProperty("schemaVersion", "3");
-        properties.remove("captureSequence");
-        try (java.io.FileOutputStream output = new java.io.FileOutputStream(metadata)) {
-            properties.store(output, "legacy fixture");
-        }
-    }
-
-    private static final class SequenceIds implements PendingPhotoStore.IdSource {
-        private final String[] ids;
-        private int index;
-
-        SequenceIds(String... ids) {
-            this.ids = ids;
-        }
-
-        @Override
-        public String nextId() {
-            return ids[index++];
-        }
-    }
-
-    private static final class IncrementingTime implements PendingPhotoStore.TimeSource {
-        private long value;
-
-        IncrementingTime(long initial) {
-            this.value = initial;
-        }
-
-        @Override
-        public long nowEpochMs() {
-            return value++;
-        }
-    }
-}
-''')
-
-
-# Add one sequenced reconciliation proof while retaining the existing legacy tests.
+# Add one explicit sequenced reconciliation proof without changing the legacy reconciliation fixtures.
 path = Path('app/src/test/java/com/inandout/fieldphotoprep/DrivePhotoReconcilerTest.java')
 text = path.read_text()
-insert_anchor = '    @Test\n    public void multipleDeterministicNameCandidatesRemainUncertain() throws Exception {\n'
-new_test = '''    @Test
-    public void sequencedDeterministicNameCandidateConfirms() throws Exception {
-        File prepared = prepared("sequenced-photo-bytes");
+anchor = '    private File prepared(String text) throws Exception {\n'
+method = '''    @Test
+    public void sequencedRecordReconcilesUsingCaptureOrderFilename() throws Exception {
+        File prepared = prepared("sequenced-photo");
         PendingPhotoRecord uncertain = PendingPhotoRecord.createCapturing(
                 PHOTO_ID,
                 1_700_000_000_000L,
@@ -471,14 +475,14 @@ new_test = '''    @Test
                 "Address",
                 WORK_ID,
                 "Cut Grass - 2026-09-21",
-                7)
+                12)
                 .withState(PendingPhotoRecord.State.WAITING)
                 .beginUploadAttempt(1_700_000_100_000L)
                 .markUploadUncertain("ambiguous create result");
         FakeProvider provider = new FakeProvider();
         DrivePhotoReconciler.RemoteDocument candidate = new DrivePhotoReconciler.RemoteDocument(
                 REMOTE_ID,
-                "007_field-photo-" + PHOTO_ID + ".jpg",
+                "012_field-photo-" + PHOTO_ID + ".jpg",
                 DrivePhotoUploader.JPEG_MIME_TYPE,
                 prepared.length());
         provider.queries.add(new DrivePhotoReconciler.ChildQueryResult(
@@ -496,11 +500,208 @@ new_test = '''    @Test
     }
 
 '''
-text = replace_once(text, insert_anchor, new_test + insert_anchor, 'sequenced reconciliation test')
+text = replace_once(text, anchor, method + anchor, 'sequenced reconciliation test')
 path.write_text(text)
 
 
-# Version bump only; signing configuration is intentionally untouched.
+# Focused schema/ledger/naming regression suite.
+path = Path('app/src/test/java/com/inandout/fieldphotoprep/AutomaticCaptureOrderFilenameTest.java')
+path.write_text(r'''package com.inandout.fieldphotoprep;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.Properties;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+public final class AutomaticCaptureOrderFilenameTest {
+    private static final String ID1 = "11111111-1111-4111-8111-111111111111";
+    private static final String ID2 = "22222222-2222-4222-8222-222222222222";
+    private static final String ID3 = "33333333-3333-4333-8333-333333333333";
+    private static final String ID4 = "44444444-4444-4444-8444-444444444444";
+    private static final DriveFolder ADDRESS = new DriveFolder("address-a", "Address A");
+    private static final DriveFolder WORK_A = new DriveFolder("work-a", "Inspection - 2026-09-17");
+    private static final DriveFolder WORK_B = new DriveFolder("work-b", "Grass Cut - 2026-09-17");
+
+    @Rule
+    public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    @Test
+    public void schemaV4RoundTripPreservesSequenceAndRemoteName() {
+        PendingPhotoRecord record = PendingPhotoRecord.createCapturing(
+                ID1, 1_700_000_000_000L,
+                ADDRESS.id(), ADDRESS.name(), WORK_A.id(), WORK_A.name(), 7);
+
+        PendingPhotoRecord restored = PendingPhotoRecord.fromProperties(record.toProperties());
+
+        assertEquals(7, restored.captureSequence());
+        assertTrue(restored.hasCaptureSequence());
+        assertEquals("007_field-photo-" + ID1 + ".jpg",
+                DrivePhotoUploader.remoteFileNameFor(restored));
+    }
+
+    @Test
+    public void schemaV3RemainsReadableAndUsesLegacyRemoteName() {
+        PendingPhotoRecord record = PendingPhotoRecord.createCapturing(
+                ID1, 1_700_000_000_000L,
+                ADDRESS.id(), ADDRESS.name(), WORK_A.id(), WORK_A.name(), 7);
+        Properties legacy = record.toProperties();
+        legacy.setProperty("schemaVersion", "3");
+        legacy.remove("captureSequence");
+
+        PendingPhotoRecord restored = PendingPhotoRecord.fromProperties(legacy);
+
+        assertEquals(0, restored.captureSequence());
+        assertFalse(restored.hasCaptureSequence());
+        assertEquals("field-photo-" + ID1 + ".jpg",
+                DrivePhotoUploader.remoteFileNameFor(restored));
+    }
+
+    @Test
+    public void newCapturesAdvanceAndSeparateWorkOrdersStartAtOne() throws Exception {
+        File root = temporaryFolder.newFolder("queue");
+        PendingPhotoStore store = store(root, ID1, ID2, ID3, ID4);
+
+        assertEquals(1, store.beginCapture(ADDRESS, WORK_A).captureSequence());
+        assertEquals(2, store.beginCapture(ADDRESS, WORK_A).captureSequence());
+        assertEquals(1, store.beginCapture(ADDRESS, WORK_B).captureSequence());
+        assertEquals(3, store.beginCapture(ADDRESS, WORK_A).captureSequence());
+    }
+
+    @Test
+    public void storeReopenContinuesFromDurableLedger() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reopen");
+        PendingPhotoStore first = store(root, ID1);
+        assertEquals(1, first.beginCapture(ADDRESS, WORK_A).captureSequence());
+
+        PendingPhotoStore reopened = store(root, ID2);
+        assertEquals(2, reopened.beginCapture(ADDRESS, WORK_A).captureSequence());
+    }
+
+    @Test
+    public void removingEmptyReservationDoesNotReuseConsumedSequence() throws Exception {
+        File root = temporaryFolder.newFolder("queue-empty-gap");
+        PendingPhotoStore store = store(root, ID1, ID2);
+        PendingPhotoRecord first = store.beginCapture(ADDRESS, WORK_A);
+        assertEquals(1, first.captureSequence());
+        assertNull(store.finishCaptureIfImageExists(first.id()));
+
+        PendingPhotoRecord second = store.beginCapture(ADDRESS, WORK_A);
+        assertEquals(2, second.captureSequence());
+    }
+
+    @Test
+    public void explicitLocalDiscardDoesNotReuseConsumedSequence() throws Exception {
+        File root = temporaryFolder.newFolder("queue-discard-gap");
+        PendingPhotoStore store = store(root, ID1, ID2);
+        PendingPhotoRecord first = store.beginCapture(ADDRESS, WORK_A);
+        Files.write(store.imageFile(first).toPath(), new byte[] {1, 2, 3});
+        PendingPhotoRecord waiting = store.finishCaptureIfImageExists(first.id());
+        assertTrue(waiting != null && waiting.state() == PendingPhotoRecord.State.WAITING);
+        store.discard(first.id());
+
+        PendingPhotoRecord second = store.beginCapture(ADDRESS, WORK_A);
+        assertEquals(2, second.captureSequence());
+    }
+
+    @Test
+    public void missingLedgerBootstrapsAfterRetainedLegacyRecords() throws Exception {
+        File root = temporaryFolder.newFolder("queue-legacy-bootstrap");
+        writeLegacyRecord(root, ID1, 1_700_000_000_001L);
+        writeLegacyRecord(root, ID2, 1_700_000_000_002L);
+
+        PendingPhotoStore store = store(root, ID3);
+        PendingPhotoRecord next = store.beginCapture(ADDRESS, WORK_A);
+
+        assertEquals(3, next.captureSequence());
+    }
+
+    @Test
+    public void corruptLedgerFailsClosedBeforePhotoReservation() throws Exception {
+        File root = temporaryFolder.newFolder("queue-corrupt-ledger");
+        Files.writeString(
+                new File(root, PendingPhotoStore.CAPTURE_SEQUENCE_LEDGER_FILE).toPath(),
+                "work-a=not-a-number\n",
+                StandardCharsets.UTF_8);
+        PendingPhotoStore store = store(root, ID1);
+
+        try {
+            store.beginCapture(ADDRESS, WORK_A);
+            fail("Expected corrupt sequence ledger to block capture reservation");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("invalid value"));
+        }
+        assertTrue(store.scan().records().isEmpty());
+    }
+
+    @Test
+    public void sequenceAbove999WidensWithoutChangingUuidIdentity() {
+        PendingPhotoRecord record = PendingPhotoRecord.createCapturing(
+                ID1, 1_700_000_000_000L,
+                ADDRESS.id(), ADDRESS.name(), WORK_A.id(), WORK_A.name(), 1000);
+
+        assertEquals("1000_field-photo-" + ID1 + ".jpg",
+                DrivePhotoUploader.remoteFileNameFor(record));
+    }
+
+    @Test
+    public void uploadStateTransitionsPreserveSequence() {
+        PendingPhotoRecord uploaded = PendingPhotoRecord.createCapturing(
+                ID1, 1_700_000_000_000L,
+                ADDRESS.id(), ADDRESS.name(), WORK_A.id(), WORK_A.name(), 9)
+                .withState(PendingPhotoRecord.State.WAITING)
+                .beginUploadAttempt(1_700_000_100_000L)
+                .recordProvisionalRemoteFileId("remote-9")
+                .markUploadConfirmed("remote-9");
+
+        assertEquals(9, uploaded.captureSequence());
+        assertEquals("009_field-photo-" + ID1 + ".jpg",
+                DrivePhotoUploader.remoteFileNameFor(uploaded));
+    }
+
+    private PendingPhotoStore store(File root, String... ids) {
+        final int[] index = {0};
+        final long[] time = {1_700_000_000_000L};
+        return new PendingPhotoStore(
+                root,
+                () -> {
+                    if (index[0] >= ids.length) {
+                        throw new IllegalStateException("No more deterministic photo ids.");
+                    }
+                    return ids[index[0]++];
+                },
+                () -> time[0]++);
+    }
+
+    private void writeLegacyRecord(File root, String id, long createdAt) throws Exception {
+        PendingPhotoRecord legacy = PendingPhotoRecord.createCapturing(
+                id, createdAt,
+                ADDRESS.id(), ADDRESS.name(), WORK_A.id(), WORK_A.name());
+        Properties properties = legacy.toProperties();
+        properties.setProperty("schemaVersion", "3");
+        properties.remove("captureSequence");
+        File metadata = new File(root, PendingPhotoRecord.metadataFileNameFor(id));
+        try (FileOutputStream output = new FileOutputStream(metadata)) {
+            properties.store(output, "legacy fixture");
+            output.getFD().sync();
+        }
+    }
+}
+''')
+
+
+# Version the internal test build without touching signing behavior.
 path = Path('app/build.gradle')
 text = path.read_text()
 text = replace_once(text, '        versionCode 21\n', '        versionCode 22\n', 'version code')
