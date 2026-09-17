@@ -16,8 +16,7 @@ import java.util.UUID;
 public final class PendingPhotoStore {
     static final String CAPTURE_SEQUENCE_LEDGER_FILE = "capture-sequences.properties";
     private static final String CAPTURE_SEQUENCE_RESET_TARGET_PREFIX = "__reuse_target__:";
-    private static final String CAPTURE_SEQUENCE_RESET_ACTIVE_PREFIX = "__reuse_active__:";
-    private static final String CAPTURE_SEQUENCE_OCCURRENCE_START_PREFIX = "__occurrence_start__:";
+    private static final String CAPTURE_SEQUENCE_ACTIVE_OCCURRENCE_PREFIX = "__reuse_active__:";
     private static final Object CAPTURE_SEQUENCE_LOCK = new Object();
     interface IdSource {
         String nextId();
@@ -159,7 +158,7 @@ public final class PendingPhotoStore {
 
     /**
      * Commits a new capture-order occurrence after Drive has verified the same provider ID under
-     * the requested new dated name. Repeating completion after a successful commit is a no-op.
+     * the requested new dated name. Repeating completion for that same occurrence is a no-op.
      */
     public void completeCaptureSequenceResetForReuse(
             String workOrderId,
@@ -172,7 +171,8 @@ public final class PendingPhotoStore {
             String targetKey = resetTargetKey(workOrderId);
             String pendingTarget = normalizeOptional(ledger.getProperty(targetKey));
             if (pendingTarget == null) {
-                if (readResetActive(ledger, workOrderId)) {
+                String activeOccurrence = readActiveOccurrenceName(ledger, workOrderId);
+                if (requestedWorkOrderName.equals(activeOccurrence)) {
                     return;
                 }
                 throw new IOException("Capture-order reuse reset was not prepared for this work order.");
@@ -180,7 +180,7 @@ public final class PendingPhotoStore {
             if (!pendingTarget.equals(requestedWorkOrderName)) {
                 throw new IOException("Capture-order reuse reset target does not match the verified folder name.");
             }
-            activateReuseReset(ledger, workOrderId);
+            activateReuseReset(ledger, workOrderId, requestedWorkOrderName);
             ledger.remove(targetKey);
             writeCaptureSequenceLedger(ledger);
         }
@@ -196,13 +196,14 @@ public final class PendingPhotoStore {
                 throw new IOException(
                         "This work-order folder has an unfinished reuse reset. Refresh and complete the intended reuse before taking new photos.");
             }
-            activateReuseReset(ledger, workOrderId);
+            activateReuseReset(ledger, workOrderId, pendingTarget);
             ledger.remove(targetKey);
         }
 
         int persistedLast = readLedgerSequence(ledger, workOrderId);
         int baseline = persistedLast;
-        if (!readResetActive(ledger, workOrderId)) {
+        String activeOccurrence = readActiveOccurrenceName(ledger, workOrderId);
+        if (activeOccurrence == null) {
             ScanResult existing = scan();
             int retainedCount = 0;
             int maxStoredSequence = 0;
@@ -214,6 +215,9 @@ public final class PendingPhotoStore {
                 maxStoredSequence = Math.max(maxStoredSequence, record.captureSequence());
             }
             baseline = Math.max(persistedLast, Math.max(retainedCount, maxStoredSequence));
+        } else if (!activeOccurrence.equals(workOrder.name())) {
+            throw new IOException(
+                    "This reused work-order folder no longer matches its active capture-order occurrence. Refresh before taking new photos.");
         }
         if (baseline == Integer.MAX_VALUE) {
             throw new IOException("Capture-order sequence is exhausted for this work order.");
@@ -224,12 +228,12 @@ public final class PendingPhotoStore {
         return next;
     }
 
-    private void activateReuseReset(Properties ledger, String workOrderId) {
+    private void activateReuseReset(
+            Properties ledger,
+            String workOrderId,
+            String requestedWorkOrderName) {
         ledger.setProperty(workOrderId, "0");
-        ledger.setProperty(resetActiveKey(workOrderId), "true");
-        ledger.setProperty(
-                occurrenceStartKey(workOrderId),
-                Long.toString(timeSource.nowEpochMs()));
+        ledger.setProperty(activeOccurrenceKey(workOrderId), requestedWorkOrderName);
     }
 
     private Properties readCaptureSequenceLedger() throws IOException {
@@ -267,40 +271,15 @@ public final class PendingPhotoStore {
         return value;
     }
 
-    private boolean readResetActive(Properties ledger, String workOrderId) throws IOException {
-        String raw = normalizeOptional(ledger.getProperty(resetActiveKey(workOrderId)));
-        if (raw == null) {
-            return false;
-        }
-        if ("true".equals(raw)) {
-            return true;
-        }
-        if ("false".equals(raw)) {
-            return false;
-        }
-        throw new IOException("Capture-order sequence ledger contains an invalid reuse state.");
+    private String readActiveOccurrenceName(Properties ledger, String workOrderId) {
+        return normalizeOptional(ledger.getProperty(activeOccurrenceKey(workOrderId)));
     }
 
-    private long readOccurrenceStart(Properties ledger, String workOrderId) throws IOException {
-        if (!readResetActive(ledger, workOrderId)) {
-            return 0L;
-        }
-        String raw = normalizeOptional(ledger.getProperty(occurrenceStartKey(workOrderId)));
-        if (raw == null) {
-            throw new IOException("Capture-order sequence ledger is missing the reused occurrence boundary.");
-        }
-        final long value;
-        try {
-            value = Long.parseLong(raw);
-        } catch (NumberFormatException error) {
-            throw new IOException("Capture-order sequence ledger contains an invalid occurrence boundary.", error);
-        }
-        if (value <= 0L) {
-            throw new IOException("Capture-order sequence ledger contains an invalid occurrence boundary.");
-        }
-        return value;
-    }
-
+    /**
+     * Local presentation helper only. Provider ID remains the upload destination identity; after
+     * an FPP-managed reuse, the verified dated work-order name separates retained old history from
+     * records captured for the newly reused occurrence.
+     */
     public boolean isRecordInCurrentWorkOccurrence(
             PendingPhotoRecord record,
             DriveFolder workOrder) throws IOException {
@@ -309,8 +288,11 @@ public final class PendingPhotoStore {
         }
         synchronized (CAPTURE_SEQUENCE_LOCK) {
             ensureRoot();
-            long occurrenceStart = readOccurrenceStart(readCaptureSequenceLedger(), workOrder.id());
-            return occurrenceStart == 0L || record.createdAtEpochMs() >= occurrenceStart;
+            String activeOccurrence = readActiveOccurrenceName(
+                    readCaptureSequenceLedger(), workOrder.id());
+            return activeOccurrence == null
+                    || (activeOccurrence.equals(workOrder.name())
+                    && activeOccurrence.equals(record.workOrderName()));
         }
     }
 
@@ -320,12 +302,19 @@ public final class PendingPhotoStore {
         }
         synchronized (CAPTURE_SEQUENCE_LOCK) {
             ensureRoot();
-            long occurrenceStart = readOccurrenceStart(readCaptureSequenceLedger(), workOrder.id());
+            Properties ledger = readCaptureSequenceLedger();
+            String activeOccurrence = readActiveOccurrenceName(ledger, workOrder.id());
+            if (activeOccurrence != null && !activeOccurrence.equals(workOrder.name())) {
+                throw new IOException(
+                        "The selected work-order name does not match its active reused occurrence.");
+            }
             ScanResult result = scan();
             List<PendingPhotoRecord> matches = new ArrayList<>();
             for (PendingPhotoRecord record : result.records()) {
-                if (workOrder.id().equals(record.workOrderId())
-                        && (occurrenceStart == 0L || record.createdAtEpochMs() >= occurrenceStart)) {
+                if (!workOrder.id().equals(record.workOrderId())) {
+                    continue;
+                }
+                if (activeOccurrence == null || activeOccurrence.equals(record.workOrderName())) {
                     matches.add(record);
                 }
             }
@@ -711,12 +700,8 @@ public final class PendingPhotoStore {
         return CAPTURE_SEQUENCE_RESET_TARGET_PREFIX + workOrderId;
     }
 
-    private static String resetActiveKey(String workOrderId) {
-        return CAPTURE_SEQUENCE_RESET_ACTIVE_PREFIX + workOrderId;
-    }
-
-    private static String occurrenceStartKey(String workOrderId) {
-        return CAPTURE_SEQUENCE_OCCURRENCE_START_PREFIX + workOrderId;
+    private static String activeOccurrenceKey(String workOrderId) {
+        return CAPTURE_SEQUENCE_ACTIVE_OCCURRENCE_PREFIX + workOrderId;
     }
 
     private static String normalizeOptional(String value) {
