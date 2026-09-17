@@ -15,6 +15,9 @@ import java.util.UUID;
 
 public final class PendingPhotoStore {
     static final String CAPTURE_SEQUENCE_LEDGER_FILE = "capture-sequences.properties";
+    private static final String CAPTURE_SEQUENCE_RESET_TARGET_PREFIX = "__reuse_target__:";
+    private static final String CAPTURE_SEQUENCE_RESET_ACTIVE_PREFIX = "__reuse_active__:";
+    private static final String CAPTURE_SEQUENCE_OCCURRENCE_START_PREFIX = "__occurrence_start__:";
     private static final Object CAPTURE_SEQUENCE_LOCK = new Object();
     interface IdSource {
         String nextId();
@@ -86,7 +89,7 @@ public final class PendingPhotoStore {
         }
         synchronized (CAPTURE_SEQUENCE_LOCK) {
             ensureRoot();
-            int captureSequence = reserveNextCaptureSequence(workOrder.id());
+            int captureSequence = reserveNextCaptureSequence(workOrder);
             String id = idSource.nextId();
             PendingPhotoRecord record = PendingPhotoRecord.createCapturing(
                     id,
@@ -115,20 +118,103 @@ public final class PendingPhotoStore {
         }
     }
 
-    private int reserveNextCaptureSequence(String workOrderId) throws IOException {
-        Properties ledger = readCaptureSequenceLedger();
-        int persistedLast = readLedgerSequence(ledger, workOrderId);
-        ScanResult existing = scan();
-        int retainedCount = 0;
-        int maxStoredSequence = 0;
-        for (PendingPhotoRecord record : existing.records()) {
-            if (!workOrderId.equals(record.workOrderId())) {
-                continue;
+    /**
+     * Persists the intent to turn one exact provider folder into a new dated work occurrence.
+     * This happens before the existing reuse Drive write so another capture cannot race into the
+     * old occurrence while reuse is in progress. Only confirmed old uploads may remain locally.
+     */
+    public void prepareCaptureSequenceResetForReuse(
+            String workOrderId,
+            String requestedWorkOrderName) throws IOException {
+        requireText(workOrderId, "workOrderId");
+        requireText(requestedWorkOrderName, "requestedWorkOrderName");
+        synchronized (CAPTURE_SEQUENCE_LOCK) {
+            ensureRoot();
+            ScanResult existing = scan();
+            if (!existing.corruptMetadataFiles().isEmpty()) {
+                throw new IOException(
+                        "Temporary photo metadata is unreadable. Resolve it before reusing this work-order folder.");
             }
-            retainedCount++;
-            maxStoredSequence = Math.max(maxStoredSequence, record.captureSequence());
+            for (PendingPhotoRecord record : existing.records()) {
+                if (workOrderId.equals(record.workOrderId())
+                        && record.state() != PendingPhotoRecord.State.UPLOADED) {
+                    throw new IOException(
+                            "This work order still has an unconfirmed local photo ("
+                                    + record.state().name()
+                                    + "). Upload, reconcile, or safely discard it before reusing the folder.");
+                }
+            }
+
+            Properties ledger = readCaptureSequenceLedger();
+            String targetKey = resetTargetKey(workOrderId);
+            String existingTarget = normalizeOptional(ledger.getProperty(targetKey));
+            if (existingTarget != null && !existingTarget.equals(requestedWorkOrderName)) {
+                throw new IOException(
+                        "A different work-order reuse reset is already pending for this folder. Complete that reuse before starting another.");
+            }
+            ledger.setProperty(targetKey, requestedWorkOrderName);
+            writeCaptureSequenceLedger(ledger);
         }
-        int baseline = Math.max(persistedLast, Math.max(retainedCount, maxStoredSequence));
+    }
+
+    /**
+     * Commits a new capture-order occurrence after Drive has verified the same provider ID under
+     * the requested new dated name. Repeating completion after a successful commit is a no-op.
+     */
+    public void completeCaptureSequenceResetForReuse(
+            String workOrderId,
+            String requestedWorkOrderName) throws IOException {
+        requireText(workOrderId, "workOrderId");
+        requireText(requestedWorkOrderName, "requestedWorkOrderName");
+        synchronized (CAPTURE_SEQUENCE_LOCK) {
+            ensureRoot();
+            Properties ledger = readCaptureSequenceLedger();
+            String targetKey = resetTargetKey(workOrderId);
+            String pendingTarget = normalizeOptional(ledger.getProperty(targetKey));
+            if (pendingTarget == null) {
+                if (readResetActive(ledger, workOrderId)) {
+                    return;
+                }
+                throw new IOException("Capture-order reuse reset was not prepared for this work order.");
+            }
+            if (!pendingTarget.equals(requestedWorkOrderName)) {
+                throw new IOException("Capture-order reuse reset target does not match the verified folder name.");
+            }
+            activateReuseReset(ledger, workOrderId);
+            ledger.remove(targetKey);
+            writeCaptureSequenceLedger(ledger);
+        }
+    }
+
+    private int reserveNextCaptureSequence(DriveFolder workOrder) throws IOException {
+        String workOrderId = workOrder.id();
+        Properties ledger = readCaptureSequenceLedger();
+        String targetKey = resetTargetKey(workOrderId);
+        String pendingTarget = normalizeOptional(ledger.getProperty(targetKey));
+        if (pendingTarget != null) {
+            if (!pendingTarget.equals(workOrder.name())) {
+                throw new IOException(
+                        "This work-order folder has an unfinished reuse reset. Refresh and complete the intended reuse before taking new photos.");
+            }
+            activateReuseReset(ledger, workOrderId);
+            ledger.remove(targetKey);
+        }
+
+        int persistedLast = readLedgerSequence(ledger, workOrderId);
+        int baseline = persistedLast;
+        if (!readResetActive(ledger, workOrderId)) {
+            ScanResult existing = scan();
+            int retainedCount = 0;
+            int maxStoredSequence = 0;
+            for (PendingPhotoRecord record : existing.records()) {
+                if (!workOrderId.equals(record.workOrderId())) {
+                    continue;
+                }
+                retainedCount++;
+                maxStoredSequence = Math.max(maxStoredSequence, record.captureSequence());
+            }
+            baseline = Math.max(persistedLast, Math.max(retainedCount, maxStoredSequence));
+        }
         if (baseline == Integer.MAX_VALUE) {
             throw new IOException("Capture-order sequence is exhausted for this work order.");
         }
@@ -136,6 +222,14 @@ public final class PendingPhotoStore {
         ledger.setProperty(workOrderId, Integer.toString(next));
         writeCaptureSequenceLedger(ledger);
         return next;
+    }
+
+    private void activateReuseReset(Properties ledger, String workOrderId) {
+        ledger.setProperty(workOrderId, "0");
+        ledger.setProperty(resetActiveKey(workOrderId), "true");
+        ledger.setProperty(
+                occurrenceStartKey(workOrderId),
+                Long.toString(timeSource.nowEpochMs()));
     }
 
     private Properties readCaptureSequenceLedger() throws IOException {
@@ -171,6 +265,72 @@ public final class PendingPhotoStore {
             throw new IOException("Capture-order sequence ledger contains a negative value.");
         }
         return value;
+    }
+
+    private boolean readResetActive(Properties ledger, String workOrderId) throws IOException {
+        String raw = normalizeOptional(ledger.getProperty(resetActiveKey(workOrderId)));
+        if (raw == null) {
+            return false;
+        }
+        if ("true".equals(raw)) {
+            return true;
+        }
+        if ("false".equals(raw)) {
+            return false;
+        }
+        throw new IOException("Capture-order sequence ledger contains an invalid reuse state.");
+    }
+
+    private long readOccurrenceStart(Properties ledger, String workOrderId) throws IOException {
+        if (!readResetActive(ledger, workOrderId)) {
+            return 0L;
+        }
+        String raw = normalizeOptional(ledger.getProperty(occurrenceStartKey(workOrderId)));
+        if (raw == null) {
+            throw new IOException("Capture-order sequence ledger is missing the reused occurrence boundary.");
+        }
+        final long value;
+        try {
+            value = Long.parseLong(raw);
+        } catch (NumberFormatException error) {
+            throw new IOException("Capture-order sequence ledger contains an invalid occurrence boundary.", error);
+        }
+        if (value <= 0L) {
+            throw new IOException("Capture-order sequence ledger contains an invalid occurrence boundary.");
+        }
+        return value;
+    }
+
+    public boolean isRecordInCurrentWorkOccurrence(
+            PendingPhotoRecord record,
+            DriveFolder workOrder) throws IOException {
+        if (record == null || workOrder == null || !workOrder.id().equals(record.workOrderId())) {
+            return false;
+        }
+        synchronized (CAPTURE_SEQUENCE_LOCK) {
+            ensureRoot();
+            long occurrenceStart = readOccurrenceStart(readCaptureSequenceLedger(), workOrder.id());
+            return occurrenceStart == 0L || record.createdAtEpochMs() >= occurrenceStart;
+        }
+    }
+
+    public List<PendingPhotoRecord> recordsForWorkOccurrence(DriveFolder workOrder) throws IOException {
+        if (workOrder == null) {
+            return Collections.emptyList();
+        }
+        synchronized (CAPTURE_SEQUENCE_LOCK) {
+            ensureRoot();
+            long occurrenceStart = readOccurrenceStart(readCaptureSequenceLedger(), workOrder.id());
+            ScanResult result = scan();
+            List<PendingPhotoRecord> matches = new ArrayList<>();
+            for (PendingPhotoRecord record : result.records()) {
+                if (workOrder.id().equals(record.workOrderId())
+                        && (occurrenceStart == 0L || record.createdAtEpochMs() >= occurrenceStart)) {
+                    matches.add(record);
+                }
+            }
+            return matches;
+        }
     }
 
     private void writeCaptureSequenceLedger(Properties ledger) throws IOException {
@@ -545,6 +705,34 @@ public final class PendingPhotoStore {
         if (!canonicalRoot.equals(canonicalParent)) {
             throw new IOException("Pending-photo path escaped temporary storage.");
         }
+    }
+
+    private static String resetTargetKey(String workOrderId) {
+        return CAPTURE_SEQUENCE_RESET_TARGET_PREFIX + workOrderId;
+    }
+
+    private static String resetActiveKey(String workOrderId) {
+        return CAPTURE_SEQUENCE_RESET_ACTIVE_PREFIX + workOrderId;
+    }
+
+    private static String occurrenceStartKey(String workOrderId) {
+        return CAPTURE_SEQUENCE_OCCURRENCE_START_PREFIX + workOrderId;
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String requireText(String value, String field) throws IOException {
+        String normalized = normalizeOptional(value);
+        if (normalized == null) {
+            throw new IOException(field + " is required.");
+        }
+        return normalized;
     }
 
     private static boolean isMetadataFile(String name) {
