@@ -6,6 +6,7 @@ on:
       - feat/automatic-capture-order-filenames-20260917
     paths:
       - .github/workflows/stage-automatic-capture-order.yml
+      - scripts/stage_automatic_capture_order.py
 
 permissions:
   contents: write
