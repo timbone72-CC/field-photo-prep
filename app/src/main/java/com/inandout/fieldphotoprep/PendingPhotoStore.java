@@ -215,9 +215,6 @@ public final class PendingPhotoStore {
                 maxStoredSequence = Math.max(maxStoredSequence, record.captureSequence());
             }
             baseline = Math.max(persistedLast, Math.max(retainedCount, maxStoredSequence));
-        } else if (!activeOccurrence.equals(workOrder.name())) {
-            throw new IOException(
-                    "This reused work-order folder no longer matches its active capture-order occurrence. Refresh before taking new photos.");
         }
         if (baseline == Integer.MAX_VALUE) {
             throw new IOException("Capture-order sequence is exhausted for this work order.");
