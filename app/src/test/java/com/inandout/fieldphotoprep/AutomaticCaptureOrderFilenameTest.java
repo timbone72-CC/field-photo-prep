@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
@@ -22,8 +23,14 @@ public final class AutomaticCaptureOrderFilenameTest {
     private static final String ID2 = "22222222-2222-4222-8222-222222222222";
     private static final String ID3 = "33333333-3333-4333-8333-333333333333";
     private static final String ID4 = "44444444-4444-4444-8444-444444444444";
+    private static final String ID5 = "55555555-5555-4555-8555-555555555555";
+    private static final String ID6 = "66666666-6666-4666-8666-666666666666";
     private static final DriveFolder ADDRESS = new DriveFolder("address-a", "Address A");
     private static final DriveFolder WORK_A = new DriveFolder("work-a", "Inspection - 2026-09-17");
+    private static final DriveFolder WORK_A_REUSED =
+            new DriveFolder("work-a", "Inspection - 2026-09-24");
+    private static final DriveFolder WORK_A_REUSED_AGAIN =
+            new DriveFolder("work-a", "Inspection - 2026-10-01");
     private static final DriveFolder WORK_B = new DriveFolder("work-b", "Grass Cut - 2026-09-17");
 
     @Rule
@@ -159,6 +166,148 @@ public final class AutomaticCaptureOrderFilenameTest {
         assertEquals(9, uploaded.captureSequence());
         assertEquals("009_field-photo-" + ID1 + ".jpg",
                 DrivePhotoUploader.remoteFileNameFor(uploaded));
+    }
+
+    @Test
+    public void reusedWorkOrderStartsAtOneAndContinuesAtTwo() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reused-occurrence");
+        PendingPhotoStore store = store(root, ID1, ID2, ID3, ID4);
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A), "remote-old-1");
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A), "remote-old-2");
+
+        store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        store.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+
+        PendingPhotoRecord firstNew = store.beginCapture(ADDRESS, WORK_A_REUSED);
+        PendingPhotoRecord secondNew = store.beginCapture(ADDRESS, WORK_A_REUSED);
+
+        assertEquals(1, firstNew.captureSequence());
+        assertEquals(2, secondNew.captureSequence());
+        assertEquals("001_field-photo-" + ID3 + ".jpg",
+                DrivePhotoUploader.remoteFileNameFor(firstNew));
+        assertEquals("002_field-photo-" + ID4 + ".jpg",
+                DrivePhotoUploader.remoteFileNameFor(secondNew));
+    }
+
+    @Test
+    public void reusedWorkOrderResetSurvivesStoreReopen() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-reopen");
+        PendingPhotoStore first = store(root, ID1, ID2);
+        confirmUploaded(first, first.beginCapture(ADDRESS, WORK_A), "remote-old-1");
+        confirmUploaded(first, first.beginCapture(ADDRESS, WORK_A), "remote-old-2");
+        first.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        first.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+
+        PendingPhotoStore reopened = store(root, ID3, ID4);
+        assertEquals(1, reopened.beginCapture(ADDRESS, WORK_A_REUSED).captureSequence());
+        assertEquals(2, reopened.beginCapture(ADDRESS, WORK_A_REUSED).captureSequence());
+    }
+
+    @Test
+    public void pendingReuseResetSelfHealsOnlyWhenVerifiedTargetNameIsOpen() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-pending");
+        PendingPhotoStore first = store(root, ID1);
+        confirmUploaded(first, first.beginCapture(ADDRESS, WORK_A), "remote-old-1");
+        first.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+
+        PendingPhotoStore reopened = store(root, ID2, ID3);
+        try {
+            reopened.beginCapture(ADDRESS, WORK_A);
+            fail("Expected old folder name to remain blocked while reuse reset is pending");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("unfinished reuse reset"));
+        }
+
+        PendingPhotoRecord recovered = reopened.beginCapture(ADDRESS, WORK_A_REUSED);
+        assertEquals(1, recovered.captureSequence());
+        reopened.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+    }
+
+    @Test
+    public void reuseResetPreparationBlocksUnconfirmedOldPhoto() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-unconfirmed");
+        PendingPhotoStore store = store(root, ID1);
+        PendingPhotoRecord old = store.beginCapture(ADDRESS, WORK_A);
+        Files.write(store.imageFile(old).toPath(), new byte[] {9, 8, 7});
+        PendingPhotoRecord waiting = store.finishCaptureIfImageExists(old.id());
+        assertEquals(PendingPhotoRecord.State.WAITING, waiting.state());
+
+        try {
+            store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+            fail("Expected unconfirmed old photo to block work-order reuse reset");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("unconfirmed local photo"));
+        }
+    }
+
+    @Test
+    public void confirmedOldHistoryDoesNotRaiseReusedOccurrenceBaseline() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-confirmed-history");
+        PendingPhotoStore store = store(root, ID1, ID2, ID3);
+        PendingPhotoRecord old1 = store.beginCapture(ADDRESS, WORK_A);
+        PendingPhotoRecord confirmed1 = confirmUploaded(store, old1, "remote-old-1");
+        PendingPhotoRecord old2 = store.beginCapture(ADDRESS, WORK_A);
+        PendingPhotoRecord confirmed2 = confirmUploaded(store, old2, "remote-old-2");
+        assertEquals(2, confirmed2.captureSequence());
+
+        store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        store.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        PendingPhotoRecord newOccurrence = store.beginCapture(ADDRESS, WORK_A_REUSED);
+
+        assertEquals(1, newOccurrence.captureSequence());
+        assertFalse(store.isRecordInCurrentWorkOccurrence(confirmed1, WORK_A_REUSED));
+        assertFalse(store.isRecordInCurrentWorkOccurrence(confirmed2, WORK_A_REUSED));
+        assertTrue(store.isRecordInCurrentWorkOccurrence(newOccurrence, WORK_A_REUSED));
+
+        List<PendingPhotoRecord> current = store.recordsForWorkOccurrence(WORK_A_REUSED);
+        assertEquals(1, current.size());
+        assertEquals(newOccurrence.id(), current.get(0).id());
+    }
+
+    @Test
+    public void anotherReuseOfSameProviderIdentityRestartsAgainAtOne() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-again");
+        PendingPhotoStore store = store(root, ID1, ID2, ID3);
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A), "remote-old");
+        store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        store.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        PendingPhotoRecord middle = store.beginCapture(ADDRESS, WORK_A_REUSED);
+        confirmUploaded(store, middle, "remote-middle");
+        assertEquals(1, middle.captureSequence());
+
+        store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED_AGAIN.name());
+        store.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED_AGAIN.name());
+        PendingPhotoRecord newest = store.beginCapture(ADDRESS, WORK_A_REUSED_AGAIN);
+
+        assertEquals(1, newest.captureSequence());
+    }
+
+    @Test
+    public void discardedReservationGapStillRemainsConsumedAfterReuseReset() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-gap");
+        PendingPhotoStore store = store(root, ID1, ID2, ID3);
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A), "remote-old");
+        store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        store.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+
+        PendingPhotoRecord firstNew = store.beginCapture(ADDRESS, WORK_A_REUSED);
+        assertEquals(1, firstNew.captureSequence());
+        assertNull(store.finishCaptureIfImageExists(firstNew.id()));
+
+        PendingPhotoRecord secondNew = store.beginCapture(ADDRESS, WORK_A_REUSED);
+        assertEquals(2, secondNew.captureSequence());
+    }
+
+    private PendingPhotoRecord confirmUploaded(
+            PendingPhotoStore store,
+            PendingPhotoRecord capturing,
+            String remoteId) throws Exception {
+        Files.write(store.imageFile(capturing).toPath(), new byte[] {1, 2, 3, 4});
+        PendingPhotoRecord waiting = store.finishCaptureIfImageExists(capturing.id());
+        assertTrue(waiting != null);
+        store.beginUploadAttempt(capturing.id());
+        store.recordProvisionalRemoteFileId(capturing.id(), remoteId);
+        return store.markUploadConfirmed(capturing.id(), remoteId);
     }
 
     private PendingPhotoStore store(File root, String... ids) {
