@@ -6,9 +6,15 @@ Feature branch: `feat/automatic-capture-order-filenames-20260917`
 
 Runtime implementation commit: `a60ab2ca8db092f1c3de3281aa1da3a20e0bba7c`
 
+Compatibility-test commit: `586ee9d2b299f2190b058a553766a07b9cce7238`
+
 Focused staging workflow run: `35178856725`
 
 Focused gate result: PASS.
+
+Full-unit compatibility staging run: `35179114511`
+
+Full-unit gate result: PASS.
 
 Verified before the runtime commit was accepted:
 
@@ -25,6 +31,8 @@ Verified before the runtime commit was accepted:
 - capture-order manifest behavior;
 - focused APK build.
 
-The staging workflow removed its temporary scripts/workflow after the focused gate passed. Runtime code remains isolated on the feature branch. No merge or production deployment is authorized by this record.
+The complete existing unit suite was then run with only compatibility-test updates staged. All tests passed before those test-only updates were committed. The staging helper files removed themselves afterward.
 
-A full normal Android CI run is required on the clean branch before the physical Android + Google Drive reality gate.
+Runtime code remains isolated on the feature branch. No merge or production deployment is authorized by this record.
+
+A normal Android CI run on this clean branch head is required before the physical Android + Google Drive reality gate. It must pass the full unit suite, internal debug build, stable signer check, instrumented/emulator tests, launch smoke test, and artifact upload.
