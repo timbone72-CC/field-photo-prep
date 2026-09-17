@@ -1,0 +1,71 @@
+name: Stage automatic capture-order full-suite test fixes
+
+on:
+  push:
+    branches:
+      - feat/automatic-capture-order-filenames-20260917
+    paths:
+      - .github/workflows/stage-automatic-capture-order-full-suite-test-fix.yml
+      - scripts/fix_automatic_capture_order_full_suite_tests.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Apply compatibility test fixes
+        run: python3 scripts/fix_automatic_capture_order_full_suite_tests.py
+
+      - name: Validate test-only diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          expected = {
+              'app/src/test/java/com/inandout/fieldphotoprep/PendingPhotoProvisionalIdentityTest.java',
+              'app/src/test/java/com/inandout/fieldphotoprep/PendingPhotoQueueStateTest.java',
+              'app/src/test/java/com/inandout/fieldphotoprep/PhotoUploadReconciliationCoordinatorTest.java',
+          }
+          changed = set(subprocess.check_output(
+              ['git', 'status', '--short'], text=True).splitlines())
+          paths = {line[3:] for line in changed}
+          if paths != expected:
+              raise SystemExit(f'Unexpected staged patch paths: {sorted(paths)}')
+          print('Test-only diff verified.')
+          PY
+
+      - name: Full unit suite
+        run: gradle test
+
+      - name: Commit passing compatibility test fixes and remove helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm scripts/fix_automatic_capture_order_full_suite_tests.py \
+            .github/workflows/stage-automatic-capture-order-full-suite-test-fix.yml
+          git add \
+            app/src/test/java/com/inandout/fieldphotoprep/PendingPhotoProvisionalIdentityTest.java \
+            app/src/test/java/com/inandout/fieldphotoprep/PendingPhotoQueueStateTest.java \
+            app/src/test/java/com/inandout/fieldphotoprep/PhotoUploadReconciliationCoordinatorTest.java
+          git diff --cached --check
+          git commit -m "Update tests for capture-order schema and filenames"
+          git push
