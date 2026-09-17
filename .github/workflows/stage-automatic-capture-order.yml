@@ -8,6 +8,7 @@ on:
       - .github/workflows/stage-automatic-capture-order.yml
       - scripts/stage_automatic_capture_order.py
       - scripts/fix_stage_automatic_capture_order.py
+      - scripts/fix_stage_automatic_capture_order_test.py
 
 permissions:
   contents: write
@@ -33,6 +34,7 @@ jobs:
         run: |
           python3 scripts/stage_automatic_capture_order.py
           python3 scripts/fix_stage_automatic_capture_order.py
+          python3 scripts/fix_stage_automatic_capture_order_test.py
 
       - name: Validate narrow diff
         shell: bash
@@ -81,6 +83,7 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git rm scripts/stage_automatic_capture_order.py \
             scripts/fix_stage_automatic_capture_order.py \
+            scripts/fix_stage_automatic_capture_order_test.py \
             .github/workflows/stage-automatic-capture-order.yml
           git add app/build.gradle \
             app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoRecord.java \
