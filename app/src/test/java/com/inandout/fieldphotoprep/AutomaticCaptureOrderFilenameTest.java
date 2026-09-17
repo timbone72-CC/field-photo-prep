@@ -257,6 +257,28 @@ public final class AutomaticCaptureOrderFilenameTest {
     }
 
     @Test
+    public void confirmedOldHistoryIsHiddenFromReusedOccurrenceScan() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-history-isolation");
+        PendingPhotoStore store = store(root, ID1, ID2, ID3);
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A), "remote-old-1");
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A), "remote-old-2");
+        assertEquals(2, store.scan().records().size());
+
+        store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        store.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+
+        assertTrue(store.scan().records().isEmpty());
+        assertTrue(store.getById(ID1) != null);
+        assertTrue(store.getById(ID2) != null);
+
+        PendingPhotoRecord current = store.beginCapture(ADDRESS, WORK_A_REUSED);
+        confirmUploaded(store, current, "remote-current");
+
+        assertEquals(1, store.scan().records().size());
+        assertEquals(ID3, store.scan().records().get(0).id());
+    }
+
+    @Test
     public void anotherReuseOfSameProviderIdentityRestartsAgainAtOne() throws Exception {
         File root = temporaryFolder.newFolder("queue-reuse-again");
         PendingPhotoStore store = store(root, ID1, ID2, ID3);
@@ -287,6 +309,22 @@ public final class AutomaticCaptureOrderFilenameTest {
 
         assertEquals(1, firstNew.captureSequence());
         assertEquals(2, afterVisibleRename.captureSequence());
+    }
+
+    @Test
+    public void visibleRenameAfterReuseKeepsCurrentConfirmedHistoryVisible() throws Exception {
+        File root = temporaryFolder.newFolder("queue-reuse-visible-rename-history");
+        PendingPhotoStore store = store(root, ID1, ID2, ID3);
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A), "remote-old");
+        store.prepareCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+        store.completeCaptureSequenceResetForReuse(WORK_A.id(), WORK_A_REUSED.name());
+
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A_REUSED), "remote-current-1");
+        confirmUploaded(store, store.beginCapture(ADDRESS, WORK_A_RENAMED), "remote-current-2");
+
+        assertEquals(2, store.scan().records().size());
+        assertEquals(ID2, store.scan().records().get(0).id());
+        assertEquals(ID3, store.scan().records().get(1).id());
     }
 
     @Test
