@@ -2,6 +2,8 @@ package com.inandout.fieldphotoprep;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -623,11 +625,82 @@ private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
             }
             return;
         }
-        reconcileAllButton.setText("Reconcile All Uncertain (" + uncertainCount + ")");
-        reconcileAllButton.setVisibility(uncertainCount > 0 ? View.VISIBLE : View.GONE);
-        reconcileAllButton.setEnabled(uncertainCount > 0
-                && !PREPARATION_GATE.isBusy()
-                && !UPLOAD_GATE.isBusy());
+
+        if (uncertainCount > 0) {
+            reconcileAllButton.setOnClickListener(v -> reconcileAllUncertain());
+            reconcileAllButton.setText("Reconcile All Uncertain (" + uncertainCount + ")");
+            reconcileAllButton.setVisibility(View.VISIBLE);
+            reconcileAllButton.setEnabled(!PREPARATION_GATE.isBusy() && !UPLOAD_GATE.isBusy());
+            return;
+        }
+
+        List<PendingPhotoRecord> current = currentWorkOrderRecords(scan);
+        boolean captureOrderReady = !current.isEmpty();
+        for (PendingPhotoRecord record : current) {
+            if (record.state() != PendingPhotoRecord.State.UPLOADED
+                    || record.remoteFileId() == null
+                    || record.remoteFileId().isBlank()) {
+                captureOrderReady = false;
+                break;
+            }
+        }
+
+        if (captureOrderReady) {
+            reconcileAllButton.setOnClickListener(v -> copyCaptureOrderManifest());
+            reconcileAllButton.setText("Copy Capture Order (" + current.size() + ")");
+            reconcileAllButton.setVisibility(View.VISIBLE);
+            reconcileAllButton.setEnabled(!PREPARATION_GATE.isBusy() && !UPLOAD_GATE.isBusy());
+        } else {
+            reconcileAllButton.setOnClickListener(v -> reconcileAllUncertain());
+            reconcileAllButton.setVisibility(View.GONE);
+            reconcileAllButton.setEnabled(false);
+        }
+    }
+
+    private List<PendingPhotoRecord> currentWorkOrderRecords(PendingPhotoStore.ScanResult scan) {
+        List<PendingPhotoRecord> current = new ArrayList<>();
+        if (scan == null || address == null || workOrder == null) {
+            return current;
+        }
+        for (PendingPhotoRecord record : scan.records()) {
+            if (address.id().equals(record.addressId())
+                    && workOrder.id().equals(record.workOrderId())) {
+                current.add(record);
+            }
+        }
+        return current;
+    }
+
+    private void copyCaptureOrderManifest() {
+        if (address == null || workOrder == null) {
+            showPhotoStatus("Choose an exact address and work order before copying capture order.");
+            return;
+        }
+        if (PREPARATION_GATE.isBusy() || UPLOAD_GATE.isBusy()) {
+            showPhotoStatus("Wait for the active photo operation to finish before copying capture order.");
+            return;
+        }
+        try {
+            PendingPhotoStore.ScanResult scan = photoStore.scan();
+            CaptureOrderManifest.Result manifest = CaptureOrderManifest.build(
+                    PropertyDisplayName.fromDriveFolderName(address.name()),
+                    PropertyDisplayName.readableFolderName(workOrder.name()),
+                    address.id(),
+                    workOrder.id(),
+                    currentWorkOrderRecords(scan));
+            ClipboardManager clipboard = getSystemService(ClipboardManager.class);
+            if (clipboard == null) {
+                throw new IllegalStateException("Android clipboard service is unavailable.");
+            }
+            clipboard.setPrimaryClip(ClipData.newPlainText(
+                    "Field Photo Prep capture order",
+                    manifest.text()));
+            showPhotoStatus("Copied exact capture order for " + manifest.count()
+                    + " confirmed photos. Drive was unchanged.");
+        } catch (Exception error) {
+            showError("Could not copy a safe capture-order manifest", error);
+        }
+        refreshPhotoList();
     }
 
     private void selectAllReadyPhotos() {
