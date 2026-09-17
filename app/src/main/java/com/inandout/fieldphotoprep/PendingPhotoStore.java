@@ -17,6 +17,7 @@ public final class PendingPhotoStore {
     static final String CAPTURE_SEQUENCE_LEDGER_FILE = "capture-sequences.properties";
     private static final String CAPTURE_SEQUENCE_RESET_TARGET_PREFIX = "__reuse_target__:";
     private static final String CAPTURE_SEQUENCE_ACTIVE_OCCURRENCE_PREFIX = "__reuse_active__:";
+    private static final String CAPTURE_SEQUENCE_ACTIVE_OCCURRENCE_STARTED_PREFIX = "__reuse_started__:";
     private static final Object CAPTURE_SEQUENCE_LOCK = new Object();
     interface IdSource {
         String nextId();
@@ -215,6 +216,9 @@ public final class PendingPhotoStore {
                 maxStoredSequence = Math.max(maxStoredSequence, record.captureSequence());
             }
             baseline = Math.max(persistedLast, Math.max(retainedCount, maxStoredSequence));
+        } else if (readActiveOccurrenceStartedAt(ledger, workOrderId) == 0L) {
+            ledger.setProperty(activeOccurrenceStartedKey(workOrderId),
+                    Long.toString(requirePositiveOccurrenceStartTime()));
         }
         if (baseline == Integer.MAX_VALUE) {
             throw new IOException("Capture-order sequence is exhausted for this work order.");
@@ -228,9 +232,19 @@ public final class PendingPhotoStore {
     private void activateReuseReset(
             Properties ledger,
             String workOrderId,
-            String requestedWorkOrderName) {
+            String requestedWorkOrderName) throws IOException {
         ledger.setProperty(workOrderId, "0");
         ledger.setProperty(activeOccurrenceKey(workOrderId), requestedWorkOrderName);
+        ledger.setProperty(activeOccurrenceStartedKey(workOrderId),
+                Long.toString(requirePositiveOccurrenceStartTime()));
+    }
+
+    private long requirePositiveOccurrenceStartTime() throws IOException {
+        long value = timeSource.nowEpochMs();
+        if (value <= 0L) {
+            throw new IOException("Capture-order occurrence start time is invalid.");
+        }
+        return value;
     }
 
     private Properties readCaptureSequenceLedger() throws IOException {
@@ -270,6 +284,24 @@ public final class PendingPhotoStore {
 
     private String readActiveOccurrenceName(Properties ledger, String workOrderId) {
         return normalizeOptional(ledger.getProperty(activeOccurrenceKey(workOrderId)));
+    }
+
+    private long readActiveOccurrenceStartedAt(Properties ledger, String workOrderId)
+            throws IOException {
+        String raw = normalizeOptional(ledger.getProperty(activeOccurrenceStartedKey(workOrderId)));
+        if (raw == null) {
+            return 0L;
+        }
+        final long value;
+        try {
+            value = Long.parseLong(raw);
+        } catch (NumberFormatException error) {
+            throw new IOException("Capture-order occurrence start marker is invalid.", error);
+        }
+        if (value <= 0L) {
+            throw new IOException("Capture-order occurrence start marker must be positive.");
+        }
+        return value;
     }
 
     private void writeCaptureSequenceLedger(Properties ledger) throws IOException {
@@ -453,10 +485,9 @@ public final class PendingPhotoStore {
 
     public ScanResult scan() throws IOException {
         ensureRoot();
-        List<PendingPhotoRecord> records = new ArrayList<>();
+        Properties ledger = readCaptureSequenceLedger();
+        List<PendingPhotoRecord> allRecords = new ArrayList<>();
         List<String> corrupt = new ArrayList<>();
-        List<String> unusableQueued = new ArrayList<>();
-        List<String> uncertain = new ArrayList<>();
 
         File[] files = root.listFiles();
         if (files == null) {
@@ -471,15 +502,25 @@ public final class PendingPhotoStore {
                 if (!file.getName().equals(record.metadataFileName())) {
                     throw new IllegalArgumentException("Metadata filename does not match pending-photo id.");
                 }
-                records.add(record);
-                if (record.needsProtectedImage() && !hasImageData(record)) {
-                    unusableQueued.add(record.id());
-                }
-                if (record.state() == PendingPhotoRecord.State.UNCERTAIN) {
-                    uncertain.add(record.id());
-                }
+                allRecords.add(record);
             } catch (IOException | RuntimeException error) {
                 corrupt.add(file.getName());
+            }
+        }
+
+        List<PendingPhotoRecord> records = new ArrayList<>();
+        List<String> unusableQueued = new ArrayList<>();
+        List<String> uncertain = new ArrayList<>();
+        for (PendingPhotoRecord record : allRecords) {
+            if (!retainInActiveOccurrence(record, ledger)) {
+                continue;
+            }
+            records.add(record);
+            if (record.needsProtectedImage() && !hasImageData(record)) {
+                unusableQueued.add(record.id());
+            }
+            if (record.state() == PendingPhotoRecord.State.UNCERTAIN) {
+                uncertain.add(record.id());
             }
         }
 
@@ -488,6 +529,23 @@ public final class PendingPhotoStore {
         Collections.sort(unusableQueued);
         Collections.sort(uncertain);
         return new ScanResult(records, corrupt, unusableQueued, uncertain);
+    }
+
+    private boolean retainInActiveOccurrence(
+            PendingPhotoRecord record,
+            Properties ledger) throws IOException {
+        if (record.state() != PendingPhotoRecord.State.UPLOADED) {
+            return true;
+        }
+        String activeOccurrence = readActiveOccurrenceName(ledger, record.workOrderId());
+        if (activeOccurrence == null) {
+            return true;
+        }
+        if (activeOccurrence.equals(record.workOrderName())) {
+            return true;
+        }
+        long activeStartedAt = readActiveOccurrenceStartedAt(ledger, record.workOrderId());
+        return activeStartedAt > 0L && record.createdAtEpochMs() >= activeStartedAt;
     }
 
     public PendingPhotoRecord getById(String id) throws IOException {
@@ -652,6 +710,10 @@ public final class PendingPhotoStore {
 
     private static String activeOccurrenceKey(String workOrderId) {
         return CAPTURE_SEQUENCE_ACTIVE_OCCURRENCE_PREFIX + workOrderId;
+    }
+
+    private static String activeOccurrenceStartedKey(String workOrderId) {
+        return CAPTURE_SEQUENCE_ACTIVE_OCCURRENCE_STARTED_PREFIX + workOrderId;
     }
 
     private static String normalizeOptional(String value) {
