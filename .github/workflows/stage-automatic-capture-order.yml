@@ -1,0 +1,90 @@
+name: Stage automatic capture-order filenames
+
+on:
+  push:
+    branches:
+      - feat/automatic-capture-order-filenames-20260917
+    paths:
+      - .github/workflows/stage-automatic-capture-order.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Apply automatic capture-order patch
+        run: python3 scripts/stage_automatic_capture_order.py
+
+      - name: Validate narrow diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          expected = {
+              'app/build.gradle',
+              'app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoRecord.java',
+              'app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoStore.java',
+              'app/src/main/java/com/inandout/fieldphotoprep/DrivePhotoUploader.java',
+              'app/src/main/java/com/inandout/fieldphotoprep/DrivePhotoReconciler.java',
+              'app/src/main/java/com/inandout/fieldphotoprep/CaptureOrderManifest.java',
+              'app/src/test/java/com/inandout/fieldphotoprep/DrivePhotoUploaderTest.java',
+              'app/src/test/java/com/inandout/fieldphotoprep/DrivePhotoReconcilerTest.java',
+              'app/src/test/java/com/inandout/fieldphotoprep/AutomaticCaptureOrderFilenameTest.java',
+          }
+          changed = set(subprocess.check_output(
+              ['git', 'status', '--short'], text=True).splitlines())
+          paths = {line[3:] for line in changed}
+          if paths != expected:
+              raise SystemExit(f'Unexpected staged patch paths: {sorted(paths)}')
+          print('Narrow diff paths verified.')
+          PY
+
+      - name: Focused regression tests
+        run: |
+          gradle testDebugUnitTest \
+            --tests com.inandout.fieldphotoprep.AutomaticCaptureOrderFilenameTest \
+            --tests com.inandout.fieldphotoprep.PendingPhotoRecordTest \
+            --tests com.inandout.fieldphotoprep.PendingPhotoStoreTest \
+            --tests com.inandout.fieldphotoprep.DrivePhotoUploaderTest \
+            --tests com.inandout.fieldphotoprep.DrivePhotoReconcilerTest \
+            --tests com.inandout.fieldphotoprep.CaptureOrderManifestTest
+
+      - name: Build internal APK
+        run: gradle assembleDebug
+
+      - name: Commit tested implementation and remove staging helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm scripts/stage_automatic_capture_order.py .github/workflows/stage-automatic-capture-order.yml
+          git add app/build.gradle \
+            app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoRecord.java \
+            app/src/main/java/com/inandout/fieldphotoprep/PendingPhotoStore.java \
+            app/src/main/java/com/inandout/fieldphotoprep/DrivePhotoUploader.java \
+            app/src/main/java/com/inandout/fieldphotoprep/DrivePhotoReconciler.java \
+            app/src/main/java/com/inandout/fieldphotoprep/CaptureOrderManifest.java \
+            app/src/test/java/com/inandout/fieldphotoprep/DrivePhotoUploaderTest.java \
+            app/src/test/java/com/inandout/fieldphotoprep/DrivePhotoReconcilerTest.java \
+            app/src/test/java/com/inandout/fieldphotoprep/AutomaticCaptureOrderFilenameTest.java
+          git diff --cached --check
+          git commit -m "Add automatic capture-order Drive filenames"
+          git push
