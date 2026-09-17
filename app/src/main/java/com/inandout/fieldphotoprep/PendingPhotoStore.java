@@ -275,53 +275,6 @@ public final class PendingPhotoStore {
         return normalizeOptional(ledger.getProperty(activeOccurrenceKey(workOrderId)));
     }
 
-    /**
-     * Local presentation helper only. Provider ID remains the upload destination identity; after
-     * an FPP-managed reuse, the verified dated work-order name separates retained old history from
-     * records captured for the newly reused occurrence.
-     */
-    public boolean isRecordInCurrentWorkOccurrence(
-            PendingPhotoRecord record,
-            DriveFolder workOrder) throws IOException {
-        if (record == null || workOrder == null || !workOrder.id().equals(record.workOrderId())) {
-            return false;
-        }
-        synchronized (CAPTURE_SEQUENCE_LOCK) {
-            ensureRoot();
-            String activeOccurrence = readActiveOccurrenceName(
-                    readCaptureSequenceLedger(), workOrder.id());
-            return activeOccurrence == null
-                    || (activeOccurrence.equals(workOrder.name())
-                    && activeOccurrence.equals(record.workOrderName()));
-        }
-    }
-
-    public List<PendingPhotoRecord> recordsForWorkOccurrence(DriveFolder workOrder) throws IOException {
-        if (workOrder == null) {
-            return Collections.emptyList();
-        }
-        synchronized (CAPTURE_SEQUENCE_LOCK) {
-            ensureRoot();
-            Properties ledger = readCaptureSequenceLedger();
-            String activeOccurrence = readActiveOccurrenceName(ledger, workOrder.id());
-            if (activeOccurrence != null && !activeOccurrence.equals(workOrder.name())) {
-                throw new IOException(
-                        "The selected work-order name does not match its active reused occurrence.");
-            }
-            ScanResult result = scan();
-            List<PendingPhotoRecord> matches = new ArrayList<>();
-            for (PendingPhotoRecord record : result.records()) {
-                if (!workOrder.id().equals(record.workOrderId())) {
-                    continue;
-                }
-                if (activeOccurrence == null || activeOccurrence.equals(record.workOrderName())) {
-                    matches.add(record);
-                }
-            }
-            return matches;
-        }
-    }
-
     private void writeCaptureSequenceLedger(Properties ledger) throws IOException {
         File target = new File(root, CAPTURE_SEQUENCE_LEDGER_FILE);
         ensureDirectChild(target);
