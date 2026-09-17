@@ -14,13 +14,14 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         UPLOADED
     }
 
-    static final int CURRENT_SCHEMA_VERSION = 3;
+    static final int CURRENT_SCHEMA_VERSION = 4;
 
     private static final String KEY_SCHEMA_VERSION = "schemaVersion";
     private static final String KEY_ID = "id";
     private static final String KEY_IMAGE_FILE = "imageFile";
     private static final String KEY_STATE = "state";
     private static final String KEY_CREATED_AT = "createdAtEpochMs";
+    private static final String KEY_CAPTURE_SEQUENCE = "captureSequence";
     private static final String KEY_ADDRESS_ID = "addressId";
     private static final String KEY_ADDRESS_NAME = "addressName";
     private static final String KEY_WORK_ORDER_ID = "workOrderId";
@@ -35,6 +36,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
     private final String imageFileName;
     private final State state;
     private final long createdAtEpochMs;
+    private final int captureSequence;
     private final String addressId;
     private final String addressName;
     private final String workOrderId;
@@ -59,6 +61,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 imageFileName,
                 state,
                 createdAtEpochMs,
+                0,
                 addressId,
                 addressName,
                 workOrderId,
@@ -75,6 +78,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
             String imageFileName,
             State state,
             long createdAtEpochMs,
+            int captureSequence,
             String addressId,
             String addressName,
             String workOrderId,
@@ -91,6 +95,10 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
             throw new IllegalArgumentException("createdAtEpochMs must be positive.");
         }
         this.createdAtEpochMs = createdAtEpochMs;
+        if (captureSequence < 0) {
+            throw new IllegalArgumentException("captureSequence cannot be negative.");
+        }
+        this.captureSequence = captureSequence;
         this.addressId = requireText(addressId, "addressId");
         this.addressName = requireText(addressName, "addressName");
         this.workOrderId = requireText(workOrderId, "workOrderId");
@@ -121,6 +129,34 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 workOrderName);
     }
 
+    public static PendingPhotoRecord createCapturing(
+            String id,
+            long createdAtEpochMs,
+            String addressId,
+            String addressName,
+            String workOrderId,
+            String workOrderName,
+            int captureSequence) {
+        if (captureSequence <= 0) {
+            throw new IllegalArgumentException("New captureSequence must be positive.");
+        }
+        return new PendingPhotoRecord(
+                id,
+                imageFileNameFor(id),
+                State.CAPTURING,
+                createdAtEpochMs,
+                captureSequence,
+                addressId,
+                addressName,
+                workOrderId,
+                workOrderName,
+                0,
+                0L,
+                null,
+                null,
+                null);
+    }
+
     public String id() {
         return id;
     }
@@ -139,6 +175,14 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
 
     public long createdAtEpochMs() {
         return createdAtEpochMs;
+    }
+
+    public int captureSequence() {
+        return captureSequence;
+    }
+
+    public boolean hasCaptureSequence() {
+        return captureSequence > 0;
     }
 
     public String addressId() {
@@ -305,6 +349,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         properties.setProperty(KEY_IMAGE_FILE, imageFileName);
         properties.setProperty(KEY_STATE, state.name());
         properties.setProperty(KEY_CREATED_AT, Long.toString(createdAtEpochMs));
+        properties.setProperty(KEY_CAPTURE_SEQUENCE, Integer.toString(captureSequence));
         properties.setProperty(KEY_ADDRESS_ID, addressId);
         properties.setProperty(KEY_ADDRESS_NAME, addressName);
         properties.setProperty(KEY_WORK_ORDER_ID, workOrderId);
@@ -327,6 +372,9 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         State state = parseState(properties);
         long createdAt = parsePositiveLong(properties, KEY_CREATED_AT,
                 "Invalid pending-photo createdAtEpochMs.");
+        int captureSequence = schemaVersion >= 4
+                ? parseNonNegativeInt(properties, KEY_CAPTURE_SEQUENCE)
+                : 0;
 
         if (schemaVersion == 1) {
             if (state != State.CAPTURING && state != State.WAITING) {
@@ -338,6 +386,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                     imageFile,
                     state,
                     createdAt,
+                    0,
                     requiredProperty(properties, KEY_ADDRESS_ID),
                     requiredProperty(properties, KEY_ADDRESS_NAME),
                     requiredProperty(properties, KEY_WORK_ORDER_ID),
@@ -359,6 +408,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 imageFile,
                 state,
                 createdAt,
+                captureSequence,
                 requiredProperty(properties, KEY_ADDRESS_ID),
                 requiredProperty(properties, KEY_ADDRESS_NAME),
                 requiredProperty(properties, KEY_WORK_ORDER_ID),
@@ -396,6 +446,7 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
                 imageFileName,
                 nextState,
                 createdAtEpochMs,
+                captureSequence,
                 addressId,
                 addressName,
                 workOrderId,
@@ -475,7 +526,8 @@ public final class PendingPhotoRecord implements Comparable<PendingPhotoRecord> 
         } catch (NumberFormatException error) {
             throw new IllegalArgumentException("Invalid pending-photo schema version.", error);
         }
-        if (version != 1 && version != 2 && version != CURRENT_SCHEMA_VERSION) {
+        if (version != 1 && version != 2 && version != 3
+                && version != CURRENT_SCHEMA_VERSION) {
             throw new IllegalArgumentException(
                     "Unsupported pending-photo schema version: " + version);
         }

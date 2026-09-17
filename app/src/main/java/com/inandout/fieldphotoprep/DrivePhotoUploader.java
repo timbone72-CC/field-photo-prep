@@ -9,6 +9,7 @@ import android.provider.DocumentsContract;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Objects;
 
 public final class DrivePhotoUploader {
@@ -172,7 +173,7 @@ public final class DrivePhotoUploader {
 
         final long expectedBytes = preparedFile.length();
         final String destinationId = uploadingRecord.workOrderId();
-        final String remoteName = remoteFileNameFor(uploadingRecord.id());
+        final String remoteName = remoteFileNameFor(uploadingRecord);
 
         final RemoteDocument destination;
         try {
@@ -251,7 +252,7 @@ public final class DrivePhotoUploader {
                     "The created Drive photo identity was not durably bound to this upload before writing. Remote state must be reconciled before retry.",
                     null);
         }
-        if (!createdUpload.remoteDisplayName().equals(remoteFileNameFor(uploadingRecord.id()))) {
+        if (!createdUpload.remoteDisplayName().equals(remoteFileNameFor(uploadingRecord))) {
             throw uncertainFailure(
                     "The created Drive photo name does not match this photo identity. Remote state must be reconciled before retry.",
                     null);
@@ -353,6 +354,16 @@ public final class DrivePhotoUploader {
     static String remoteFileNameFor(String photoId) {
         return "field-photo-" + PendingPhotoRecord.imageFileNameFor(photoId)
                 .substring("photo-".length());
+    }
+
+    static String remoteFileNameFor(PendingPhotoRecord record) {
+        Objects.requireNonNull(record, "record");
+        String legacyName = remoteFileNameFor(record.id());
+        if (!record.hasCaptureSequence()) {
+            return legacyName;
+        }
+        int width = Math.max(3, Integer.toString(record.captureSequence()).length());
+        return String.format(Locale.US, "%0" + width + "d_%s", record.captureSequence(), legacyName);
     }
 
     static long writePreparedToDescriptor(ParcelFileDescriptor descriptor, File source)

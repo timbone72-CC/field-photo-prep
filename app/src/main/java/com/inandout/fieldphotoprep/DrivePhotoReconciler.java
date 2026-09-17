@@ -180,7 +180,7 @@ public final class DrivePhotoReconciler {
             return Result.uncertain("The prepared local JPEG could not be hashed safely.");
         }
 
-        final String expectedName = DrivePhotoUploader.remoteFileNameFor(record.id());
+        final String expectedName = DrivePhotoUploader.remoteFileNameFor(record);
         final String provisionalId = record.provisionalRemoteFileId();
 
         if (provisionalId != null) {

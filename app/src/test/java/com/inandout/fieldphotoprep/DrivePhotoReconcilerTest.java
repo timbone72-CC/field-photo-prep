@@ -228,6 +228,40 @@ public final class DrivePhotoReconcilerTest {
         assertEquals(6, provider.queryCalls);
     }
 
+    @Test
+    public void sequencedRecordReconcilesUsingCaptureOrderFilename() throws Exception {
+        File prepared = prepared("sequenced-photo");
+        PendingPhotoRecord uncertain = PendingPhotoRecord.createCapturing(
+                PHOTO_ID,
+                1_700_000_000_000L,
+                "address-provider-id",
+                "Address",
+                WORK_ID,
+                "Cut Grass - 2026-09-21",
+                12)
+                .withState(PendingPhotoRecord.State.WAITING)
+                .beginUploadAttempt(1_700_000_100_000L)
+                .markUploadUncertain("ambiguous create result");
+        FakeProvider provider = new FakeProvider();
+        DrivePhotoReconciler.RemoteDocument candidate = new DrivePhotoReconciler.RemoteDocument(
+                REMOTE_ID,
+                "012_field-photo-" + PHOTO_ID + ".jpg",
+                DrivePhotoUploader.JPEG_MIME_TYPE,
+                prepared.length());
+        provider.queries.add(new DrivePhotoReconciler.ChildQueryResult(
+                Collections.singletonList(candidate), false));
+        provider.queries.add(new DrivePhotoReconciler.ChildQueryResult(
+                Collections.singletonList(candidate), false));
+        provider.remoteHash = DrivePhotoReconciler.sha256File(prepared);
+
+        DrivePhotoReconciler.Result result = new DrivePhotoReconciler(provider).reconcile(
+                uncertain,
+                prepared);
+
+        assertEquals(DrivePhotoReconciler.Result.Outcome.CONFIRMED_MATCH, result.outcome());
+        assertEquals(REMOTE_ID, result.remoteFileId());
+    }
+
     private File prepared(String text) throws Exception {
         File file = temporaryFolder.newFile("prepared-" + System.nanoTime() + ".jpg");
         try (FileOutputStream output = new FileOutputStream(file)) {

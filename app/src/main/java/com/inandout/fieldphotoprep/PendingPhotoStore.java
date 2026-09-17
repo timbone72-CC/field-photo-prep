@@ -14,6 +14,8 @@ import java.util.Properties;
 import java.util.UUID;
 
 public final class PendingPhotoStore {
+    static final String CAPTURE_SEQUENCE_LEDGER_FILE = "capture-sequences.properties";
+    private static final Object CAPTURE_SEQUENCE_LOCK = new Object();
     interface IdSource {
         String nextId();
     }
@@ -82,31 +84,121 @@ public final class PendingPhotoStore {
         if (address == null || workOrder == null) {
             throw new IOException("An exact address and work order are required before capture.");
         }
-        ensureRoot();
+        synchronized (CAPTURE_SEQUENCE_LOCK) {
+            ensureRoot();
+            int captureSequence = reserveNextCaptureSequence(workOrder.id());
+            String id = idSource.nextId();
+            PendingPhotoRecord record = PendingPhotoRecord.createCapturing(
+                    id,
+                    timeSource.nowEpochMs(),
+                    address.id(),
+                    address.name(),
+                    workOrder.id(),
+                    workOrder.name(),
+                    captureSequence);
+            File image = imageFile(record);
+            File metadata = metadataFile(record);
 
-        String id = idSource.nextId();
-        PendingPhotoRecord record = PendingPhotoRecord.createCapturing(
-                id,
-                timeSource.nowEpochMs(),
-                address.id(),
-                address.name(),
-                workOrder.id(),
-                workOrder.name());
-        File image = imageFile(record);
-        File metadata = metadataFile(record);
-
-        if (image.exists() || metadata.exists() || !image.createNewFile()) {
-            throw new IOException("Could not reserve a unique local photo file.");
-        }
-
-        try {
-            writeRecord(record);
-            return record;
-        } catch (IOException | RuntimeException error) {
-            if (image.length() == 0) {
-                image.delete();
+            if (image.exists() || metadata.exists() || !image.createNewFile()) {
+                throw new IOException("Could not reserve a unique local photo file.");
             }
-            throw error;
+
+            try {
+                writeRecord(record);
+                return record;
+            } catch (IOException | RuntimeException error) {
+                if (image.length() == 0) {
+                    image.delete();
+                }
+                throw error;
+            }
+        }
+    }
+
+    private int reserveNextCaptureSequence(String workOrderId) throws IOException {
+        Properties ledger = readCaptureSequenceLedger();
+        int persistedLast = readLedgerSequence(ledger, workOrderId);
+        ScanResult existing = scan();
+        int retainedCount = 0;
+        int maxStoredSequence = 0;
+        for (PendingPhotoRecord record : existing.records()) {
+            if (!workOrderId.equals(record.workOrderId())) {
+                continue;
+            }
+            retainedCount++;
+            maxStoredSequence = Math.max(maxStoredSequence, record.captureSequence());
+        }
+        int baseline = Math.max(persistedLast, Math.max(retainedCount, maxStoredSequence));
+        if (baseline == Integer.MAX_VALUE) {
+            throw new IOException("Capture-order sequence is exhausted for this work order.");
+        }
+        int next = baseline + 1;
+        ledger.setProperty(workOrderId, Integer.toString(next));
+        writeCaptureSequenceLedger(ledger);
+        return next;
+    }
+
+    private Properties readCaptureSequenceLedger() throws IOException {
+        File ledgerFile = new File(root, CAPTURE_SEQUENCE_LEDGER_FILE);
+        ensureDirectChild(ledgerFile);
+        Properties ledger = new Properties();
+        if (!ledgerFile.exists()) {
+            return ledger;
+        }
+        if (!ledgerFile.isFile()) {
+            throw new IOException("Capture-order sequence ledger is not a readable file.");
+        }
+        try (FileInputStream input = new FileInputStream(ledgerFile)) {
+            ledger.load(input);
+        } catch (IOException | RuntimeException error) {
+            throw new IOException("Capture-order sequence ledger could not be read safely.", error);
+        }
+        return ledger;
+    }
+
+    private int readLedgerSequence(Properties ledger, String workOrderId) throws IOException {
+        String raw = ledger.getProperty(workOrderId);
+        if (raw == null || raw.isBlank()) {
+            return 0;
+        }
+        final int value;
+        try {
+            value = Integer.parseInt(raw.trim());
+        } catch (NumberFormatException error) {
+            throw new IOException("Capture-order sequence ledger contains an invalid value.", error);
+        }
+        if (value < 0) {
+            throw new IOException("Capture-order sequence ledger contains a negative value.");
+        }
+        return value;
+    }
+
+    private void writeCaptureSequenceLedger(Properties ledger) throws IOException {
+        File target = new File(root, CAPTURE_SEQUENCE_LEDGER_FILE);
+        ensureDirectChild(target);
+        File temp = new File(root, CAPTURE_SEQUENCE_LEDGER_FILE + ".tmp-" + UUID.randomUUID());
+        ensureDirectChild(temp);
+        try (FileOutputStream output = new FileOutputStream(temp)) {
+            ledger.store(output, "Field Photo Prep capture sequence ledger");
+            output.getFD().sync();
+        } catch (IOException | RuntimeException error) {
+            temp.delete();
+            throw new IOException("Capture-order sequence ledger could not be written safely.", error);
+        }
+        try {
+            try {
+                Files.move(
+                        temp.toPath(),
+                        target.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            if (temp.exists()) {
+                temp.delete();
+            }
         }
     }
 

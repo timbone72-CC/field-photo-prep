@@ -82,11 +82,14 @@ public final class CaptureOrderManifest {
 
         for (int i = 0; i < ordered.size(); i++) {
             PendingPhotoRecord record = ordered.get(i);
-            String sequence = String.format(Locale.US, "%0" + width + "d", i + 1);
+            int sequenceValue = record.hasCaptureSequence()
+                    ? record.captureSequence()
+                    : i + 1;
+            String sequence = String.format(Locale.US, "%0" + width + "d", sequenceValue);
             output.append(sequence)
                     .append('|').append(record.createdAtEpochMs())
                     .append('|').append(record.id())
-                    .append('|').append(DrivePhotoUploader.remoteFileNameFor(record.id()))
+                    .append('|').append(DrivePhotoUploader.remoteFileNameFor(record))
                     .append('\n');
         }
 
