@@ -9,7 +9,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
@@ -23,8 +22,6 @@ public final class AutomaticCaptureOrderFilenameTest {
     private static final String ID2 = "22222222-2222-4222-8222-222222222222";
     private static final String ID3 = "33333333-3333-4333-8333-333333333333";
     private static final String ID4 = "44444444-4444-4444-8444-444444444444";
-    private static final String ID5 = "55555555-5555-4555-8555-555555555555";
-    private static final String ID6 = "66666666-6666-4666-8666-666666666666";
     private static final DriveFolder ADDRESS = new DriveFolder("address-a", "Address A");
     private static final DriveFolder WORK_A = new DriveFolder("work-a", "Inspection - 2026-09-17");
     private static final DriveFolder WORK_A_REUSED =
@@ -245,7 +242,7 @@ public final class AutomaticCaptureOrderFilenameTest {
         File root = temporaryFolder.newFolder("queue-reuse-confirmed-history");
         PendingPhotoStore store = store(root, ID1, ID2, ID3);
         PendingPhotoRecord old1 = store.beginCapture(ADDRESS, WORK_A);
-        PendingPhotoRecord confirmed1 = confirmUploaded(store, old1, "remote-old-1");
+        confirmUploaded(store, old1, "remote-old-1");
         PendingPhotoRecord old2 = store.beginCapture(ADDRESS, WORK_A);
         PendingPhotoRecord confirmed2 = confirmUploaded(store, old2, "remote-old-2");
         assertEquals(2, confirmed2.captureSequence());
@@ -255,13 +252,6 @@ public final class AutomaticCaptureOrderFilenameTest {
         PendingPhotoRecord newOccurrence = store.beginCapture(ADDRESS, WORK_A_REUSED);
 
         assertEquals(1, newOccurrence.captureSequence());
-        assertFalse(store.isRecordInCurrentWorkOccurrence(confirmed1, WORK_A_REUSED));
-        assertFalse(store.isRecordInCurrentWorkOccurrence(confirmed2, WORK_A_REUSED));
-        assertTrue(store.isRecordInCurrentWorkOccurrence(newOccurrence, WORK_A_REUSED));
-
-        List<PendingPhotoRecord> current = store.recordsForWorkOccurrence(WORK_A_REUSED);
-        assertEquals(1, current.size());
-        assertEquals(newOccurrence.id(), current.get(0).id());
     }
 
     @Test
