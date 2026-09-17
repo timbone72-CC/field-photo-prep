@@ -32,10 +32,12 @@ public final class PhotoUploadReconciliationCoordinatorTest {
             throws Exception {
         Fixture fixture = fixture(false);
         File prepared = fixture.preparer.preparedFile(PHOTO_ID);
+        PendingPhotoRecord localRecord = fixture.store.getById(PHOTO_ID);
+        assertEquals(1, localRecord.captureSequence());
         ReconcileProvider reconcileProvider = new ReconcileProvider();
         DrivePhotoReconciler.RemoteDocument candidate = new DrivePhotoReconciler.RemoteDocument(
                 REMOTE_ID,
-                DrivePhotoUploader.remoteFileNameFor(PHOTO_ID),
+                DrivePhotoUploader.remoteFileNameFor(localRecord),
                 DrivePhotoUploader.JPEG_MIME_TYPE,
                 prepared.length());
         reconcileProvider.queries.add(new DrivePhotoReconciler.ChildQueryResult(

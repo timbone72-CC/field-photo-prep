@@ -43,7 +43,7 @@ public final class DrivePhotoUploaderTest {
         DrivePhotoUploader.CreatedUpload created = uploader.create(uploadingRecord(), prepared);
 
         assertEquals("work-provider-id", provider.createParentId);
-        assertEquals(DrivePhotoUploader.remoteFileNameFor(PHOTO_ID), provider.createDisplayName);
+        assertEquals("012_field-photo-" + PHOTO_ID + ".jpg", provider.createDisplayName);
         assertEquals("remote-photo-id", created.remoteFileId());
         assertEquals(prepared.length(), created.expectedBytes());
         assertFalse(provider.writeCalled);
@@ -202,7 +202,8 @@ public final class DrivePhotoUploaderTest {
                         "address-provider-id",
                         "Address",
                         "work-provider-id",
-                        "Cut Grass - 2026-09-09")
+                        "Cut Grass - 2026-09-09",
+                        12)
                 .withState(PendingPhotoRecord.State.WAITING)
                 .beginUploadAttempt(1_700_000_100_000L);
     }
