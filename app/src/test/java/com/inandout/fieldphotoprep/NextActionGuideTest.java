@@ -48,7 +48,7 @@ public final class NextActionGuideTest {
     @Test
     public void photoGuidancePrioritizesSafetyAndRoutineProgression() {
         assertAction(
-                NextActionGuide.photos(true, true, false, false, false, 0, 0, 0, 0, 0, false, false),
+                NextActionGuide.photos(true, false, false, false, 0, 0, 0, 0, 0, false, false),
                 NextActionGuide.Kind.TAKE_PHOTOS,
                 "Next: Take Photos",
                 true);
@@ -66,31 +66,31 @@ public final class NextActionGuideTest {
                 false);
 
         assertAction(
-                NextActionGuide.photos(true, true, false, false, false, 5, 2, 0, 3, 0, false, false),
+                NextActionGuide.photos(true, false, false, false, 5, 2, 0, 3, 0, false, false),
                 NextActionGuide.Kind.CHECK_UPLOADS,
                 "Next: Check 2 Uploads",
                 true);
 
         assertAction(
-                NextActionGuide.photos(true, true, false, false, false, 5, 0, 1, 4, 0, false, false),
+                NextActionGuide.photos(true, false, false, false, 5, 0, 1, 4, 0, false, false),
                 NextActionGuide.Kind.PREPARE_PHOTO,
                 "Next: Prepare Photo",
                 true);
 
         assertAction(
-                NextActionGuide.photos(true, true, false, false, false, 5, 0, 0, 4, 0, false, false),
+                NextActionGuide.photos(true, false, false, false, 5, 0, 0, 4, 0, false, false),
                 NextActionGuide.Kind.SELECT_READY,
                 "Next: Select 4 Ready Photos",
                 true);
 
         assertAction(
-                NextActionGuide.photos(true, true, false, false, false, 5, 0, 0, 4, 3, true, false),
+                NextActionGuide.photos(true, false, false, false, 5, 0, 0, 4, 3, true, false),
                 NextActionGuide.Kind.UPLOAD_SELECTED,
                 "Next: Upload Selected (3)",
                 true);
 
         assertAction(
-                NextActionGuide.photos(true, true, false, false, false, 5, 0, 0, 0, 0, false, true),
+                NextActionGuide.photos(true, false, false, false, 5, 0, 0, 0, 0, false, true),
                 NextActionGuide.Kind.DONE,
                 "Done — Return to Work Orders",
                 true);
@@ -98,10 +98,8 @@ public final class NextActionGuideTest {
 
     @Test
     public void photosRequireAnExactWorkOrderBeforeContinuing() {
-        NextActionGuide.Action action = NextActionGuide.photos(
-                false, false, false, false, 0, 0, 0, 0, 0, false, false);
         assertAction(
-                action,
+                NextActionGuide.photos(false, false, false, false, 0, 0, 0, 0, 0, false, false),
                 NextActionGuide.Kind.REVIEW_PHOTOS,
                 "Choose a Work Order First",
                 false);
@@ -118,7 +116,7 @@ public final class NextActionGuideTest {
         assertEquals("Working…", work.label());
 
         NextActionGuide.Action upload = NextActionGuide.photos(
-                false, true, false, 10, 0, 0, 10, 10, true, false);
+                true, false, true, false, 10, 0, 0, 10, 10, true, false);
         assertFalse(upload.enabled());
         assertEquals(NextActionGuide.Kind.UPLOADING, upload.kind());
         assertEquals("Uploading…", upload.label());
