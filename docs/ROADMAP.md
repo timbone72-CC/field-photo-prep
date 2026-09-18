@@ -243,7 +243,7 @@ Canonical field-tested baseline:
 - canonical branch: `main`;
 - Phase 10A merge: `a5689e67a91d5dbbe57f6c8b1fc80dbece243449`;
 - exact last runtime-changing tested head preserved in ancestry: `e52765fd5b02266244d9101c5fd5429d5aa4e6c4`;
-- current internal build after Phase 10D: versionCode 27 / `0.22-folder-screen-state-separation-internal`;
+- current internal build after Phase 10E: versionCode 28 / `0.23-guided-next-action-internal`;
 - includes the bounded Drive verification-settle behavior and safe bulk reconciliation path;
 - includes durable automatic capture-order filenames;
 - includes work-order-reuse capture-sequence reset and old-occurrence history isolation;
@@ -375,7 +375,7 @@ Completion evidence:
 - Android CI run `35296448276`: PASS;
 - PR #51 merged to `main` at `aec5697f2d2d51894ed1dcb59ec6d51cb4f0c6e4`.
 
-### Phase 10E — Guided next-action workflow
+### Phase 10E — Guided next-action workflow — COMPLETE
 
 Goal:
 make the routine field workflow self-explanatory so the user does not need to guess what action follows the one they just completed.
@@ -423,6 +423,16 @@ Completion gate:
 - existing Drive, photo-safety, queue, retry, reconciliation, and deletion semantics remain unchanged.
 
 This phase is a usability layer over proven state, not a new workflow engine.
+
+Completion evidence:
+- versionCode 28 / `0.23-guided-next-action`;
+- guidance is derived from existing Drive/property/work-order/photo/queue state through a stateless presentation policy;
+- Home, Work Orders, and Photos delegate next-action taps to the existing action owners rather than duplicating workflow logic;
+- exact runtime head `7cfd56d932cdda0941e3952bca5ad8c75ddeb712`;
+- Android CI run `35297157236`: PASS;
+- focused policy and instrumentation coverage passed;
+- focused Samsung usability smoke passed;
+- PR #53 merged to `main` at `8f1ce719d57564faf79a523bb665a7af165e2b4b`.
 
 ### Phase 10F — Android backup/restore and second-phone readiness
 
