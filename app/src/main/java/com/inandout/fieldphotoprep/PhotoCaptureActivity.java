@@ -501,7 +501,7 @@ private File thumbnailSource(PendingPhotoRecord record) {
         if (original != null && original.isFile() && original.length() > 0L) {
             return original;
         }
-    } catch (RuntimeException ignored) {
+    } catch (Exception ignored) {
         // Row remains valid; only its thumbnail is unavailable.
     }
     return null;
