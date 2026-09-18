@@ -243,7 +243,7 @@ Canonical field-tested baseline:
 - canonical branch: `main`;
 - Phase 10A merge: `a5689e67a91d5dbbe57f6c8b1fc80dbece243449`;
 - exact last runtime-changing tested head preserved in ancestry: `e52765fd5b02266244d9101c5fd5429d5aa4e6c4`;
-- internal build: versionCode 25 / `0.20-reuse-occurrence-history-isolation-internal`;
+- current internal build after Phase 10B: versionCode 26 / `0.21-photo-list-scale-internal`;
 - includes the bounded Drive verification-settle behavior and safe bulk reconciliation path;
 - includes durable automatic capture-order filenames;
 - includes work-order-reuse capture-sequence reset and old-occurrence history isolation;
@@ -251,7 +251,7 @@ Canonical field-tested baseline:
 
 The source-of-truth split is resolved. Future runtime work must start from canonical `main` (or a branch created from it) so already-proven 0.20 behavior is not lost.
 
-## Phase 10 — Stabilization & Scale — PLANNED
+## Phase 10 — Stabilization & Scale — IN PROGRESS
 
 Goal: stabilize the proven single-phone field workflow for realistic large inspection batches, reduce avoidable operator recovery work, and make repository/device-recovery behavior explicit without weakening the existing photo and Drive safety model.
 
@@ -289,7 +289,7 @@ Completion evidence:
 - obsolete Phase 9A PR #34 was closed as superseded;
 - PR #39 remains open intentionally for separate Phase 10C stale-provider reconciliation review.
 
-### Phase 10B — Large photo-list scalability
+### Phase 10B — Large photo-list scalability — COMPLETE
 
 Field basis:
 - realistic work orders now reach at least roughly 100 photo records;
@@ -311,14 +311,22 @@ Protected behavior:
 - no prepared-image policy change;
 - no permanent in-app photo library.
 
-### Phase 10C — Large-batch upload / UNCERTAIN stabilization — OBSERVE FIRST
+Completion evidence:
+- versionCode 26 / `0.21-photo-list-scale`;
+- exact runtime head `8140dcfa8701d0b4e37cbda7af4f0713f376b449`;
+- Android CI run `35295211103`: PASS;
+- 150-photo virtualization and asynchronous thumbnail instrumentation passed;
+- focused Samsung large-list smoke passed;
+- PR #49 merged to `main` at `110477c286bace05bb7fa56ee22199cf2de7fa92`.
+
+### Phase 10C — Large-batch upload / UNCERTAIN stabilization — OBSERVING
 
 Field basis:
 - a prior large upload produced a substantial UNCERTAIN backlog even though later reconciliation proved the Drive copies existed;
 - the current development line already adds a bounded provider-settle verification window and safe bulk reconciliation.
 
 First step:
-- use the current 0.20 behavior on a fresh realistic large batch and record:
+- use the current canonical 0.21 behavior on a fresh realistic large batch and record:
   - selected photo count;
   - immediately confirmed uploads;
   - retry-safe failures;
