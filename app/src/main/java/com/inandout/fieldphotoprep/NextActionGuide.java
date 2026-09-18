@@ -83,6 +83,7 @@ final class NextActionGuide {
     }
 
     static Action photos(
+            boolean destinationReady,
             boolean preparationBusy,
             boolean remoteBusy,
             boolean reconciliationBusy,
@@ -93,6 +94,9 @@ final class NextActionGuide {
             int selectedCount,
             boolean selectedUploadEligible,
             boolean allCurrentUploaded) {
+        if (!destinationReady) {
+            return disabled(Kind.REVIEW_PHOTOS, "Choose a Work Order First");
+        }
         if (preparationBusy) {
             return disabled(Kind.PREPARING, "Preparing Photo…");
         }
