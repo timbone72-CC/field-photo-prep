@@ -15,7 +15,7 @@ import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.LinearLayout;
+import android.widget.ListView;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -79,12 +79,12 @@ public final class BatchLocalDiscardInstrumentedTest {
                             new Class<?>[]{List.class, List.class},
                             records, new ArrayList<String>());
 
-                    LinearLayout list = activity.findViewById(R.id.photos_pending_list);
-                    assertEquals(3, list.getChildCount());
+                    ListView list = activity.findViewById(R.id.photos_pending_list);
+                    assertEquals(4, list.getAdapter().getCount()); // header + three photo rows
 
-                    CheckBox readyCheck = list.getChildAt(0).findViewById(R.id.photo_row_check);
-                    CheckBox unpreparedCheck = list.getChildAt(1).findViewById(R.id.photo_row_check);
-                    CheckBox uncertainCheck = list.getChildAt(2).findViewById(R.id.photo_row_check);
+                    CheckBox readyCheck = photoRow(list, 0).findViewById(R.id.photo_row_check);
+                    CheckBox unpreparedCheck = photoRow(list, 1).findViewById(R.id.photo_row_check);
+                    CheckBox uncertainCheck = photoRow(list, 2).findViewById(R.id.photo_row_check);
                     Button uploadSelected = activity.findViewById(R.id.photos_upload_selected);
                     Button discardSelected = activity.findViewById(R.id.photos_discard_selected);
 
@@ -142,6 +142,10 @@ public final class BatchLocalDiscardInstrumentedTest {
             context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
             delete(fixtures);
         }
+    }
+
+    private static View photoRow(ListView list, int photoIndex) {
+        return list.getAdapter().getView(photoIndex + 1, null, list);
     }
 
     private static PendingPhotoRecord createWaitingPhoto(
