@@ -346,7 +346,56 @@ Plan:
 
 This is a targeted maintainability repair justified by a real prior defect.
 
-### Phase 10E — Android backup/restore and second-phone readiness
+### Phase 10E — Guided next-action workflow
+
+Goal:
+make the routine field workflow self-explanatory so the user does not need to guess what action follows the one they just completed.
+
+Design rule:
+- the app should present one obvious **primary next action** based on already-known app state;
+- secondary controls may remain available, but routine progress should not depend on the operator interpreting status labels or remembering the workflow;
+- safe routine transitions should advance naturally when the prior action completes;
+- destructive, ambiguous, account/provider, or unresolved-remote-state decisions must still stop and require deliberate operator input.
+
+Expected state-driven guidance examples:
+- no property selected → **Choose Property**;
+- property selected with no active work order → **Choose or Add Work Order**;
+- active work order with no current photos → **Take Photos**;
+- photos captured and still preparing → show preparation progress without asking for another action;
+- prepared photos ready → **Upload Ready Photos (N)**;
+- confirmed upload complete → **Done — Return to Work Orders**;
+- one or more uploads unresolved → **Check N Uploads** and route into the existing safe reconciliation path;
+- after exact reconciliation succeeds, return the operator to the normal next action rather than leaving them in a recovery dead end.
+
+UI approach:
+- prefer a small persistent **Next Action** surface or equivalent field-readable primary button rather than a tutorial, wizard, or extra settings system;
+- explain successful state changes in plain language, including the exact work order/destination when useful;
+- avoid generic labels such as `WAITING` when a field-oriented explanation such as **23 photos ready — next: upload to [work order]** is clearer;
+- keep Home / Work Orders / Photos as normal Android screens rather than forcing a rigid step-by-step wizard.
+
+Implementation boundaries:
+- derive guidance from existing selected-property, selected-work-order, photo-preparation, queue, upload, and reconciliation state;
+- do not create a second workflow state machine that can drift away from the authoritative app state;
+- UI guidance may request existing actions but must not duplicate persistence, Drive, queue, or reconciliation ownership;
+- automatic navigation is allowed only where the destination is unambiguous and the action is non-destructive.
+
+Safety stops that remain explicit:
+- Clear & Reuse;
+- local photo discard;
+- Change Drive / provider or master-folder selection;
+- ambiguous property/work-order identity;
+- unresolved `UNCERTAIN` uploads;
+- any action that could change destination identity, delete protected local content, or create a second remote copy.
+
+Completion gate:
+- focused tests prove each major normal state exposes the correct primary next action;
+- impossible or unsafe actions are not presented as routine continuation;
+- a Samsung field smoke proves the normal Property → Work Order → Capture → Prepare → Upload → Done path can be followed without prior knowledge of the app;
+- existing Drive, photo-safety, queue, retry, reconciliation, and deletion semantics remain unchanged.
+
+This phase is a usability layer over proven state, not a new workflow engine.
+
+### Phase 10F — Android backup/restore and second-phone readiness
 
 Goal:
 make app-private recovery behavior explicit before claiming portability across Android devices/accounts.
@@ -397,7 +446,7 @@ Do not add Room/SQLite, WorkManager, parallel Drive uploads, automatic destructi
 
 Default order:
 
-**10A source-of-truth reconciliation → 10B photo-list scaling → 10C large-batch observation/refinement → 10D screen-state separation → 10E backup/restore readiness → Phase 8C when a second suitable phone exists.**
+**10A source-of-truth reconciliation → 10B photo-list scaling → 10C large-batch observation/refinement → 10D screen-state separation → 10E guided next-action workflow → 10F backup/restore readiness → Phase 8C when a second suitable phone exists.**
 
 A later step may move earlier only when field evidence makes it more urgent and the change remains independently testable.
 
