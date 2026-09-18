@@ -235,20 +235,21 @@ Verification and merge evidence:
 
 Phase 8C remains independently deferred; completing Phase 9 does not claim cross-device/account provider-ID portability.
 
-## Current field-tested development line — 2026-09-17
+## Current canonical field-tested baseline — 2026-09-17
 
-Field work after Phase 9 produced additional reliability and photo-ordering changes that are proven on the active development line but are not yet reconciled back to the repository's default `main` branch.
+Field work after Phase 9 produced additional reliability and photo-ordering changes that are now reconciled into the repository's canonical `main` branch.
 
-Current field-tested line:
-- branch: `feat/capture-order-photo-organizer-20260916`;
-- tested head: `e52765fd5b02266244d9101c5fd5429d5aa4e6c4`;
+Canonical field-tested baseline:
+- canonical branch: `main`;
+- Phase 10A merge: `a5689e67a91d5dbbe57f6c8b1fc80dbece243449`;
+- exact last runtime-changing tested head preserved in ancestry: `e52765fd5b02266244d9101c5fd5429d5aa4e6c4`;
 - internal build: versionCode 25 / `0.20-reuse-occurrence-history-isolation-internal`;
 - includes the bounded Drive verification-settle behavior and safe bulk reconciliation path;
 - includes durable automatic capture-order filenames;
 - includes work-order-reuse capture-sequence reset and old-occurrence history isolation;
 - exact head passed the complete Android CI suite, and the reuse/occurrence behavior passed the disposable physical Android + Google Drive gate.
 
-The repository default `main` branch remains behind this tested development line. This source-of-truth split must be reconciled before new unrelated runtime feature work begins. Do not rebuild already-proven behavior from the older `main` line.
+The source-of-truth split is resolved. Future runtime work must start from canonical `main` (or a branch created from it) so already-proven 0.20 behavior is not lost.
 
 ## Phase 10 — Stabilization & Scale — PLANNED
 
@@ -256,7 +257,7 @@ Goal: stabilize the proven single-phone field workflow for realistic large inspe
 
 Phase 10 is driven by actual field evidence and code review. It is not a general feature-expansion phase.
 
-### Phase 10A — Repository/source-of-truth reconciliation — IN PROGRESS
+### Phase 10A — Repository/source-of-truth reconciliation — COMPLETE
 
 Problem:
 - the field-tested 0.20 development line is ahead of default `main`;
@@ -277,6 +278,16 @@ Completion gate:
 - roadmap/version status matches the repository state.
 
 No new product behavior is authorized by 10A.
+
+Completion evidence:
+- PR #47 merged to `main` at `a5689e67a91d5dbbe57f6c8b1fc80dbece243449`;
+- reconciliation branch was ahead-only from the prior `main` merge base, with no runtime conflict-resolution edits;
+- exact final PR head `4389c1d29cc0f9231692e324ad87589f7f570a1f` passed Android CI run `35293174512`;
+- unit tests, internal debug build, stable signer verification, instrumented image tests, internal launch smoke, and artifact uploads all passed;
+- explicit Level 3 operator pre-merge approval was given immediately before merge;
+- PR #42 was closed after its exact head was confirmed in canonical ancestry;
+- obsolete Phase 9A PR #34 was closed as superseded;
+- PR #39 remains open intentionally for separate Phase 10C stale-provider reconciliation review.
 
 ### Phase 10B — Large photo-list scalability
 
