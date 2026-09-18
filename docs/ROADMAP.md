@@ -231,9 +231,175 @@ Verification and merge evidence:
 - Work Orders date readability automated gate and Samsung visual/date-picker smoke passed on 2026-09-13;
 - final version-reconciled head `64339686ae0be08a2148b9b73390c35575e30584` passed Android CI run `34761274823`;
 - PR #35 (Concept 3 + Phase 9D), PR #36 (guarded batch local discard), and PR #37 (date readability + version reconciliation) merged to `main` on 2026-09-13;
-- current internal build version is versionCode 18 / `0.13-field-ui-internal` with the existing internal package identity and stable non-production test signer.
+- Phase 9 completed at versionCode 18 / `0.13-field-ui-internal` with the existing internal package identity and stable non-production test signer.
 
 Phase 8C remains independently deferred; completing Phase 9 does not claim cross-device/account provider-ID portability.
+
+## Current field-tested development line — 2026-09-17
+
+Field work after Phase 9 produced additional reliability and photo-ordering changes that are proven on the active development line but are not yet reconciled back to the repository's default `main` branch.
+
+Current field-tested line:
+- branch: `feat/capture-order-photo-organizer-20260916`;
+- tested head: `e52765fd5b02266244d9101c5fd5429d5aa4e6c4`;
+- internal build: versionCode 25 / `0.20-reuse-occurrence-history-isolation-internal`;
+- includes the bounded Drive verification-settle behavior and safe bulk reconciliation path;
+- includes durable automatic capture-order filenames;
+- includes work-order-reuse capture-sequence reset and old-occurrence history isolation;
+- exact head passed the complete Android CI suite, and the reuse/occurrence behavior passed the disposable physical Android + Google Drive gate.
+
+The repository default `main` branch remains behind this tested development line. This source-of-truth split must be reconciled before new unrelated runtime feature work begins. Do not rebuild already-proven behavior from the older `main` line.
+
+## Phase 10 — Stabilization & Scale — PLANNED
+
+Goal: stabilize the proven single-phone field workflow for realistic large inspection batches, reduce avoidable operator recovery work, and make repository/device-recovery behavior explicit without weakening the existing photo and Drive safety model.
+
+Phase 10 is driven by actual field evidence and code review. It is not a general feature-expansion phase.
+
+### Phase 10A — Repository/source-of-truth reconciliation — FIRST
+
+Problem:
+- the field-tested 0.20 development line is ahead of default `main`;
+- beginning future work from the older default branch could silently omit already-tested fixes and create parallel behavior.
+
+Plan:
+- compare the exact tested 0.20 head against default `main`;
+- reconcile the proven runtime, tests, contracts, and roadmap into one authoritative development baseline;
+- preserve the tested runtime behavior rather than reimplementing it;
+- reconcile stale/open PR status only after the authoritative branch contains the intended tested changes;
+- run the complete Android CI suite on the final reconciled runtime head;
+- perform only the smallest proportional Samsung smoke required by any actual integration delta.
+
+Completion gate:
+- one authoritative branch contains the full intended 0.20 behavior;
+- no unreviewed runtime drift is introduced during reconciliation;
+- complete Android CI passes;
+- roadmap/version status matches the repository state.
+
+No new product behavior is authorized by 10A.
+
+### Phase 10B — Large photo-list scalability
+
+Field basis:
+- realistic work orders now reach at least roughly 100 photo records;
+- the current Photos screen rebuilds all photo rows and decodes thumbnails while rendering;
+- this was acceptable at small counts but is now a real scaling boundary worth hardening.
+
+Plan:
+- replace only the Photos list presentation with a virtualized list such as `RecyclerView`;
+- move thumbnail decode/loading off the main UI thread;
+- preserve exact photo ordering, checkbox selection, row `⋯` actions, statuses, selected-photo details, batch upload, batch discard, reconciliation, and capture-order behavior;
+- do not move queue, Drive, or persistence ownership into the list adapter;
+- test with a realistic 100–150-photo local fixture;
+- run a focused Samsung scroll/tap/selection smoke before completion.
+
+Protected behavior:
+- no queue-state change;
+- no upload/retry change;
+- no destination change;
+- no prepared-image policy change;
+- no permanent in-app photo library.
+
+### Phase 10C — Large-batch upload / UNCERTAIN stabilization — OBSERVE FIRST
+
+Field basis:
+- a prior large upload produced a substantial UNCERTAIN backlog even though later reconciliation proved the Drive copies existed;
+- the current development line already adds a bounded provider-settle verification window and safe bulk reconciliation.
+
+First step:
+- use the current 0.20 behavior on a fresh realistic large batch and record:
+  - selected photo count;
+  - immediately confirmed uploads;
+  - retry-safe failures;
+  - UNCERTAIN results;
+  - reconciliation-confirmed results;
+  - any unresolved items.
+
+Decision rule:
+- if false UNCERTAIN results are now rare and recovery is practical, make no additional upload change;
+- if false UNCERTAIN remains materially disruptive, design one narrow automatic **read-only reconciliation** pass for the affected photo before surfacing manual operator recovery.
+
+Any later implementation must preserve:
+- no blind retry;
+- no second remote create when remote state is unresolved;
+- exact stored destination identity;
+- provisional remote identity evidence;
+- strict exact-match reconciliation;
+- strictly sequential selected-batch Drive writes;
+- manual fail-closed state when remote truth still cannot be proven.
+
+Do not add a background retry scheduler merely to hide provider uncertainty.
+
+### Phase 10D — Separate Properties and Work Orders UI state
+
+Field basis:
+- `MainActivity` currently reuses one visible-folder collection across Properties and Work Orders;
+- that coupling previously contributed to root-level property rows appearing as work orders;
+- current guards prevent the known failure, but the shared state remains an unnecessary maintenance hazard.
+
+Plan:
+- give Properties and Work Orders separate visible collections/adapters or equivalent narrowly owned screen state;
+- preserve the existing `DriveClient` provider queries and stable document-ID rules;
+- preserve current selection/reconnect/create/reuse behavior;
+- add focused regression coverage proving property rows cannot leak into the Work Orders list and work-order rows cannot leak into Properties;
+- do not use this as a reason for a broad MVVM, Compose, repository-layer, or navigation rewrite.
+
+This is a targeted maintainability repair justified by a real prior defect.
+
+### Phase 10E — Android backup/restore and second-phone readiness
+
+Goal:
+make app-private recovery behavior explicit before claiming portability across Android devices/accounts.
+
+Plan:
+- define explicit Android backup/data-extraction rules instead of relying on implicit default backup behavior;
+- classify app-private data into:
+  - safe to restore as ordinary local data;
+  - provider/account-bound data that must be revalidated;
+  - temporary/protected photo data whose restore behavior must not risk duplication, misrouting, or false success;
+- include persisted SAF master-tree access, provider document identities, pending-photo metadata, queue state, capture-sequence state, and local image copies in the review;
+- if a restored provider-bound identity cannot be proven valid in the active device/account context, fail closed and require deliberate reconnection/reselection rather than guessing;
+- test backup/restore rules without using live customer content.
+
+Phase 8C remains the final physical portability gate:
+- when a second suitable Android phone is available, run the existing shared-master test on that phone;
+- do not claim provider-ID portability until that gate passes.
+
+### Phase 10 deferred release trigger — production signing
+
+Production signing is not active Phase 10 work unless normal distribution beyond the current internal/test workflow becomes a real requirement.
+
+When that trigger occurs:
+- create a separately secured production signing path;
+- do not commit production private key material;
+- preserve install/update continuity intentionally;
+- perform the governed release/install reality gate before calling the build production-ready.
+
+### Phase 10 protected core
+
+Do not change during stabilization unless a separately evidenced defect requires it:
+- protected local originals;
+- immutable address/work-order destination identity;
+- conservative address ambiguity handling;
+- parent-bound work-order identity;
+- automatic serialized photo preparation;
+- 2048px long-edge / JPEG 85 preparation policy without contrary image-quality evidence;
+- sequential Drive uploads;
+- provisional remote identity barrier;
+- `FAILED` versus `UNCERTAIN` distinction;
+- exact reconciliation before retry release;
+- cleanup only after confirmed remote success;
+- explicit destructive confirmation for Clear & Reuse.
+
+Do not add Room/SQLite, WorkManager, parallel Drive uploads, automatic destructive Drive cleanup, placeholder Settings, OCR, AI classification, or a permanent in-app photo library without separate field evidence and approval.
+
+### Phase 10 sequencing
+
+Default order:
+
+**10A source-of-truth reconciliation → 10B photo-list scaling → 10C large-batch observation/refinement → 10D screen-state separation → 10E backup/restore readiness → Phase 8C when a second suitable phone exists.**
+
+A later step may move earlier only when field evidence makes it more urgent and the change remains independently testable.
 
 ## Phase development staging rule
 
