@@ -10,7 +10,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.view.View;
 import android.widget.Button;
-import android.widget.LinearLayout;
+import android.widget.ListView;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -59,10 +59,19 @@ public final class PhotoRowActionsViewInstrumentedTest {
                     call(activity, "renderPhotoList",
                             new Class<?>[]{List.class, List.class},
                             List.of(expected), new ArrayList<String>());
+                } catch (Exception error) {
+                    throw new AssertionError(error);
+                }
+            });
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
-                    LinearLayout list = activity.findViewById(R.id.photos_pending_list);
-                    assertEquals(1, list.getChildCount());
-                    View actions = list.getChildAt(0).findViewById(R.id.photo_row_actions);
+            scenario.onActivity(activity -> {
+                try {
+                    ListView list = activity.findViewById(R.id.photos_pending_list);
+                    assertEquals(2, list.getAdapter().getCount()); // selected-photo header + one row
+                    View row = firstVisiblePhotoRow(list);
+                    assertNotNull(row);
+                    View actions = row.findViewById(R.id.photo_row_actions);
                     assertNotNull(actions);
                     assertTrue(actions.isClickable());
                     assertEquals("Photo actions", actions.getContentDescription().toString());
@@ -70,10 +79,8 @@ public final class PhotoRowActionsViewInstrumentedTest {
 
                     assertEquals(expected.id(), field(activity, "selectedPhotoId"));
 
-                    View detailsPanel = activity.findViewById(R.id.photos_selected_panel);
+                    View detailsPanel = (View) field(activity, "selectedActionsPanel");
                     assertEquals(View.VISIBLE, detailsPanel.getVisibility());
-                    assertEquals("Selected photo actions and remaining photo rows must share the same scroll content",
-                            list.getParent(), detailsPanel.getParent());
 
                     Button uploadOwner = activity.findViewById(R.id.photos_upload_one);
                     assertEquals(View.GONE, uploadOwner.getVisibility());
@@ -91,6 +98,16 @@ public final class PhotoRowActionsViewInstrumentedTest {
             context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
             delete(fixtures);
         }
+    }
+
+    private static View firstVisiblePhotoRow(ListView list) {
+        for (int i = 0; i < list.getChildCount(); i++) {
+            View child = list.getChildAt(i);
+            if (child != null && child.findViewById(R.id.photo_row_actions) != null) {
+                return child;
+            }
+        }
+        return null;
     }
 
     private static void writeJpeg(File file) throws Exception {

@@ -38,24 +38,12 @@ public final class PhotoRowActionsView extends ImageButton {
             return;
         }
 
-        ViewGroup list = (ViewGroup) row.getParent();
-        int rowIndex = list.indexOfChild(row);
         View activityRoot = getRootView();
-        if (rowIndex < 0 || !row.performClick()) {
+        if (!row.performClick()) {
             return;
         }
 
-        ViewGroup refreshedList = activityRoot.findViewById(R.id.photos_pending_list);
-        if (refreshedList == null || rowIndex >= refreshedList.getChildCount()) {
-            return;
-        }
-        View refreshedRow = refreshedList.getChildAt(rowIndex);
-        View anchor = refreshedRow.findViewById(R.id.photo_row_actions);
-        if (anchor == null) {
-            return;
-        }
-
-        PopupMenu menu = new PopupMenu(getContext(), anchor);
+        PopupMenu menu = new PopupMenu(getContext(), this);
         int order = 0;
         for (int actionId : ACTION_BUTTON_IDS) {
             Button action = activityRoot.findViewById(actionId);
