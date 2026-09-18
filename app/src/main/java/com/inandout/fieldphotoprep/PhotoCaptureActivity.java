@@ -58,6 +58,11 @@ public final class PhotoCaptureActivity extends Activity {
     private volatile String activeReconcilePhotoId;
     private volatile int activeReconcilePosition;
     private volatile int activeReconcileTotal;
+    private int guidedCurrentPhotoCount;
+    private int guidedUncertainCount;
+    private int guidedWaitingUnpreparedCount;
+    private int guidedReadyCount;
+    private boolean guidedAllCurrentUploaded;
 
     private TextView statusText;
     private TextView pendingCountText;
@@ -67,6 +72,7 @@ public final class PhotoCaptureActivity extends Activity {
     private ListView pendingList;
     private PhotoListAdapter photoListAdapter;
     private Button takePhotoButton;
+    private Button nextActionButton;
     private Button selectAllReadyButton;
     private Button clearSelectionButton;
     private Button uploadBatchButton;
@@ -179,6 +185,7 @@ private void buildUi() {
     pendingList.setAdapter(photoListAdapter);
 
     takePhotoButton = findViewById(R.id.photos_open_camera);
+    nextActionButton = findViewById(R.id.photos_next_action);
     selectAllReadyButton = findViewById(R.id.photos_select_all);
     clearSelectionButton = findViewById(R.id.photos_clear_selection);
     uploadBatchButton = findViewById(R.id.photos_upload_selected);
@@ -214,13 +221,7 @@ private void buildUi() {
         startActivity(intent);
         finish();
     });
-    findViewById(R.id.nav_work_orders).setOnClickListener(v -> {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        intent.putExtra("field_tab", "work_orders");
-        startActivity(intent);
-        finish();
-    });
+    findViewById(R.id.nav_work_orders).setOnClickListener(v -> returnToWorkOrders());
 
     ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
         var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -425,11 +426,43 @@ private void buildUi() {
             if (!UPLOAD_GATE.isBusy()) {
                 pruneBatchSelection(matching, scan.unusableQueuedPhotoIds());
             }
+            updateGuidedPhotoState(matching, scan);
             updateReconcileAllUi(scan);
             renderPhotoList(matching, scan.unusableQueuedPhotoIds());
             renderScanWarningsIfNeeded(scan);
         } catch (Exception error) {
             showError("Could not read temporary photos", error);
+        }
+    }
+
+    private void updateGuidedPhotoState(
+            List<PendingPhotoRecord> records,
+            PendingPhotoStore.ScanResult scan) {
+        guidedCurrentPhotoCount = records == null ? 0 : records.size();
+        guidedUncertainCount = scan == null ? 0 : scan.uncertainPhotoIds().size();
+        guidedWaitingUnpreparedCount = 0;
+        guidedReadyCount = 0;
+        guidedAllCurrentUploaded = guidedCurrentPhotoCount > 0;
+
+        if (records == null || scan == null) {
+            guidedAllCurrentUploaded = false;
+            return;
+        }
+
+        for (PendingPhotoRecord record : records) {
+            boolean unusable = scan.unusableQueuedPhotoIds().contains(record.id());
+            boolean prepared = hasPreparedCopy(record.id());
+            if (record.state() != PendingPhotoRecord.State.UPLOADED) {
+                guidedAllCurrentUploaded = false;
+            }
+            if (!unusable
+                    && !prepared
+                    && record.state() == PendingPhotoRecord.State.WAITING) {
+                guidedWaitingUnpreparedCount++;
+            }
+            if (isBatchUploadEligible(record, unusable, prepared)) {
+                guidedReadyCount++;
+            }
         }
     }
 
@@ -605,6 +638,91 @@ private File thumbnailSource(PendingPhotoRecord record) {
         clearSelectionButton.setEnabled(selectedCount > 0 && !remoteBusy);
         uploadBatchButton.setEnabled(uploadEligible && !remoteBusy && !preparationBusy);
         discardBatchButton.setEnabled(discardEligible && !remoteBusy && !preparationBusy);
+        renderPhotoNextAction(uploadEligible);
+    }
+
+    private void renderPhotoNextAction(boolean selectedUploadEligible) {
+        if (nextActionButton == null) {
+            return;
+        }
+        boolean reconciliationBusy =
+                BATCH_RECONCILE_GATE_ID.equals(UPLOAD_GATE.activePhotoId());
+        NextActionGuide.Action action = NextActionGuide.photos(
+                address != null && workOrder != null,
+                PREPARATION_GATE.isBusy(),
+                UPLOAD_GATE.isBusy(),
+                reconciliationBusy,
+                guidedCurrentPhotoCount,
+                guidedUncertainCount,
+                guidedWaitingUnpreparedCount,
+                guidedReadyCount,
+                batchSelectedPhotoIds.size(),
+                selectedUploadEligible,
+                guidedAllCurrentUploaded);
+
+        nextActionButton.setText(action.label());
+        nextActionButton.setEnabled(action.enabled());
+        nextActionButton.setOnClickListener(null);
+        if (!action.enabled()) {
+            return;
+        }
+
+        switch (action.kind()) {
+            case TAKE_PHOTOS:
+                nextActionButton.setOnClickListener(v -> beginCameraCapture());
+                break;
+            case CHECK_UPLOADS:
+                nextActionButton.setOnClickListener(v -> reconcileAllUncertain());
+                break;
+            case PREPARE_PHOTO:
+                nextActionButton.setOnClickListener(v -> prepareNextWaitingPhoto());
+                break;
+            case SELECT_READY:
+                nextActionButton.setOnClickListener(v -> selectAllReadyPhotos());
+                break;
+            case UPLOAD_SELECTED:
+                nextActionButton.setOnClickListener(v -> uploadSelectedBatch());
+                break;
+            case DONE:
+                nextActionButton.setOnClickListener(v -> returnToWorkOrders());
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void prepareNextWaitingPhoto() {
+        if (workOrder == null || PREPARATION_GATE.isBusy() || UPLOAD_GATE.isBusy()) {
+            return;
+        }
+        try {
+            PendingPhotoStore.ScanResult scan = photoStore.scan();
+            for (PendingPhotoRecord record : scan.records()) {
+                if (!workOrder.id().equals(record.workOrderId())
+                        || scan.unusableQueuedPhotoIds().contains(record.id())
+                        || record.state() != PendingPhotoRecord.State.WAITING
+                        || hasPreparedCopy(record.id())) {
+                    continue;
+                }
+                selectedPhotoId = record.id();
+                photoListAdapter.setSelectedPhotoId(record.id());
+                renderSelectedPhoto();
+                prepareSelectedPhoto();
+                return;
+            }
+            showPhotoStatus("No unprepared waiting photo is available.");
+            refreshPhotoList();
+        } catch (Exception error) {
+            showError("Could not choose the next photo for preparation", error);
+        }
+    }
+
+    private void returnToWorkOrders() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("field_tab", "work_orders");
+        startActivity(intent);
+        finish();
     }
 
     private void updateReconcileAllUi(PendingPhotoStore.ScanResult scan) {
