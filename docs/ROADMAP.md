@@ -243,7 +243,7 @@ Canonical field-tested baseline:
 - canonical branch: `main`;
 - Phase 10A merge: `a5689e67a91d5dbbe57f6c8b1fc80dbece243449`;
 - exact last runtime-changing tested head preserved in ancestry: `e52765fd5b02266244d9101c5fd5429d5aa4e6c4`;
-- current internal build after Phase 10B: versionCode 26 / `0.21-photo-list-scale-internal`;
+- current internal build after Phase 10D: versionCode 27 / `0.22-folder-screen-state-separation-internal`;
 - includes the bounded Drive verification-settle behavior and safe bulk reconciliation path;
 - includes durable automatic capture-order filenames;
 - includes work-order-reuse capture-sequence reset and old-occurrence history isolation;
@@ -351,7 +351,7 @@ Do not add a background retry scheduler merely to hide provider uncertainty.
 
 Existing open PR #39 (`Fix UNCERTAIN reconciliation on stale Drive provider metadata`) is a Phase 10C input, not a Phase 10A merge target. A code comparison found two unique hardening ideas not present in 0.20: provider `refresh() == false` should not by itself block otherwise-settled reconciliation, and stale provider size metadata should not override a stronger exact SHA-256 content proof. Keep PR #39 open until those behaviors are deliberately re-evaluated against the canonical 0.20 baseline with current tests and a governed Level 3 decision.
 
-### Phase 10D — Separate Properties and Work Orders UI state
+### Phase 10D — Separate Properties and Work Orders UI state — COMPLETE
 
 Field basis:
 - `MainActivity` currently reuses one visible-folder collection across Properties and Work Orders;
@@ -366,6 +366,14 @@ Plan:
 - do not use this as a reason for a broad MVVM, Compose, repository-layer, or navigation rewrite.
 
 This is a targeted maintainability repair justified by a real prior defect.
+
+Completion evidence:
+- versionCode 27 / `0.22-folder-screen-state-separation`;
+- separate `propertyFolders` and `workOrderFolders` now back the two adapters;
+- focused regression proves opening Work Orders clears stale work-order/self rows without mutating the property list;
+- exact runtime head `291bd3b5df607ff2bcee75081bc0504dc255be18`;
+- Android CI run `35296448276`: PASS;
+- PR #51 merged to `main` at `aec5697f2d2d51894ed1dcb59ec6d51cb4f0c6e4`.
 
 ### Phase 10E — Guided next-action workflow
 
