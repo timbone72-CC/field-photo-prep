@@ -2,7 +2,7 @@
 
 Date: 2026-09-17
 
-Status: **LEVEL 2 — IN PROGRESS**
+Status: **LEVEL 2 — COMPLETE**
 
 Branch: `feat/phase-10d-separate-folder-screen-state-20260917`
 
@@ -71,3 +71,15 @@ Required:
 - focused Samsung smoke only if the runtime integration changes visible behavior beyond state isolation.
 
 No Drive destructive gate is required solely for this Level 2 state-ownership repair.
+
+
+## Completion evidence
+
+- versionCode 27 / `0.22-folder-screen-state-separation`;
+- exact runtime head `291bd3b5df607ff2bcee75081bc0504dc255be18`;
+- Android CI run `35296448276`: PASS;
+- unit tests, internal debug build, stable signer verification, full instrumentation, internal launch smoke, and artifacts passed;
+- focused regression proves stale/self work-order rows are cleared independently while Properties state remains intact;
+- PR #51 merged to `main` at `aec5697f2d2d51894ed1dcb59ec6d51cb4f0c6e4`.
+
+No physical Drive gate was required because this phase changed only in-memory UI ownership and introduced no Drive/provider/photo semantics.
