@@ -62,7 +62,7 @@ public final class Concept3RenderedScreensInstrumentedTest {
         try (ActivityScenario<MainActivity> main = ActivityScenario.launch(new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
             main.onActivity(activity -> {
                 try {
-                    @SuppressWarnings("unchecked") List<DriveFolder> visible = (List<DriveFolder>) field(activity, "visibleFolders");
+                    @SuppressWarnings("unchecked") List<DriveFolder> visible = (List<DriveFolder>) field(activity, "propertyFolders");
                     visible.clear();
                     visible.add(property);
                     visible.add(new DriveFolder("render-property-duplicate", property.name()));
@@ -91,7 +91,7 @@ public final class Concept3RenderedScreensInstrumentedTest {
                     assertFalse(((TextView)list.getChildAt(0).findViewById(R.id.property_name)).getText().toString().contains("PRESSURE TEST"));
                     assertEquals(View.VISIBLE, list.getChildAt(0).findViewById(R.id.property_disambiguator).getVisibility());
                     call(activity, "openAddress", new Class<?>[]{DriveFolder.class}, property);
-                    @SuppressWarnings("unchecked") List<DriveFolder> visible = (List<DriveFolder>) field(activity, "visibleFolders");
+                    @SuppressWarnings("unchecked") List<DriveFolder> visible = (List<DriveFolder>) field(activity, "workOrderFolders");
                     visible.clear(); visible.add(work);
                     for (int i=1;i<8;i++) visible.add(new DriveFolder("render-w-"+i,"Cut Grass - 2026-09-" + ((13-i)<10 ? "0" : "") + (13-i)));
                     call(activity, "notifyFolderAdapters");
