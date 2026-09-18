@@ -236,10 +236,10 @@ Because Phase 10A adds no new runtime delta beyond the already-tested 0.20 linea
 
 After `main` contains the authoritative tested lineage:
 - PR #42 can be closed as incorporated by the promoted lineage rather than merged separately;
-- PR #39 should be reviewed/closed as superseded by the later strict provider-settle/reconciliation implementation, not merged into the now-authoritative line;
+- PR #39 must **remain open for separate governed review**. Code comparison shows it contains two reconciliation-hardening behaviors not present in 0.20: treating `ContentResolver.refresh(...) == false` as a best-effort provider hint rather than a hard block, and allowing exact id/name/MIME + SHA-256 content proof to override stale provider size metadata such as temporary `0`. Phase 10A does not absorb or reject that Level 3 fix; it moves to Phase 10C evaluation rather than being silently lost;
 - PR #34 should be closed as superseded by the completed Phase 9 Concept 3 UI line already present in main history.
 
-Do not merge stale PRs simply to make the open list empty.
+Do not merge or close stale PRs simply to make the open list empty. In particular, PR #39 is excluded from 10A promotion and retained as a live candidate because it contains unique reconciliation logic.
 
 ## Approval status
 
