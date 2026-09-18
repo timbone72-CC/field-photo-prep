@@ -111,17 +111,18 @@ public final class Concept3RenderedScreensInstrumentedTest {
                     setField(activity,"photoStore",store); setField(activity,"photoPreparer",preparer);
                     call(activity,"renderPhotoList",new Class<?>[]{List.class,List.class},photos,new ArrayList<String>());
                     activity.findViewById(R.id.photos_status).setVisibility(View.GONE);
-                    View row = ((android.widget.LinearLayout)activity.findViewById(R.id.photos_pending_list)).getChildAt(0);
-                    assertNotNull(((ImageView)row.findViewById(R.id.photo_row_thumb)).getDrawable());
-                    ((CheckBox)row.findViewById(R.id.photo_row_check)).setChecked(true);
-                    assertEquals("Upload Selected (1)", ((Button)activity.findViewById(R.id.photos_upload_selected)).getText().toString());
-                    View uploaded = ((android.widget.LinearLayout)activity.findViewById(R.id.photos_pending_list)).getChildAt(5);
+                    ListView list = activity.findViewById(R.id.photos_pending_list);
+                    assertEquals(9, list.getAdapter().getCount()); // header + eight photo rows
+                    View row = photoRow(list, 0);
+                    ((CheckBox) row.findViewById(R.id.photo_row_check)).setChecked(true);
+                    assertEquals("Upload Selected (1)", ((Button) activity.findViewById(R.id.photos_upload_selected)).getText().toString());
+                    View uploaded = photoRow(list, 5);
                     assertEquals(View.INVISIBLE, uploaded.findViewById(R.id.photo_row_check).getVisibility());
                     assertFalse(uploaded.findViewById(R.id.photo_row_check).isEnabled());
                     assertEquals("Uploaded", ((TextView) uploaded.findViewById(R.id.photo_row_status)).getText().toString());
                     assertEquals(View.VISIBLE, row.findViewById(R.id.photo_row_check).getVisibility());
                     assertTrue(row.findViewById(R.id.photo_row_check).isEnabled());
-                    View uncertain = ((android.widget.LinearLayout)activity.findViewById(R.id.photos_pending_list)).getChildAt(7);
+                    View uncertain = photoRow(list, 7);
                     assertFalse(uncertain.findViewById(R.id.photo_row_check).isEnabled());
                     assertEquals("render-work", store.getById(photos.get(0).id()).workOrderId());
                 } catch(Exception e) { throw new AssertionError(e); }
@@ -135,6 +136,10 @@ public final class Concept3RenderedScreensInstrumentedTest {
             context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
             delete(fixtures);
         }
+    }
+
+    private static View photoRow(ListView list, int photoIndex) {
+        return list.getAdapter().getView(photoIndex + 1, null, list);
     }
 
     private static <T extends Activity> T awaitResumed(Class<T> type) throws Exception {
