@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/photos_selected_panel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="3dp"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/bg_concept_card"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:visibility="gone">
+
+    <TextView
+        android:id="@+id/photos_selected_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/home_text_primary"
+        android:textSize="13sp"
+        android:textStyle="normal"
+        android:fontFamily="sans-serif-medium" />
+
+    <TextView
+        android:id="@+id/photos_prepared_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:textColor="@color/home_text_secondary"
+        android:textSize="12sp" />
+</LinearLayout>
