@@ -243,7 +243,7 @@ Canonical field-tested baseline:
 - canonical branch: `main`;
 - Phase 10A merge: `a5689e67a91d5dbbe57f6c8b1fc80dbece243449`;
 - exact last runtime-changing tested head preserved in ancestry: `e52765fd5b02266244d9101c5fd5429d5aa4e6c4`;
-- current internal build after Phase 10E: versionCode 28 / `0.23-guided-next-action-internal`;
+- current internal build after Phase 10F: versionCode 29 / `0.24-explicit-backup-rules-internal`;
 - includes the bounded Drive verification-settle behavior and safe bulk reconciliation path;
 - includes durable automatic capture-order filenames;
 - includes work-order-reuse capture-sequence reset and old-occurrence history isolation;
@@ -434,7 +434,7 @@ Completion evidence:
 - focused Samsung usability smoke passed;
 - PR #53 merged to `main` at `8f1ce719d57564faf79a523bb665a7af165e2b4b`.
 
-### Phase 10F — Android backup/restore and second-phone readiness — IN PROGRESS
+### Phase 10F — Android backup/restore and second-phone readiness — COMPLETE
 
 Goal:
 make app-private recovery behavior explicit before claiming portability across Android devices/accounts.
@@ -448,6 +448,16 @@ Plan:
 - include persisted SAF master-tree access, provider document identities, pending-photo metadata, queue state, capture-sequence state, and local image copies in the review;
 - if a restored provider-bound identity cannot be proven valid in the active device/account context, fail closed and require deliberate reconnection/reselection rather than guessing;
 - test backup/restore rules without using live customer content.
+
+Completion evidence:
+- versionCode 29 / `0.24-explicit-backup-rules`;
+- Android 12+ cloud backup and device-to-device transfer explicitly exclude all app-owned backup domains;
+- Android 11-and-lower legacy Auto Backup excludes the same app-owned domains;
+- saved SAF URI/provider IDs, pending queue metadata, protected originals, prepared derivatives, capture-sequence state, preferences, databases, and future app-owned external/root state are not silently migrated;
+- exact runtime head `190b3c0a541518052127698f811da330ef8c0cf8`;
+- Android CI run `35300920973`: PASS;
+- explicit Level 3 operator pre-merge approval was given immediately before merge;
+- PR #55 merged to `main` at `4ec3f00dc169f0ebb5c5bfe22e80e8528a1059ac`.
 
 Phase 8C remains the final physical portability gate:
 - when a second suitable Android phone is available, run the existing shared-master test on that phone;
