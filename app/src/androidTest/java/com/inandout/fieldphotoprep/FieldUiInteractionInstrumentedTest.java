@@ -152,24 +152,30 @@ public final class FieldUiInteractionInstrumentedTest {
                     assertEquals("Upload Selected (2)", uploadSelected.getText().toString());
                     assertTrue(clear.isEnabled());
 
-                    LinearLayout list = activity.findViewById(R.id.photos_pending_list);
-                    assertEquals(4, list.getChildCount());
-                    assertTrue(((CheckBox) list.getChildAt(0).findViewById(R.id.photo_row_check)).isChecked());
-                    assertTrue(((CheckBox) list.getChildAt(1).findViewById(R.id.photo_row_check)).isChecked());
+                    ListView list = activity.findViewById(R.id.photos_pending_list);
+                    assertEquals(5, list.getAdapter().getCount()); // header + four photo rows
+                    assertTrue(((CheckBox) photoRow(list, 0)
+                            .findViewById(R.id.photo_row_check)).isChecked());
+                    assertTrue(((CheckBox) photoRow(list, 1)
+                            .findViewById(R.id.photo_row_check)).isChecked());
 
-                    CheckBox uncertainCheck = list.getChildAt(2).findViewById(R.id.photo_row_check);
+                    CheckBox uncertainCheck = photoRow(list, 2)
+                            .findViewById(R.id.photo_row_check);
                     assertFalse(uncertainCheck.isChecked());
                     assertFalse(uncertainCheck.isEnabled());
 
-                    CheckBox uploadedCheck = list.getChildAt(3).findViewById(R.id.photo_row_check);
+                    CheckBox uploadedCheck = photoRow(list, 3)
+                            .findViewById(R.id.photo_row_check);
                     assertFalse(uploadedCheck.isChecked());
                     assertEquals(View.INVISIBLE, uploadedCheck.getVisibility());
 
                     assertTrue(clear.performClick());
                     assertEquals("Upload Selected (0)", uploadSelected.getText().toString());
                     assertFalse(clear.isEnabled());
-                    assertFalse(((CheckBox) list.getChildAt(0).findViewById(R.id.photo_row_check)).isChecked());
-                    assertFalse(((CheckBox) list.getChildAt(1).findViewById(R.id.photo_row_check)).isChecked());
+                    assertFalse(((CheckBox) photoRow(list, 0)
+                            .findViewById(R.id.photo_row_check)).isChecked());
+                    assertFalse(((CheckBox) photoRow(list, 1)
+                            .findViewById(R.id.photo_row_check)).isChecked());
                 } catch (Exception error) {
                     throw new AssertionError(error);
                 }
@@ -178,6 +184,10 @@ public final class FieldUiInteractionInstrumentedTest {
             context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
             delete(fixtures);
         }
+    }
+
+    private static View photoRow(ListView list, int photoIndex) {
+        return list.getAdapter().getView(photoIndex + 1, null, list);
     }
 
     private static void bindSingleProperty(MainActivity activity, DriveFolder property) throws Exception {
