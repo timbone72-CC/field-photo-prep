@@ -20,7 +20,7 @@ import java.util.List;
 @RunWith(AndroidJUnit4.class)
 public final class WorkOrderChildDiscoveryUiInstrumentedTest {
     @Test
-    public void openingPropertyClearsRootRowsAndLegacySelfSelection() throws Exception {
+    public void openingPropertyKeepsPropertyRowsSeparateAndClearsWorkOrderSelfState() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         var raw = context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE);
         raw.edit().clear().commit();
@@ -41,15 +41,27 @@ public final class WorkOrderChildDiscoveryUiInstrumentedTest {
                 scenario.onActivity(activity -> {
                     try {
                         @SuppressWarnings("unchecked")
-                        List<DriveFolder> visible = (List<DriveFolder>) field(activity, "visibleFolders");
-                        visible.clear();
-                        visible.add(property);
-                        visible.add(sibling);
+                        List<DriveFolder> properties =
+                                (List<DriveFolder>) field(activity, "propertyFolders");
+                        @SuppressWarnings("unchecked")
+                        List<DriveFolder> workOrders =
+                                (List<DriveFolder>) field(activity, "workOrderFolders");
+
+                        properties.clear();
+                        properties.add(property);
+                        properties.add(sibling);
+                        workOrders.clear();
+                        workOrders.add(property);
                         call(activity, "notifyFolderAdapters");
 
                         call(activity, "openAddress", new Class<?>[]{DriveFolder.class}, property);
 
-                        assertTrue("Property rows must be cleared before work-order discovery", visible.isEmpty());
+                        assertTrue("Opening Work Orders must clear stale work-order rows",
+                                workOrders.isEmpty());
+                        assertTrue("Property rows must remain independently owned",
+                                properties.size() == 2
+                                        && properties.get(0).id().equals(property.id())
+                                        && properties.get(1).id().equals(sibling.id()));
                         assertNull("Legacy self-child state must not become selected work order",
                                 field(activity, "selectedWorkOrder"));
                         assertFalse("Photos must stay disabled without a valid work order",
