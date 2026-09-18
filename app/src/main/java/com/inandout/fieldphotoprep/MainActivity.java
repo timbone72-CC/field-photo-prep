@@ -74,6 +74,7 @@ public final class MainActivity extends Activity {
     private View homeDriveStatusDot;
     private ProgressBar homeProgress;
     private ImageButton driveOptionsButton;
+    private Button homeNextActionButton;
 
     private TextView addressText;
     private TextView currentWorkOrderText;
@@ -176,6 +177,7 @@ private void buildHomeUi() {
     homeDriveStatusDot = homeRoot.findViewById(R.id.drive_status_dot);
     homeProgress = homeRoot.findViewById(R.id.home_progress);
     driveOptionsButton = homeRoot.findViewById(R.id.home_drive_options_button);
+    homeNextActionButton = homeRoot.findViewById(R.id.home_next_action);
 
     chooseMasterButton = homeRoot.findViewById(R.id.home_connect_button);
     refreshAddressButton = homeRoot.findViewById(R.id.home_refresh_button);
@@ -1306,6 +1308,17 @@ private void buildLegacyWorkOrderUi() {
         if (workOrderAdapter != null) {
             workOrderAdapter.setSelectedId(selectedWorkOrder == null ? null : selectedWorkOrder.id());
         }
+        renderWorkOrderNextAction();
+    }
+
+    private void renderWorkOrderNextAction() {
+        if (photosButton == null) {
+            return;
+        }
+        NextActionGuide.Action action =
+                NextActionGuide.workOrders(busy, selectedAddress != null && selectedWorkOrder != null);
+        photosButton.setText(action.label());
+        photosButton.setEnabled(action.enabled());
     }
 
     private String shortId(String id) {
@@ -1396,6 +1409,47 @@ private void buildLegacyWorkOrderUi() {
             homeEmptyText.setVisibility(connected && !busy && propertyFolders.isEmpty()
                     ? View.VISIBLE : View.GONE);
         }
+        renderHomeNextAction();
+    }
+
+    private void renderHomeNextAction() {
+        if (homeNextActionButton == null || folderPrefs == null) {
+            return;
+        }
+        DriveFolder master = folderPrefs.getMasterFolder();
+        Uri treeUri = folderPrefs.getMasterTreeUri();
+        boolean driveConnected = master != null
+                && treeUri != null
+                && hasPersistedReadPermission(treeUri);
+        DriveFolder saved = folderPrefs.getCurrentAddress();
+        boolean savedPropertyAvailable = saved != null
+                && DriveClient.findById(propertyFolders, saved.id()) != null;
+
+        NextActionGuide.Action action = NextActionGuide.home(
+                busy,
+                driveConnected,
+                propertyFolders.size(),
+                savedPropertyAvailable);
+        homeNextActionButton.setText(action.label());
+        homeNextActionButton.setEnabled(action.enabled());
+        homeNextActionButton.setOnClickListener(null);
+        if (!action.enabled()) {
+            return;
+        }
+        switch (action.kind()) {
+            case CONNECT_DRIVE:
+                homeNextActionButton.setOnClickListener(v -> chooseMasterFolder());
+                break;
+            case ADD_PROPERTY:
+                homeNextActionButton.setOnClickListener(v -> showAddressEntryDialog());
+                break;
+            case OPEN_WORK_ORDERS:
+                homeNextActionButton.setOnClickListener(v -> openSavedPropertyFromHome());
+                break;
+            case CHOOSE_PROPERTY:
+            default:
+                break;
+        }
     }
 
     private void showHomeInlineMessage(String message) {
@@ -1434,6 +1488,7 @@ private void buildLegacyWorkOrderUi() {
         photosButton.setEnabled(false);
         folderList.setEnabled(false);
         renderPropertyCountAndEmptyState();
+        renderWorkOrderNextAction();
     }
 
     private void setNotBusy() {
@@ -1467,6 +1522,7 @@ private void buildLegacyWorkOrderUi() {
             photosButton.setEnabled(selectedAddress != null && selectedWorkOrder != null);
         }
         renderPropertyCountAndEmptyState();
+        renderWorkOrderNextAction();
     }
 
     private void setStatusText(String message) {
