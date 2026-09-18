@@ -200,28 +200,40 @@ final class PhotoListAdapter extends BaseAdapter {
             }
         }
 
-        thumbnailExecutor.execute(() -> {
-            Bitmap decoded = decodeThumbnail(source, thumbnailTargetPx);
-            if (decoded != null && !closed) {
-                thumbnailCache.put(key, decoded);
-            }
+        try {
+            thumbnailExecutor.execute(() -> {
+                Bitmap decoded = decodeThumbnail(source, thumbnailTargetPx);
+                if (decoded != null && !closed) {
+                    thumbnailCache.put(key, decoded);
+                }
+                synchronized (thumbnailLoadsInFlight) {
+                    thumbnailLoadsInFlight.remove(key);
+                }
+
+                if (closed) {
+                    return;
+                }
+                mainHandler.post(() -> {
+                    if (closed) {
+                        return;
+                    }
+                    if (key.equals(view.getTag())) {
+                        Bitmap ready = thumbnailCache.get(key);
+                        if (ready != null) {
+                            view.setImageBitmap(ready);
+                        }
+                    } else {
+                        // The original view was recycled while decoding. Rebind visible rows so
+                        // the currently visible holder for this photo can consume the cached bitmap.
+                        notifyDataSetChanged();
+                    }
+                });
+            });
+        } catch (RuntimeException rejectedDuringShutdown) {
             synchronized (thumbnailLoadsInFlight) {
                 thumbnailLoadsInFlight.remove(key);
             }
-
-            if (closed) {
-                return;
-            }
-            mainHandler.post(() -> {
-                if (closed || !key.equals(view.getTag())) {
-                    return;
-                }
-                Bitmap ready = thumbnailCache.get(key);
-                if (ready != null) {
-                    view.setImageBitmap(ready);
-                }
-            });
-        });
+        }
     }
 
     private static Bitmap decodeThumbnail(File source, int targetPx) {
