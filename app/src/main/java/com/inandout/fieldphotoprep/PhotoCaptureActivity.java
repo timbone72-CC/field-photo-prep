@@ -15,6 +15,7 @@ import android.widget.ImageView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.ScrollView;
 
 import androidx.core.content.ContextCompat;
@@ -63,7 +64,8 @@ public final class PhotoCaptureActivity extends Activity {
     private TextView batchSelectionText;
     private TextView selectedPhotoText;
     private TextView preparedPhotoText;
-    private LinearLayout pendingList;
+    private ListView pendingList;
+    private PhotoListAdapter photoListAdapter;
     private Button takePhotoButton;
     private Button selectAllReadyButton;
     private Button clearSelectionButton;
@@ -132,6 +134,14 @@ public final class PhotoCaptureActivity extends Activity {
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        if (photoListAdapter != null) {
+            photoListAdapter.shutdown();
+        }
+        super.onDestroy();
+    }
+
 private void buildUi() {
     setContentView(R.layout.screen_photos);
     View root = findViewById(R.id.photos_root);
@@ -139,10 +149,35 @@ private void buildUi() {
     statusText = findViewById(R.id.photos_status);
     pendingCountText = findViewById(R.id.photos_pending_count);
     batchSelectionText = findViewById(R.id.photos_batch_selection);
-    selectedPhotoText = findViewById(R.id.photos_selected_text);
-    preparedPhotoText = findViewById(R.id.photos_prepared_text);
     pendingList = findViewById(R.id.photos_pending_list);
-    selectedActionsPanel = findViewById(R.id.photos_selected_panel);
+
+    View selectedHeader = LayoutInflater.from(this)
+            .inflate(R.layout.header_photo_selected, pendingList, false);
+    selectedActionsPanel = selectedHeader;
+    selectedPhotoText = selectedHeader.findViewById(R.id.photos_selected_text);
+    preparedPhotoText = selectedHeader.findViewById(R.id.photos_prepared_text);
+    pendingList.addHeaderView(selectedHeader, null, false);
+
+    photoListAdapter = new PhotoListAdapter(this, new PhotoListAdapter.Listener() {
+        @Override
+        public void onBatchSelectionChanged(String photoId, boolean checked) {
+            if (checked) {
+                batchSelectedPhotoIds.add(photoId);
+            } else {
+                batchSelectedPhotoIds.remove(photoId);
+            }
+            updateBatchSelectionUi();
+        }
+
+        @Override
+        public void onPhotoClicked(String photoId) {
+            selectedPhotoId = photoId;
+            renderSelectedPhoto();
+            photoListAdapter.setSelectedPhotoId(photoId);
+        }
+    });
+    pendingList.setAdapter(photoListAdapter);
+
     takePhotoButton = findViewById(R.id.photos_open_camera);
     selectAllReadyButton = findViewById(R.id.photos_select_all);
     clearSelectionButton = findViewById(R.id.photos_clear_selection);
@@ -415,11 +450,10 @@ private void buildUi() {
 private void renderPhotoList(
         List<PendingPhotoRecord> records,
         List<String> unusableQueuedIds) {
-    pendingList.removeAllViews();
     pendingCountText.setText("Photos (" + records.size() + ")");
 
     boolean controlsBusy = PREPARATION_GATE.isBusy() || UPLOAD_GATE.isBusy();
-    LayoutInflater inflater = LayoutInflater.from(this);
+    List<PhotoListAdapter.Item> items = new ArrayList<>(records.size());
     for (PendingPhotoRecord record : records) {
         boolean unusable = unusableQueuedIds.contains(record.id());
         boolean prepared = hasPreparedCopy(record.id());
@@ -428,39 +462,15 @@ private void renderPhotoList(
         boolean batchEligible = isBatchUploadEligible(record, unusable, prepared);
         boolean discardEligible = isBatchDiscardEligible(record);
 
-        View row = inflater.inflate(R.layout.row_photo, pendingList, false);
-        CheckBox batchCheckBox = row.findViewById(R.id.photo_row_check);
-        ImageView thumbnail = row.findViewById(R.id.photo_row_thumb);
-        TextView stateText = row.findViewById(R.id.photo_row_status);
-        TextView timeText = row.findViewById(R.id.photo_row_time);
-
-        batchCheckBox.setVisibility(record.state() == PendingPhotoRecord.State.UPLOADED
-                ? View.INVISIBLE : View.VISIBLE);
-        batchCheckBox.setChecked(batchSelectedPhotoIds.contains(record.id()));
-        batchCheckBox.setEnabled((batchEligible || discardEligible) && !controlsBusy);
-        batchCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                batchSelectedPhotoIds.add(record.id());
-            } else {
-                batchSelectedPhotoIds.remove(record.id());
-            }
-            updateBatchSelectionUi();
-        });
-
-        String state = photoStatusLabel(record, unusable, prepared, preparing, remoteBusy);
-        stateText.setText(state);
-        timeText.setText(formatTime(record.createdAtEpochMs()) + " · …" + shortId(record.id()));
-        if (selectedPhotoId != null && selectedPhotoId.equals(record.id())) {
-            row.setBackgroundResource(R.drawable.bg_concept_selected);
-        }
-        loadThumbnail(thumbnail, record);
-        row.setOnClickListener(v -> {
-            selectedPhotoId = record.id();
-            renderSelectedPhoto();
-            refreshPhotoList();
-        });
-        pendingList.addView(row);
+        items.add(new PhotoListAdapter.Item(
+                record,
+                (batchEligible || discardEligible) && !controlsBusy,
+                photoStatusLabel(record, unusable, prepared, preparing, remoteBusy),
+                formatTime(record.createdAtEpochMs()) + " · …" + shortId(record.id()),
+                thumbnailSource(record)));
     }
+
+    photoListAdapter.replaceItems(items, batchSelectedPhotoIds, selectedPhotoId);
     updateBatchSelectionUi();
     renderSelectedPhoto();
 }
@@ -481,31 +491,20 @@ private String photoStatusLabel(
     return prepared ? "Ready to upload" : "Waiting";
 }
 
-private void loadThumbnail(ImageView view, PendingPhotoRecord record) {
-    File source = getPreparedFileOrNull(record.id());
-    try {
-        if (source == null || !source.isFile() || source.length() <= 0) {
-            source = photoStore.imageFile(record);
-        }
-        if (source == null || !source.isFile() || source.length() <= 0) {
-            view.setImageDrawable(null);
-            return;
-        }
-        BitmapFactory.Options bounds = new BitmapFactory.Options();
-        bounds.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(source.getAbsolutePath(), bounds);
-        int sample = 1;
-        int target = dp(160);
-        while (bounds.outWidth / sample > target * 2 || bounds.outHeight / sample > target * 2) {
-            sample *= 2;
-        }
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = Math.max(1, sample);
-        Bitmap bitmap = BitmapFactory.decodeFile(source.getAbsolutePath(), options);
-        view.setImageBitmap(bitmap);
-    } catch (Exception ignored) {
-        view.setImageDrawable(null);
+private File thumbnailSource(PendingPhotoRecord record) {
+    File prepared = getPreparedFileOrNull(record.id());
+    if (prepared != null && prepared.isFile() && prepared.length() > 0L) {
+        return prepared;
     }
+    try {
+        File original = photoStore.imageFile(record);
+        if (original != null && original.isFile() && original.length() > 0L) {
+            return original;
+        }
+    } catch (RuntimeException ignored) {
+        // Row remains valid; only its thumbnail is unavailable.
+    }
+    return null;
 }
 
 
