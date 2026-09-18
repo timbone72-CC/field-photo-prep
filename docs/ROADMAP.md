@@ -434,7 +434,7 @@ Completion evidence:
 - focused Samsung usability smoke passed;
 - PR #53 merged to `main` at `8f1ce719d57564faf79a523bb665a7af165e2b4b`.
 
-### Phase 10F — Android backup/restore and second-phone readiness
+### Phase 10F — Android backup/restore and second-phone readiness — IN PROGRESS
 
 Goal:
 make app-private recovery behavior explicit before claiming portability across Android devices/accounts.

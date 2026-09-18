@@ -12,8 +12,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 28
-        versionName '0.23-guided-next-action'
+        versionCode 29
+        versionName '0.24-explicit-backup-rules'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
