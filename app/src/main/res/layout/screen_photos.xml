@@ -198,6 +198,18 @@
                 style="@style/FieldAction" />
         </LinearLayout>
         <Button
+            android:id="@+id/photos_next_action"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_concept_blue_button"
+            android:text="Next: Take Photos"
+            android:textAllCaps="false"
+            android:textColor="@color/home_on_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            style="@style/FieldAction" />
+        <Button
             android:id="@+id/photos_discard_selected"
             android:layout_width="match_parent"
             android:layout_height="48dp"

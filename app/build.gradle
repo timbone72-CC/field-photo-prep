@@ -12,8 +12,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 27
-        versionName '0.22-folder-screen-state-separation'
+        versionCode 28
+        versionName '0.23-guided-next-action'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
