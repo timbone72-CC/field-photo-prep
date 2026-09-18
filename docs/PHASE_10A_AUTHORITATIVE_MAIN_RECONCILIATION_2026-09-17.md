@@ -2,7 +2,7 @@
 
 Date: 2026-09-17
 
-Status: **LEVEL 3 — READY FOR FINAL PR/CI REVIEW; EXPLICIT PRE-MERGE APPROVAL PENDING**
+Status: **LEVEL 3 — COMPLETE**
 
 Reconciliation branch: `phase-10a-authoritative-main-reconciliation-20260917`
 
@@ -245,4 +245,8 @@ Do not merge or close stale PRs simply to make the open list empty. In particula
 
 Implementation / reconciliation preparation: **AUTHORIZED** by the operator's 2026-09-17 instruction to begin work.
 
-Explicit Level 3 pre-merge approval to update `main`: **PENDING**.
+Explicit Level 3 pre-merge approval to update `main`: **APPROVED** by the operator immediately before merge.
+
+Final merge: PR #47 → `main` at `a5689e67a91d5dbbe57f6c8b1fc80dbece243449`.
+
+Final PR CI: run `35293174512` on exact head `4389c1d29cc0f9231692e324ad87589f7f570a1f` — **PASS**.
