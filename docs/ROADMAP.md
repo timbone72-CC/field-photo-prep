@@ -256,7 +256,7 @@ Goal: stabilize the proven single-phone field workflow for realistic large inspe
 
 Phase 10 is driven by actual field evidence and code review. It is not a general feature-expansion phase.
 
-### Phase 10A — Repository/source-of-truth reconciliation — FIRST
+### Phase 10A — Repository/source-of-truth reconciliation — IN PROGRESS
 
 Problem:
 - the field-tested 0.20 development line is ahead of default `main`;
