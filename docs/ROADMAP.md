@@ -330,6 +330,8 @@ Any later implementation must preserve:
 
 Do not add a background retry scheduler merely to hide provider uncertainty.
 
+Existing open PR #39 (`Fix UNCERTAIN reconciliation on stale Drive provider metadata`) is a Phase 10C input, not a Phase 10A merge target. A code comparison found two unique hardening ideas not present in 0.20: provider `refresh() == false` should not by itself block otherwise-settled reconciliation, and stale provider size metadata should not override a stronger exact SHA-256 content proof. Keep PR #39 open until those behaviors are deliberately re-evaluated against the canonical 0.20 baseline with current tests and a governed Level 3 decision.
+
 ### Phase 10D — Separate Properties and Work Orders UI state
 
 Field basis:
