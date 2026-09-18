@@ -48,7 +48,8 @@ public final class MainActivity extends Activity {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final DriveClient driveClient = new DriveClient();
-    private final List<DriveFolder> visibleFolders = new ArrayList<>();
+    private final List<DriveFolder> propertyFolders = new ArrayList<>();
+    private final List<DriveFolder> workOrderFolders = new ArrayList<>();
 
     private FolderPrefs folderPrefs;
     private Screen screen = Screen.ADDRESSES;
@@ -191,13 +192,13 @@ private void buildHomeUi() {
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
     homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
 
-    adapter = new PropertyListAdapter(this, visibleFolders);
+    adapter = new PropertyListAdapter(this, propertyFolders);
     folderList.setAdapter(adapter);
     folderList.setOnItemClickListener((parent, view, position, id) -> {
-        if (screen != Screen.ADDRESSES || busy || position < 0 || position >= visibleFolders.size()) {
+        if (screen != Screen.ADDRESSES || busy || position < 0 || position >= propertyFolders.size()) {
             return;
         }
-        openAddress(visibleFolders.get(position));
+        openAddress(propertyFolders.get(position));
     });
 
     ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
@@ -214,7 +215,7 @@ private void openSavedPropertyFromHome() {
         showHomeInlineMessage("Choose a property first.");
         return;
     }
-    DriveFolder actual = DriveClient.findById(visibleFolders, saved.id());
+    DriveFolder actual = DriveClient.findById(propertyFolders, saved.id());
     if (actual == null) {
         showHomeInlineMessage("Refresh Properties, then choose the property you want to open.");
         return;
@@ -269,15 +270,15 @@ private void buildLegacyWorkOrderUi() {
     legacyRoot.findViewById(R.id.nav_work_orders).setSelected(true);
 
     workOrderControls = (LinearLayout) workOrderScroll.getChildAt(0);
-    workOrderAdapter = new WorkOrderListAdapter(this, visibleFolders);
+    workOrderAdapter = new WorkOrderListAdapter(this, workOrderFolders);
     workOrderList.setAdapter(workOrderAdapter);
     workOrderList.setOnItemClickListener((parent, view, position, id) -> {
-        if (busy || position < 0 || position >= visibleFolders.size()) {
+        if (busy || position < 0 || position >= workOrderFolders.size()) {
             return;
         }
-        DriveFolder candidate = visibleFolders.get(position);
+        DriveFolder candidate = workOrderFolders.get(position);
         if (selectedAddress == null || candidate.id().equals(selectedAddress.id())) {
-            visibleFolders.clear();
+            workOrderFolders.clear();
             selectedWorkOrder = null;
             folderPrefs.clearCurrentWorkOrder();
             createBlockedUntilRefresh = true;
@@ -338,6 +339,8 @@ private void buildLegacyWorkOrderUi() {
             getContentResolver().takePersistableUriPermission(treeUri, grantedFlags);
             DriveFolder master = driveClient.getTreeFolder(getContentResolver(), treeUri);
             folderPrefs.setMasterFolder(treeUri, master);
+            propertyFolders.clear();
+            notifyFolderAdapters();
             showAddressScreen(false);
             renderSavedMaster();
             refreshAddressFolders();
@@ -364,8 +367,8 @@ private void buildLegacyWorkOrderUi() {
             try {
                 List<DriveFolder> folders = driveClient.listFolders(getContentResolver(), treeUri);
                 runOnUiThread(() -> {
-                    visibleFolders.clear();
-                    visibleFolders.addAll(folders);
+                    propertyFolders.clear();
+                    propertyFolders.addAll(folders);
                     notifyFolderAdapters();
                     renderPropertyCountAndEmptyState();
                     clearHomeInlineMessage();
@@ -449,8 +452,8 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        propertyFolders.clear();
+                        propertyFolders.addAll(folders);
                         notifyFolderAdapters();
                         renderPropertyCountAndEmptyState();
                         showHomeInlineMessage(matches.size() + " address folders named " + requestedName
@@ -468,8 +471,8 @@ private void buildLegacyWorkOrderUi() {
                             if (screen != Screen.ADDRESSES) {
                                 return;
                             }
-                            visibleFolders.clear();
-                            visibleFolders.addAll(folders);
+                            propertyFolders.clear();
+                            propertyFolders.addAll(folders);
                             notifyFolderAdapters();
                             renderPropertyCountAndEmptyState();
                             showHomeInlineMessage("More than one possible version of this property exists. "
@@ -482,8 +485,8 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        propertyFolders.clear();
+                        propertyFolders.addAll(folders);
                         notifyFolderAdapters();
                         renderPropertyCountAndEmptyState();
                         openAddress(existing);
@@ -499,8 +502,8 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        propertyFolders.clear();
+                        propertyFolders.addAll(folders);
                         notifyFolderAdapters();
                         renderPropertyCountAndEmptyState();
                         showHomeInlineMessage("Possible existing property match: " + candidateName
@@ -532,8 +535,8 @@ private void buildLegacyWorkOrderUi() {
                             return;
                         }
                         createBlockedUntilRefresh = true;
-                        visibleFolders.clear();
-                        visibleFolders.addAll(afterCreate);
+                        propertyFolders.clear();
+                        propertyFolders.addAll(afterCreate);
                         notifyFolderAdapters();
                         renderPropertyCountAndEmptyState();
                         showHomeInlineMessage("Address create result is ambiguous. Choose the intended property; no additional folder will be created until refresh.");
@@ -546,8 +549,8 @@ private void buildLegacyWorkOrderUi() {
                     if (screen != Screen.ADDRESSES) {
                         return;
                     }
-                    visibleFolders.clear();
-                    visibleFolders.addAll(afterCreate);
+                    propertyFolders.clear();
+                    propertyFolders.addAll(afterCreate);
                     notifyFolderAdapters();
                     renderPropertyCountAndEmptyState();
                     openAddress(verified);
@@ -568,7 +571,7 @@ private void buildLegacyWorkOrderUi() {
         createBlockedUntilRefresh = false;
         screen = Screen.WORK_ORDERS;
         statusText = legacyStatusText;
-        visibleFolders.clear();
+        workOrderFolders.clear();
         notifyFolderAdapters();
         homeRoot.setVisibility(View.GONE);
         legacyRoot.setVisibility(View.VISIBLE);
@@ -586,7 +589,7 @@ private void buildLegacyWorkOrderUi() {
         statusText = homeStatusText;
         legacyRoot.setVisibility(View.GONE);
         homeRoot.setVisibility(View.VISIBLE);
-        visibleFolders.clear();
+        workOrderFolders.clear();
         if (adapter != null) {
             notifyFolderAdapters();
         }
@@ -622,8 +625,8 @@ private void buildLegacyWorkOrderUi() {
                     if (!isStillOnAddress(addressId)) {
                         return;
                     }
-                    visibleFolders.clear();
-                    visibleFolders.addAll(folders);
+                    workOrderFolders.clear();
+                    workOrderFolders.addAll(folders);
                     reconcileSelectedWorkOrder(folders);
                     notifyFolderAdapters();
                     setStatusText(folders.size() + " work order" + (folders.size() == 1 ? "" : "s") + " available");
@@ -710,8 +713,8 @@ private void buildLegacyWorkOrderUi() {
                         if (!isStillOnAddress(addressId)) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        workOrderFolders.clear();
+                        workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
                         setStatusText(matches.size() + " folders named " + requestedName
                                 + " already exist. Select the intended one; no folder was created.");
@@ -726,8 +729,8 @@ private void buildLegacyWorkOrderUi() {
                         if (!isStillOnAddress(addressId)) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        workOrderFolders.clear();
+                        workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
                         selectWorkOrder(existing, "Existing work-order folder reused");
                     });
@@ -751,8 +754,8 @@ private void buildLegacyWorkOrderUi() {
                             return;
                         }
                         createBlockedUntilRefresh = true;
-                        visibleFolders.clear();
-                        visibleFolders.addAll(afterCreate);
+                        workOrderFolders.clear();
+                        workOrderFolders.addAll(afterCreate);
                         notifyFolderAdapters();
                         setStatusText("Work-order create result is ambiguous. Select the intended same-named folder; no additional folder will be created until refresh.");
                         setNotBusy();
@@ -764,8 +767,8 @@ private void buildLegacyWorkOrderUi() {
                     if (!isStillOnAddress(addressId)) {
                         return;
                     }
-                    visibleFolders.clear();
-                    visibleFolders.addAll(afterCreate);
+                    workOrderFolders.clear();
+                    workOrderFolders.addAll(afterCreate);
                     notifyFolderAdapters();
                     selectWorkOrder(verified, "Work-order folder created");
                 });
@@ -839,8 +842,8 @@ private void buildLegacyWorkOrderUi() {
                         if (!isStillOnAddress(addressId)) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        workOrderFolders.clear();
+                        workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
                         setStatusText(requestedMatches.size() + " folders named " + requestedName
                                 + " already exist. No old folder was renamed; select the intended existing folder.");
@@ -855,8 +858,8 @@ private void buildLegacyWorkOrderUi() {
                         if (!isStillOnAddress(addressId)) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        workOrderFolders.clear();
+                        workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
                         selectWorkOrder(existing, "Requested dated folder already exists; old folder unchanged");
                     });
@@ -909,8 +912,8 @@ private void buildLegacyWorkOrderUi() {
                     if (!isStillOnAddress(addressId)) {
                         return;
                     }
-                    visibleFolders.clear();
-                    visibleFolders.addAll(afterRename);
+                    workOrderFolders.clear();
+                    workOrderFolders.addAll(afterRename);
                     notifyFolderAdapters();
                     selectWorkOrder(verified, "Empty folder reused with the same identity; photo numbering restarted at 001");
                 });
@@ -984,8 +987,8 @@ private void buildLegacyWorkOrderUi() {
                         if (!isStillOnAddress(addressId)) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        workOrderFolders.clear();
+                        workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
                         setStatusText(requestedMatches.size() + " folders named " + requestedName
                                 + " already exist. Nothing was deleted; select the intended existing folder.");
@@ -1000,8 +1003,8 @@ private void buildLegacyWorkOrderUi() {
                         if (!isStillOnAddress(addressId)) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(folders);
+                        workOrderFolders.clear();
+                        workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
                         selectWorkOrder(existing, "Requested dated folder already exists; old folder unchanged");
                     });
@@ -1204,8 +1207,8 @@ private void buildLegacyWorkOrderUi() {
                         if (!isStillOnAddress(addressId)) {
                             return;
                         }
-                        visibleFolders.clear();
-                        visibleFolders.addAll(afterRename);
+                        workOrderFolders.clear();
+                        workOrderFolders.addAll(afterRename);
                         notifyFolderAdapters();
                         selectWorkOrder(verified, "Clear & Reuse complete with the same identity; photo numbering restarted at 001");
                     });
@@ -1305,23 +1308,6 @@ private void buildLegacyWorkOrderUi() {
         }
     }
 
-    private String folderLabel(DriveFolder folder) {
-        if (!hasDuplicateVisibleName(folder.name())) {
-            return folder.name();
-        }
-        return folder.name() + "  [" + shortId(folder.id()) + "]";
-    }
-
-    private boolean hasDuplicateVisibleName(String name) {
-        int count = 0;
-        for (DriveFolder folder : visibleFolders) {
-            if (folder.name().equals(name) && ++count > 1) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private String shortId(String id) {
         return id.length() <= 8 ? id : id.substring(id.length() - 8);
     }
@@ -1401,13 +1387,13 @@ private void buildLegacyWorkOrderUi() {
 
     private void renderPropertyCountAndEmptyState() {
         if (homePropertyCountText != null) {
-            int count = visibleFolders.size();
+            int count = propertyFolders.size();
             homePropertyCountText.setText(count == 1 ? "1 property" : count + " properties");
         }
         if (homeEmptyText != null) {
             Uri treeUri = folderPrefs == null ? null : folderPrefs.getMasterTreeUri();
             boolean connected = treeUri != null && hasPersistedReadPermission(treeUri);
-            homeEmptyText.setVisibility(connected && !busy && visibleFolders.isEmpty()
+            homeEmptyText.setVisibility(connected && !busy && propertyFolders.isEmpty()
                     ? View.VISIBLE : View.GONE);
         }
     }
