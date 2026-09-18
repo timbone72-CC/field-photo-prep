@@ -30,6 +30,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -687,6 +688,15 @@ private void buildLegacyWorkOrderUi() {
             return;
         }
 
+        if (selectedWorkOrder != null
+                && WorkOrderFolderName.shouldRouteSelectedFolderToReuse(
+                        selectedWorkOrder.name(),
+                        workOrderInput.getText().toString(),
+                        selectedDate.toString())) {
+            prepareClearAndReuse();
+            return;
+        }
+
         final String addressId = selectedAddress.id();
         setBusy("Checking for " + requestedName + "…");
         executor.execute(() -> {
@@ -872,6 +882,10 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                PendingPhotoStore photoStore = new PendingPhotoStore(
+                        new File(getFilesDir(), "pending_photos"));
+                photoStore.prepareCaptureSequenceResetForReuse(candidateId, requestedName);
+
                 DriveFolder renameResult = driveClient.renameFolder(
                         getContentResolver(), treeUri, candidateId, requestedName);
                 if (!candidateId.equals(renameResult.id())) {
@@ -889,6 +903,8 @@ private void buildLegacyWorkOrderUi() {
                     throw new IOException("The renamed folder is ambiguous. Refresh and choose the intended folder.");
                 }
 
+                photoStore.completeCaptureSequenceResetForReuse(candidateId, requestedName);
+
                 runOnUiThread(() -> {
                     if (!isStillOnAddress(addressId)) {
                         return;
@@ -896,7 +912,7 @@ private void buildLegacyWorkOrderUi() {
                     visibleFolders.clear();
                     visibleFolders.addAll(afterRename);
                     notifyFolderAdapters();
-                    selectWorkOrder(verified, "Empty folder reused with the same identity");
+                    selectWorkOrder(verified, "Empty folder reused with the same identity; photo numbering restarted at 001");
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> {
@@ -1013,8 +1029,7 @@ private void buildLegacyWorkOrderUi() {
                 DriveClient.ChildSnapshot snapshot = driveClient.listDirectChildren(
                         getContentResolver(), treeUri, candidateId);
                 if (snapshot.count() == 0) {
-                    runOnUiThread(() -> showMessage(
-                            "Selected folder is empty. Use Reuse Selected Empty Folder; nothing was deleted."));
+                    runOnUiThread(this::reuseSelectedEmptyFolder);
                     return;
                 }
 
@@ -1135,6 +1150,10 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                PendingPhotoStore photoStore = new PendingPhotoStore(
+                        new File(getFilesDir(), "pending_photos"));
+                photoStore.prepareCaptureSequenceResetForReuse(candidateId, requestedName);
+
                 int deletedCount = 0;
                 try {
                     for (String childId : currentSnapshot.documentIds()) {
@@ -1179,6 +1198,8 @@ private void buildLegacyWorkOrderUi() {
                         throw new IOException("The renamed folder is ambiguous.");
                     }
 
+                    photoStore.completeCaptureSequenceResetForReuse(candidateId, requestedName);
+
                     runOnUiThread(() -> {
                         if (!isStillOnAddress(addressId)) {
                             return;
@@ -1186,7 +1207,7 @@ private void buildLegacyWorkOrderUi() {
                         visibleFolders.clear();
                         visibleFolders.addAll(afterRename);
                         notifyFolderAdapters();
-                        selectWorkOrder(verified, "Clear & Reuse complete with the same identity");
+                        selectWorkOrder(verified, "Clear & Reuse complete with the same identity; photo numbering restarted at 001");
                     });
                 } catch (Exception error) {
                     runOnUiThread(() -> {

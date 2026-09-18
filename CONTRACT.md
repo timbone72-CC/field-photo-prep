@@ -66,6 +66,11 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 28. **Clear & Reuse** removes only the selected work-order folder's child items, confirms that the folder is empty, renames that same folder to the new dated work-order name, and reuses its existing remote folder identity.
 29. Failure to remove every child item, failure to confirm emptiness, or failure to rename must stop the reuse workflow. The app must not begin sending new-work photos into a partially cleared folder.
 30. Address folders are not eligible for automatic or **Clear & Reuse** recycling in the initial model.
+31. When **Add Work Order** is invoked while an older occurrence of that same work-order name is selected, the app must route the request through the approved reuse workflow instead of creating a parallel new dated folder. An empty selected folder may be renamed/reused after verification; a non-empty selected folder must still require the explicit **Clear & Reuse** confirmation before any child deletion.
+32. A successfully completed empty-folder reuse or **Clear & Reuse** creates a new capture-order occurrence even though the stable remote folder identity is retained. The first new photo captured for that reused occurrence must start at sequence `001`.
+33. Work-order reuse must fail closed while any local photo bound to that work-order remote folder identity is still unconfirmed (`CAPTURING`, `WAITING`, `UPLOADING`, `FAILED`, or `UNCERTAIN`). A retained confirmed `UPLOADED` history record may remain but must not raise the new occurrence's capture-sequence baseline.
+34. After a successful work-order reuse, confirmed upload-history records from an earlier occurrence of that reused provider folder may remain locally as lightweight evidence, but they must not appear in the new occurrence's Photos list, photo count, selected batch, or **Copy Capture Order** output. Current-occurrence UI and capture-order history must begin clean for the new work occurrence while exact provider identity remains unchanged.
+35. An ordinary later visible-folder rename, outside an approved FPP reuse transition, does not by itself create another capture-order reset. Stable remote folder identity remains authoritative after the reuse transition is complete.
 
 ## 3. Photo capture and temporary protection
 
@@ -176,6 +181,14 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 5. Duplicate prevention must favor preserving a recoverable temporary photo over silently losing a photo.
 6. A batch must not intentionally include the same local photo identity more than once in one run.
 7. Batch convenience must never bypass the per-photo remote identity, provisional identity, confirmation, retry, or uncertainty protections.
+8. New capture-order-enabled photo uploads use a sequence prefix followed by the UUID-based photo identity, for example `001_field-photo-<UUID>.jpg`. The sequence is zero-padded to at least three digits and widens naturally above `999`.
+9. Capture sequence is reserved when the app reserves the protected capture, not when the photo later uploads. A consumed reservation number is not reused after discard, failed/empty capture, restart, or out-of-order upload.
+10. A newly created work-order remote folder starts its capture sequence at `001`; different work-order remote folder identities maintain independent sequences.
+11. After an approved empty-folder reuse or **Clear & Reuse**, the reused folder keeps its same stable remote identity but the new dated work occurrence starts a fresh capture sequence at `001`.
+12. Retained confirmed metadata from the prior occurrence must not raise the new reused occurrence's sequence baseline. Unconfirmed prior-occurrence photos must block reuse rather than risk later upload into the new occurrence.
+13. Legacy photo records and already-uploaded UUID-only filenames remain valid and are not renamed merely to adopt capture-order prefixes.
+14. Once an approved reuse reset is complete, an ordinary later visible-folder rename does not reset the capture sequence again; stable remote folder identity remains authoritative.
+15. Confirmed photo-history rows from an earlier occurrence of a reused provider folder must be excluded from the active occurrence's Photos list and capture-order manifest even though their lightweight metadata may remain locally for exact-history or duplicate-protection evidence.
 
 ## 8. Local data and deletion
 

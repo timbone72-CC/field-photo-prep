@@ -9,10 +9,17 @@ import android.provider.DocumentsContract;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Objects;
 
 public final class DrivePhotoUploader {
     static final String JPEG_MIME_TYPE = "image/jpeg";
+    static final int VERIFY_MAX_ATTEMPTS = 8;
+    static final long VERIFY_RETRY_DELAY_MS = 500L;
+
+    interface Sleeper {
+        void sleep(long millis) throws IOException;
+    }
 
     interface ProviderOps {
         RemoteDocument readDocument(String documentId) throws IOException;
@@ -140,13 +147,19 @@ public final class DrivePhotoUploader {
     }
 
     private final ProviderOps provider;
+    private final Sleeper sleeper;
 
     public DrivePhotoUploader(ContentResolver resolver, Uri treeUri) {
-        this(new AndroidProviderOps(resolver, treeUri));
+        this(new AndroidProviderOps(resolver, treeUri), DrivePhotoUploader::sleepNormally);
     }
 
     DrivePhotoUploader(ProviderOps provider) {
+        this(provider, millis -> { });
+    }
+
+    DrivePhotoUploader(ProviderOps provider, Sleeper sleeper) {
         this.provider = Objects.requireNonNull(provider, "provider");
+        this.sleeper = Objects.requireNonNull(sleeper, "sleeper");
     }
 
     /**
@@ -160,7 +173,7 @@ public final class DrivePhotoUploader {
 
         final long expectedBytes = preparedFile.length();
         final String destinationId = uploadingRecord.workOrderId();
-        final String remoteName = remoteFileNameFor(uploadingRecord.id());
+        final String remoteName = remoteFileNameFor(uploadingRecord);
 
         final RemoteDocument destination;
         try {
@@ -239,7 +252,7 @@ public final class DrivePhotoUploader {
                     "The created Drive photo identity was not durably bound to this upload before writing. Remote state must be reconciled before retry.",
                     null);
         }
-        if (!createdUpload.remoteDisplayName().equals(remoteFileNameFor(uploadingRecord.id()))) {
+        if (!createdUpload.remoteDisplayName().equals(remoteFileNameFor(uploadingRecord))) {
             throw uncertainFailure(
                     "The created Drive photo name does not match this photo identity. Remote state must be reconciled before retry.",
                     null);
@@ -269,33 +282,88 @@ public final class DrivePhotoUploader {
                     null);
         }
 
-        final RemoteDocument verified;
-        try {
-            verified = provider.readDocument(createdUpload.remoteFileId());
-        } catch (IOException | RuntimeException error) {
-            throw uncertainFailure(
-                    "The created Drive photo could not be verified. Remote state must be reconciled before retry.",
-                    error);
+        return verifyAfterProviderSettle(createdUpload, bytesWritten);
+    }
+
+    private UploadResult verifyAfterProviderSettle(
+            CreatedUpload createdUpload,
+            long bytesWritten) throws UploadException {
+        IOException lastReadError = null;
+        RemoteDocument lastObserved = null;
+
+        for (int attempt = 0; attempt < VERIFY_MAX_ATTEMPTS; attempt++) {
+            try {
+                RemoteDocument verified = provider.readDocument(createdUpload.remoteFileId());
+                lastObserved = verified;
+                lastReadError = null;
+
+                if (verified != null
+                        && (!createdUpload.remoteFileId().equals(verified.id())
+                        || !JPEG_MIME_TYPE.equals(verified.mimeType())
+                        || !createdUpload.remoteDisplayName().equals(verified.displayName()))) {
+                    throw uncertainFailure(
+                            "The created Drive photo identity, name, or MIME type did not verify exactly. Remote state must be reconciled before retry.",
+                            null);
+                }
+
+                if (verified != null
+                        && verified.sizeBytes() != 0L
+                        && (verified.sizeBytes() < 0L
+                        || verified.sizeBytes() == createdUpload.expectedBytes())) {
+                    return new UploadResult(
+                            verified.id(),
+                            verified.displayName(),
+                            bytesWritten);
+                }
+            } catch (UploadException hardMismatch) {
+                throw hardMismatch;
+            } catch (IOException error) {
+                lastReadError = error;
+            } catch (RuntimeException error) {
+                lastReadError = new IOException("Unexpected provider readback failure.", error);
+            }
+
+            if (attempt + 1 < VERIFY_MAX_ATTEMPTS) {
+                try {
+                    sleeper.sleep(VERIFY_RETRY_DELAY_MS);
+                } catch (IOException waitError) {
+                    throw uncertainFailure(
+                            "Drive verification wait was interrupted after the photo was written. Remote state must be reconciled before retry.",
+                            waitError);
+                }
+            }
         }
 
-        if (verified == null
-                || !createdUpload.remoteFileId().equals(verified.id())
-                || !JPEG_MIME_TYPE.equals(verified.mimeType())
-                || !createdUpload.remoteDisplayName().equals(verified.displayName())
-                || verified.sizeBytes() == 0L
-                || (verified.sizeBytes() > 0L
-                && verified.sizeBytes() != createdUpload.expectedBytes())) {
+        if (lastReadError != null) {
             throw uncertainFailure(
-                    "The created Drive photo metadata did not verify exactly. Remote state must be reconciled before retry.",
+                    "The created Drive photo could not be verified after the provider settle window. Remote state must be reconciled before retry.",
+                    lastReadError);
+        }
+
+        if (lastObserved == null) {
+            throw uncertainFailure(
+                    "Drive did not return the created photo during the provider settle window. Remote state must be reconciled before retry.",
                     null);
         }
 
-        return new UploadResult(verified.id(), verified.displayName(), bytesWritten);
+        throw uncertainFailure(
+                "The created Drive photo byte size did not settle to the prepared photo size before verification timed out. Remote state must be reconciled before retry.",
+                null);
     }
 
     static String remoteFileNameFor(String photoId) {
         return "field-photo-" + PendingPhotoRecord.imageFileNameFor(photoId)
                 .substring("photo-".length());
+    }
+
+    static String remoteFileNameFor(PendingPhotoRecord record) {
+        Objects.requireNonNull(record, "record");
+        String legacyName = remoteFileNameFor(record.id());
+        if (!record.hasCaptureSequence()) {
+            return legacyName;
+        }
+        int width = Math.max(3, Integer.toString(record.captureSequence()).length());
+        return String.format(Locale.US, "%0" + width + "d_%s", record.captureSequence(), legacyName);
     }
 
     static long writePreparedToDescriptor(ParcelFileDescriptor descriptor, File source)
@@ -354,6 +422,15 @@ public final class DrivePhotoUploader {
 
     private static UploadException uncertainFailure(String message, Throwable cause) {
         return new UploadException(message, cause, true);
+    }
+
+    private static void sleepNormally(long millis) throws IOException {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Drive verification settle wait was interrupted.", interrupted);
+        }
     }
 
     private static String requireText(String value, String field) {

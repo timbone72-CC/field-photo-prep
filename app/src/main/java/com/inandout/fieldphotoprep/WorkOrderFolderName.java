@@ -27,6 +27,19 @@ public final class WorkOrderFolderName {
                 && candidate.date.isBefore(requestedDate);
     }
 
+    public static boolean shouldRouteSelectedFolderToReuse(
+            String selectedFolderName,
+            String requestedWorkOrderName,
+            String requestedLocalDate) {
+        String requestedName = build(requestedWorkOrderName, requestedLocalDate);
+        return selectedFolderName != null
+                && !selectedFolderName.equals(requestedName)
+                && isOlderSameWorkOrderFolder(
+                        selectedFolderName,
+                        requestedWorkOrderName,
+                        requestedLocalDate);
+    }
+
     private static String normalizeWorkOrder(String workOrderName) {
         String workOrder = workOrderName == null ? "" : workOrderName.trim();
         if (workOrder.isEmpty()) {

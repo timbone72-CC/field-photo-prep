@@ -1,7 +1,6 @@
 package com.inandout.fieldphotoprep;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -10,7 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.view.View;
 import android.widget.Button;
-import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -23,31 +22,34 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @RunWith(AndroidJUnit4.class)
-public final class PhotoRowActionsViewInstrumentedTest {
+public final class BulkReconciliationUiInstrumentedTest {
     @Test
-    public void photoActionsControlSelectsExactPhotoAndUsesHiddenExistingActionOwners() throws Exception {
+    public void uncertainBacklogShowsOneBulkControlAndStoredReason() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
 
-        DriveFolder property = new DriveFolder("actions-property", "101_TEST_ST");
-        DriveFolder workOrder = new DriveFolder("actions-work", "Inspection - 2026-09-13");
+        DriveFolder property = new DriveFolder("bulk-reconcile-property", "820_META_TEST");
+        DriveFolder workOrder = new DriveFolder(
+                "bulk-reconcile-work",
+                "Full Property Condition - 2026-09-15");
         FolderPrefs prefs = new FolderPrefs(context);
         prefs.setCurrentAddress(property);
         prefs.setCurrentWorkOrder(workOrder);
 
-        File fixtures = new File(context.getCacheDir(), "photo-row-actions-" + UUID.randomUUID());
+        File fixtures = new File(context.getCacheDir(), "bulk-reconcile-ui-" + UUID.randomUUID());
         PendingPhotoStore store = new PendingPhotoStore(new File(fixtures, "pending"));
         PhotoPreparer preparer = new PhotoPreparer(new File(fixtures, "prepared"));
+
         PendingPhotoRecord photo = store.beginCapture(property, workOrder);
         writeJpeg(store.imageFile(photo));
         photo = store.finishCaptureIfImageExists(photo.id());
         preparer.prepare(store, photo);
-        PendingPhotoRecord expected = store.getById(photo.id());
+        store.beginUploadAttempt(photo.id());
+        String reason = "Drive verification readback did not settle.";
+        PendingPhotoRecord uncertain = store.markUploadUncertain(photo.id(), reason);
 
         Intent intent = new Intent(context, PhotoCaptureActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -56,33 +58,18 @@ public final class PhotoRowActionsViewInstrumentedTest {
                 try {
                     setField(activity, "photoStore", store);
                     setField(activity, "photoPreparer", preparer);
-                    call(activity, "renderPhotoList",
-                            new Class<?>[]{List.class, List.class},
-                            List.of(expected), new ArrayList<String>());
+                    call(activity, "refreshPhotoList");
 
-                    LinearLayout list = activity.findViewById(R.id.photos_pending_list);
-                    assertEquals(1, list.getChildCount());
-                    View actions = list.getChildAt(0).findViewById(R.id.photo_row_actions);
-                    assertNotNull(actions);
-                    assertTrue(actions.isClickable());
-                    assertEquals("Photo actions", actions.getContentDescription().toString());
-                    assertTrue(actions.performClick());
+                    Button reconcileAll = activity.findViewById(R.id.photos_reconcile_all);
+                    assertEquals(View.VISIBLE, reconcileAll.getVisibility());
+                    assertTrue(reconcileAll.isEnabled());
+                    assertEquals("Reconcile All Uncertain (1)", reconcileAll.getText().toString());
 
-                    assertEquals(expected.id(), field(activity, "selectedPhotoId"));
-
-                    View detailsPanel = activity.findViewById(R.id.photos_selected_panel);
-                    assertEquals(View.VISIBLE, detailsPanel.getVisibility());
-                    assertEquals("Selected photo actions and remaining photo rows must share the same scroll content",
-                            list.getParent(), detailsPanel.getParent());
-
-                    Button uploadOwner = activity.findViewById(R.id.photos_upload_one);
-                    assertEquals(View.GONE, uploadOwner.getVisibility());
-                    assertTrue("Prepared waiting photo should retain the existing upload owner state",
-                            uploadOwner.isEnabled());
-                    assertEquals(View.GONE,
-                            activity.findViewById(R.id.photos_prepare).getVisibility());
-                    assertEquals(View.GONE,
-                            activity.findViewById(R.id.photos_discard).getVisibility());
+                    setField(activity, "selectedPhotoId", uncertain.id());
+                    call(activity, "renderSelectedPhoto");
+                    TextView details = activity.findViewById(R.id.photos_prepared_text);
+                    assertTrue(details.getText().toString().contains(reason));
+                    assertTrue(details.getText().toString().contains("Reconcile before retry"));
                 } catch (Exception error) {
                     throw new AssertionError(error);
                 }
@@ -103,26 +90,16 @@ public final class PhotoRowActionsViewInstrumentedTest {
         }
     }
 
-    private static Object field(Object owner, String name) throws Exception {
-        Field field = owner.getClass().getDeclaredField(name);
-        field.setAccessible(true);
-        return field.get(owner);
-    }
-
     private static void setField(Object owner, String name, Object value) throws Exception {
         Field field = owner.getClass().getDeclaredField(name);
         field.setAccessible(true);
         field.set(owner, value);
     }
 
-    private static void call(
-            Object owner,
-            String name,
-            Class<?>[] types,
-            Object... values) throws Exception {
-        Method method = owner.getClass().getDeclaredMethod(name, types);
+    private static void call(Object owner, String name) throws Exception {
+        Method method = owner.getClass().getDeclaredMethod(name);
         method.setAccessible(true);
-        method.invoke(owner, values);
+        method.invoke(owner);
     }
 
     private static void delete(File file) {
