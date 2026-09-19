@@ -45,6 +45,8 @@ public final class MultiCompanyDeviceFindingRegressionInstrumentedTest {
                 try {
                     EditText input = activity.findViewById(R.id.work_order_name_input);
                     input.setText("TEST SECURE");
+                    input.requestFocus();
+                    assertTrue(input.hasFocus());
 
                     Field dateField = MainActivity.class.getDeclaredField("selectedDate");
                     dateField.setAccessible(true);
@@ -55,11 +57,28 @@ public final class MultiCompanyDeviceFindingRegressionInstrumentedTest {
                     selectCompany.setAccessible(true);
                     selectCompany.invoke(activity, new DriveFolder("company-a", "TEST COMPANY A"));
 
+                    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
                     assertEquals("", input.getText().toString());
                     assertEquals(LocalDate.now(), dateField.get(activity));
+                    assertTrue(!input.hasFocus());
+                    assertTrue(!input.isSaveEnabled());
+                    assertEquals(
+                            android.view.View.IMPORTANT_FOR_AUTOFILL_NO,
+                            input.getImportantForAutofill());
                 } catch (Exception error) {
                     throw new AssertionError(error);
                 }
+            });
+
+            scenario.recreate();
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            scenario.onActivity(activity -> {
+                EditText input = activity.findViewById(R.id.work_order_name_input);
+                assertEquals("", input.getText().toString());
+                assertTrue(!input.isSaveEnabled());
+                assertEquals(
+                        android.view.View.IMPORTANT_FOR_AUTOFILL_NO,
+                        input.getImportantForAutofill());
             });
         } finally {
             raw.edit().clear().commit();
