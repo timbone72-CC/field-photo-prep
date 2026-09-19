@@ -4,30 +4,36 @@ Use only the sections affected by the change. This checklist is not a requiremen
 
 ## A. App launch and folder state
 
-- [ ] App opens without losing stored master-folder identity or useful recent folder mappings.
-- [ ] App can refresh the current address-folder list from the approved Google Drive-backed document tree.
+- [ ] App opens without losing stored workspace/company identity or useful recent folder mappings.
+- [ ] App can refresh the company list from the approved Google Drive-backed workspace and the current address-folder list from the selected company.
 - [ ] Previously linked address and work-order folders still resolve to their stored provider/remote destination identities.
 - [ ] Reopening a linked address or work order does not create a second Drive folder.
-- [ ] Switching between addresses or work orders does not change already queued photos' stored destinations.
+- [ ] Switching between companies, addresses, or work orders does not change already queued photos' stored destinations.
 
-## B. Android provider access and master folder
+## B. Android provider access, workspace, and company folder
 
 - [ ] The system document picker can access the intended Google Drive provider/account context.
-- [ ] The approved master folder can be selected/confirmed and persisted tree access is retained.
-- [ ] Stored master-tree URI and provider document identity survive app restart.
-- [ ] Renaming the master folder does not break identity when its provider document ID is unchanged.
+- [ ] The approved field-work workspace can be selected/confirmed and persisted tree access is retained.
+- [ ] Stored workspace-tree URI and provider document identity survive app restart.
+- [ ] Direct company folders are discovered from Drive, not only local memory.
+- [ ] One exact existing company-name match is reused; multiple exact matches require operator choice.
+- [ ] Adding a new company creates exactly one direct child under the workspace after fresh/settled absence proof.
+- [ ] Editing a company renames only the exact selected provider ID and keeps that ID unchanged.
+- [ ] Company rename is blocked when a different sibling already has the requested exact name.
+- [ ] Switching companies clears current address/work-order navigation selection without rewriting queued photo destinations.
+- [ ] Renaming the workspace or selected company does not break identity when its provider document ID is unchanged.
 - [ ] Loss or revocation of persisted tree access stops affected Drive work clearly rather than silently choosing another provider, account, or same-named folder.
 - [ ] The Android workflow does not depend on app-managed Google OAuth access or refresh tokens.
 
 ## C. Address-folder discovery and creation
 
-- [ ] Refresh shows the actual usable address folders under the approved master folder.
+- [ ] Refresh shows the actual usable address folders under the exact selected company folder.
 - [ ] Existing address-folder names and provider document IDs come from the document provider rather than only local app memory.
 - [ ] Requesting an address name that has exactly one existing match reuses that folder.
 - [ ] Reusing an existing address folder stores/retains that folder's provider document ID.
 - [ ] No duplicate address folder is created when one usable exact match already exists.
 - [ ] Multiple same-named address matches require operator choice and are never guessed.
-- [ ] No-match creation creates exactly one address folder under the approved master folder.
+- [ ] No-match creation creates exactly one address folder under the exact selected company folder.
 - [ ] Absence-based creation fails closed if provider state is loading, stale, inconsistent, or otherwise not authoritative enough.
 - [ ] Failure or ambiguous create result does not blindly create repeated address folders.
 - [ ] Address folders are never recycled by the work-order reuse feature.
@@ -43,7 +49,7 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] No duplicate work-order folder is created when one usable exact match already exists.
 - [ ] Multiple same-named work-order matches require operator choice and are never guessed.
 - [ ] No-match creation creates exactly one work-order folder under the selected address folder.
-- [ ] A work-order folder is never accidentally created at the master-folder root.
+- [ ] A work-order folder is never accidentally created at the workspace root or company-folder root.
 
 ## E. Work-order folder reuse
 
@@ -173,4 +179,4 @@ For unrelated changes, confirm the change did not accidentally introduce or requ
 - background location tracking;
 - OCR/AI processing;
 - a separate numeric work-order ID; or
-- additional folder nesting beyond master → address → dated work order → photos.
+- additional folder nesting beyond workspace → company → address → dated work order → photos.
