@@ -12,40 +12,57 @@ Google Drive is the long-term photo store. Field Photo Prep is not a second phot
 
 The core operator flow is:
 
-**Open app → choose an address → choose or create a dated work order → open the in-app camera → take one or more photos → Done → prepared upload copies are created automatically → select the photos to send → Upload Selected → send those photos to their exact stored Drive work-order folder.**
+**Open app → choose a company → choose an address → choose or create a dated work order → open the in-app camera → take one or more photos → Done → prepared upload copies are created automatically → select the photos to send → Upload Selected → send those photos to their exact stored Drive work-order folder.**
 
 The initial Drive hierarchy is:
 
-**Approved master folder → Address folder → Work Order + Date folder → Photos**
+**Approved field-work workspace → Company folder → Address folder → Work Order + Date folder → Photos**
 
 Example:
 
 ```text
-HNP
-└── 1607 Crestview Drive
-    ├── Cut Grass - 2026-09-06
-    ├── Remove Trash - 2026-09-06
-    └── Winterization - 2026-11-15
+Photos
+├── HNP Jobs
+│   └── 1607 Crestview Drive
+│       ├── Cut Grass - 2026-09-06
+│       └── Winterization - 2026-11-15
+└── Tresmolino Jobs
+    └── 213 E 9TH ST VICI OK
+        └── Initial Secure - 2026-09-21
 ```
 
 ### Identity terminology
 
 In this core contract, **remote folder identity** means the stable identity returned by the active platform's approved Drive integration after a folder is selected or created. Visible folder names are never permanent identity.
 
-For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote folder identity to the Android document provider's stable document ID inside the persisted Storage Access Framework (SAF) master-tree grant. The app does not manage Google OAuth tokens for that Android workflow.
+For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote folder identity to the Android document provider's stable document ID inside the persisted Storage Access Framework (SAF) workspace-tree grant. The app does not manage Google OAuth tokens for that Android workflow.
 
-## 2. Property, work-order, and folder identity
+## 2. Company, property, work-order, and folder identity
 
-1. One address folder represents one property under the approved master Drive folder.
+### Company/workspace identity
+
+1. The operator approves one field-work workspace through the platform integration. On Android, that workspace is the one persisted SAF tree grant used for the multi-company workflow.
+2. Company folders live directly under that approved workspace. One selected company folder is the parent for property/address discovery and creation.
+3. The app may discover, select, create, and rename company folders only under the exact approved workspace and only by stable remote/provider identity after selection or creation.
+4. Company names are display/discovery information. A company rename does not change company identity when the stable provider document ID is unchanged.
+5. Before creating a company, the app must use authoritative-enough provider state to check the workspace for an exact visible-name match. One exact match is reused, multiple exact matches require operator choice, and no exact match may create exactly one folder.
+6. Editing a company may rename only the exact selected company folder. A requested rename that would collide with another exact company name must be blocked rather than guessed.
+7. Switching companies clears the current address/work-order navigation binding but must never rewrite any queued photo's stored work-order destination identity.
+8. Company deletion, moving a company to another parent, automatic company merging, and automatic sharing changes are outside the initial multi-company scope.
+9. A legacy single-company master may remain usable until the operator explicitly selects the broader workspace. Migration to the workspace must not rewrite queued photo destination IDs or guess a company from name when exact provider identity is unavailable.
+
+### Property and work-order identity
+
+1. One address folder represents one property under the selected company folder.
 2. One work-order folder represents one specific work occurrence for that property.
 3. Initial work-order folder names use `Work Order - YYYY-MM-DD`, for example `Cut Grass - 2026-09-06`.
 4. The date is the local calendar date for that work occurrence.
 5. The same property may have different work-order folders on the same date.
 6. The same work-order name may recur on different dates and must remain separated by date.
-7. The user selects one approved master Drive folder for the app's field-work folders.
-8. Google Drive, as exposed through the approved platform integration, is the source of truth for which address folders and work-order folders currently exist within the approved hierarchy.
-9. The app may read folder metadata needed to show existing address and work-order folders, including folder name and stable remote folder identity.
-10. Before creating an address folder, the app must check the approved master folder for an existing usable address folder with the requested name.
+7. The user selects one approved field-work workspace and then one active company folder under that workspace.
+8. Google Drive, as exposed through the approved platform integration, is the source of truth for which company, address, and work-order folders currently exist within the approved hierarchy.
+9. The app may read folder metadata needed to show existing company, address, and work-order folders, including folder name and stable remote folder identity.
+10. Before creating an address folder, the app must check the exact selected company folder for an existing usable address folder with the requested name.
 11. Before creating a work-order folder, the app must check the selected address folder for an existing usable folder with the exact requested `Work Order - YYYY-MM-DD` name.
 12. If exactly one matching existing folder is found at the relevant level, the app reuses it instead of creating a duplicate.
 13. If more than one matching folder exists at the relevant level, the app must require the operator to choose the intended folder. It must not guess.
@@ -124,10 +141,10 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 ## 5. Google Drive behavior and platform access
 
 1. The app uses the platform's approved Drive-access mechanism rather than assuming one authentication implementation across Android and future platforms.
-2. On Android, the operator chooses the Google Drive-backed master folder through the system document picker. The app keeps the persisted SAF tree grant and provider document identities; it does not store or manage Google OAuth access/refresh tokens for this workflow.
+2. On Android, the operator chooses the Google Drive-backed field-work workspace through the system document picker. The app keeps that persisted SAF tree grant plus stable workspace/company/address/work-order provider document identities; it does not store or manage Google OAuth access/refresh tokens for this workflow.
 3. The app must use the least remote-storage access that supports the approved workflow. Broader access may not be added without a documented need and user approval.
-4. The app may read the metadata needed to discover existing address folders under the approved master folder and existing work-order folders under a selected address folder.
-5. The app may create address folders under the approved master folder.
+4. The app may read the metadata needed to discover company folders under the approved workspace, address folders under the selected company, and work-order folders under a selected address.
+5. The app may create company folders under the approved workspace and address folders under the exact selected company folder.
 6. The app may create dated work-order folders under the exact selected address folder.
 7. The app may upload prepared photo files only into the exact selected or stored work-order folder.
 8. Every Drive write must target an explicit stable parent-folder identity; visible parent names alone are insufficient.
@@ -136,7 +153,7 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 11. The app must not automatically share uploaded photos or folders, change inherited permissions, or create public links.
 12. Files created under a shared parent may inherit that parent's Drive permissions; the app does not independently broaden sharing.
 13. Loss of platform/document-provider access must not delete temporary photos that have not yet been confirmed in Drive.
-14. Work-order-folder rename and child deletion are permitted only through the approved empty-folder reuse or confirmed **Clear & Reuse** workflow in Section 2.
+14. Company-folder rename is permitted only through the explicit company-edit workflow and must preserve exact provider identity. Work-order-folder rename and child deletion remain permitted only through the approved empty-folder reuse or confirmed **Clear & Reuse** workflow in Section 2.
 15. A folder reuse operation must operate by exact stable remote folder identity; visible folder names alone may never authorize deletion or rename.
 
 ## 6. Upload queue, selection, batch execution, local discard, and retry
@@ -192,9 +209,9 @@ For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote fo
 
 ## 8. Local data and deletion
 
-1. Local app state should remain lightweight and may store master-tree access/identity, recent address-folder names and identities, recent work-order-folder names and identities, queued-photo records, upload status, remote file identity needed for duplicate protection, and settings.
+1. Local app state should remain lightweight and may store workspace-tree access/identity, active company identity, recent address-folder names and identities, recent work-order-folder names and identities, queued-photo records, upload status, remote file identity needed for duplicate protection, and settings.
 2. Local folder records are a convenience cache, not the authoritative inventory of Drive folders.
-3. The app must be able to refresh its address and work-order folder lists from Google Drive through the approved platform integration rather than assuming local folder memory is complete.
+3. The app must be able to refresh its company, address, and work-order folder lists from Google Drive through the approved platform integration rather than assuming local folder memory is complete.
 4. Successfully uploaded image data does not need to remain in Field Photo Prep.
 5. Platform/provider access material must not be exposed in ordinary logs or exported records. On Android, the app must not invent or persist Google OAuth credentials because the SAF workflow does not use app-managed OAuth tokens.
 6. Deleting a local remembered-folder entry must not automatically delete its Drive folder or Drive photos.
