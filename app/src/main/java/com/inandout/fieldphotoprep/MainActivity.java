@@ -1856,6 +1856,7 @@ private void buildLegacyWorkOrderUi() {
                 busy,
                 workspaceConnected,
                 companySelected,
+                companyFolders.size(),
                 propertyFolders.size(),
                 savedPropertyAvailable);
         homeNextActionButton.setText(action.label());
@@ -1870,6 +1871,9 @@ private void buildLegacyWorkOrderUi() {
                 break;
             case CHOOSE_COMPANY:
                 homeNextActionButton.setOnClickListener(v -> showCompanyChooser());
+                break;
+            case ADD_COMPANY:
+                homeNextActionButton.setOnClickListener(v -> showAddCompanyDialog());
                 break;
             case ADD_PROPERTY:
                 homeNextActionButton.setOnClickListener(v -> showAddressEntryDialog());
