@@ -716,11 +716,20 @@ private void buildLegacyWorkOrderUi() {
 
                 DriveFolder renamed = driveClient.renameFolder(
                         getContentResolver(), treeUri, companyId, requestedName);
+                if (!companyId.equals(renamed.id())) {
+                    throw new IOException("Drive rename changed the company folder identity.");
+                }
+
                 List<DriveFolder> afterRename = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, workspace.id());
-                DriveFolder verified = DriveClient.findById(afterRename, renamed.id());
-                if (verified == null || !verified.name().equals(requestedName)) {
-                    throw new IOException("Drive did not verify the renamed company under the workspace.");
+                DriveFolder verified = DriveClient.findById(afterRename, companyId);
+                List<DriveFolder> verifiedMatches =
+                        DriveClient.findExactNameMatches(afterRename, requestedName);
+                if (verified == null
+                        || !verified.name().equals(requestedName)
+                        || verifiedMatches.size() != 1
+                        || !companyId.equals(verifiedMatches.get(0).id())) {
+                    throw new IOException("Drive did not verify one unambiguous renamed company with the original identity.");
                 }
 
                 runOnUiThread(() -> {
