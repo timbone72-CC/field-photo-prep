@@ -350,6 +350,19 @@ private void buildLegacyWorkOrderUi() {
 
 
     private void chooseMasterFolder() {
+        if (busy) {
+            showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Choose Company Workspace")
+                .setMessage("Select the Drive folder that contains your company folders. Choose the parent above individual companies, not a company or address folder.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Choose Workspace", (dialog, which) -> launchWorkspaceFolderPicker())
+                .show();
+    }
+
+    private void launchWorkspaceFolderPicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
                 | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
