@@ -108,9 +108,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:background="@drawable/bg_concept_status"
+            android:background="@drawable/bg_concept_info_status"
             android:padding="10dp"
-            android:textColor="@color/home_error"
+            android:textColor="@color/home_blue_dark"
             android:textSize="12sp"
             android:visibility="gone" />
         <LinearLayout
