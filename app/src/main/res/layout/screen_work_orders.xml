@@ -139,6 +139,8 @@
                 android:layout_marginTop="6dp"
                 android:background="@drawable/bg_concept_card"
                 android:hint="Work order name"
+                android:importantForAutofill="no"
+                android:saveEnabled="false"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
                 android:singleLine="true"
