@@ -521,6 +521,7 @@ private void buildLegacyWorkOrderUi() {
 
     private void selectCompany(DriveFolder company) {
         folderPrefs.setCurrentCompany(company);
+        resetWorkOrderDraft();
         selectedAddress = null;
         selectedWorkOrder = null;
         propertyFolders.clear();
@@ -752,7 +753,7 @@ private void buildLegacyWorkOrderUi() {
                     companyWriteBlockedUntilRefresh = false;
                     renderSavedMaster();
                     setNotBusy();
-                    showHomeInlineMessage("Company renamed to " + verified.name() + ".");
+                    showHomeSuccessMessage("Company renamed to " + verified.name() + ".");
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> {
@@ -985,6 +986,7 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void openAddress(DriveFolder address) {
+        resetWorkOrderDraft();
         selectedAddress = address;
         folderPrefs.setCurrentAddress(address);
         selectedWorkOrder = folderPrefs.getCurrentWorkOrder();
@@ -1088,6 +1090,14 @@ private void buildLegacyWorkOrderUi() {
         }
     }
 
+    private void resetWorkOrderDraft() {
+        selectedDate = LocalDate.now();
+        if (workOrderInput != null) {
+            workOrderInput.setText("");
+        }
+        updateDateButton();
+    }
+
     private void useOrCreateWorkOrder() {
         if (selectedAddress == null) {
             showMessage("Choose an address first.");
@@ -1156,7 +1166,7 @@ private void buildLegacyWorkOrderUi() {
                         workOrderFolders.clear();
                         workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
-                        selectWorkOrder(existing, "Existing work-order folder reused");
+                        selectWorkOrder(existing, "Existing work-order folder reused", true);
                     });
                     return;
                 }
@@ -1194,7 +1204,7 @@ private void buildLegacyWorkOrderUi() {
                     workOrderFolders.clear();
                     workOrderFolders.addAll(afterCreate);
                     notifyFolderAdapters();
-                    selectWorkOrder(verified, "Work-order folder created");
+                    selectWorkOrder(verified, "Work-order folder created", true);
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> {
@@ -1339,7 +1349,7 @@ private void buildLegacyWorkOrderUi() {
                     workOrderFolders.clear();
                     workOrderFolders.addAll(afterRename);
                     notifyFolderAdapters();
-                    selectWorkOrder(verified, "Empty folder reused with the same identity; photo numbering restarted at 001");
+                    selectWorkOrder(verified, "Empty folder reused with the same identity; photo numbering restarted at 001", true);
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> {
@@ -1634,7 +1644,7 @@ private void buildLegacyWorkOrderUi() {
                         workOrderFolders.clear();
                         workOrderFolders.addAll(afterRename);
                         notifyFolderAdapters();
-                        selectWorkOrder(verified, "Clear & Reuse complete with the same identity; photo numbering restarted at 001");
+                        selectWorkOrder(verified, "Clear & Reuse complete with the same identity; photo numbering restarted at 001", true);
                     });
                 } catch (Exception error) {
                     runOnUiThread(() -> {
@@ -1677,6 +1687,10 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void selectWorkOrder(DriveFolder folder, String message) {
+        selectWorkOrder(folder, message, false);
+    }
+
+    private void selectWorkOrder(DriveFolder folder, String message, boolean success) {
         if (selectedAddress == null || folder.id().equals(selectedAddress.id())) {
             selectedWorkOrder = null;
             folderPrefs.clearCurrentWorkOrder();
@@ -1689,7 +1703,9 @@ private void buildLegacyWorkOrderUi() {
         folderPrefs.setCurrentWorkOrder(folder);
         renderCurrentWorkOrder();
         if (workOrderAdapter != null) { workOrderAdapter.setSelectedId(folder.id()); }
-        setStatusText(message + ": " + PropertyDisplayName.readableFolderName(folder.name()));
+        setStatusText(
+                message + ": " + PropertyDisplayName.readableFolderName(folder.name()),
+                success ? StatusBanner.Tone.SUCCESS : StatusBanner.Tone.INFO);
         statusText.setVisibility(View.VISIBLE);
         setNotBusy();
     }
@@ -1910,15 +1926,24 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void showHomeInlineMessage(String message) {
+        showHomeInlineMessage(message, StatusBanner.Tone.INFO);
+    }
+
+    private void showHomeSuccessMessage(String message) {
+        showHomeInlineMessage(message, StatusBanner.Tone.SUCCESS);
+    }
+
+    private void showHomeInlineMessage(String message, StatusBanner.Tone tone) {
         if (homeStatusText == null) {
             return;
         }
+        StatusBanner.apply(homeStatusText, tone);
         homeStatusText.setText(message == null ? "" : message);
         homeStatusText.setVisibility(message == null || message.isBlank() ? View.GONE : View.VISIBLE);
     }
 
     private void clearHomeInlineMessage() {
-        showHomeInlineMessage(null);
+        showHomeInlineMessage(null, StatusBanner.Tone.INFO);
     }
 
     private void setBusy(String message) {
@@ -1985,9 +2010,14 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void setStatusText(String message) {
+        setStatusText(message, StatusBanner.Tone.INFO);
+    }
+
+    private void setStatusText(String message, StatusBanner.Tone tone) {
         if (statusText == null) {
             return;
         }
+        StatusBanner.apply(statusText, tone);
         statusText.setText(message == null ? "" : message);
         if (screen == Screen.WORK_ORDERS) {
             statusText.setVisibility(message == null || message.isBlank() ? View.GONE : View.VISIBLE);
@@ -1996,21 +2026,31 @@ private void buildLegacyWorkOrderUi() {
 
     private void showMessage(String message) {
         if (screen == Screen.ADDRESSES) {
-            showHomeInlineMessage(message);
+            showHomeInlineMessage(message, StatusBanner.Tone.INFO);
         } else {
-            setStatusText(message);
+            setStatusText(message, StatusBanner.Tone.INFO);
+            statusText.setVisibility(View.VISIBLE);
+        }
+        setNotBusy();
+    }
+
+    private void showSuccessMessage(String message) {
+        if (screen == Screen.ADDRESSES) {
+            showHomeInlineMessage(message, StatusBanner.Tone.SUCCESS);
+        } else {
+            setStatusText(message, StatusBanner.Tone.SUCCESS);
             statusText.setVisibility(View.VISIBLE);
         }
         setNotBusy();
     }
 
     private void showError(String prefix, Throwable error) {
-        String detail = error.getMessage();
+        String detail = error == null ? null : error.getMessage();
         String message = prefix + (detail == null ? "." : ": " + detail);
         if (screen == Screen.ADDRESSES) {
-            showHomeInlineMessage(message);
+            showHomeInlineMessage(message, StatusBanner.Tone.ERROR);
         } else {
-            setStatusText(message);
+            setStatusText(message, StatusBanner.Tone.ERROR);
             statusText.setVisibility(View.VISIBLE);
         }
         setNotBusy();
