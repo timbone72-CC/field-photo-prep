@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -1093,7 +1094,26 @@ private void buildLegacyWorkOrderUi() {
     private void resetWorkOrderDraft() {
         selectedDate = LocalDate.now();
         if (workOrderInput != null) {
+            workOrderInput.clearFocus();
+            InputMethodManager imm =
+                    (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(workOrderInput.getWindowToken(), 0);
+            }
+            workOrderInput.getText().clear();
             workOrderInput.setText("");
+            workOrderInput.setSelection(0);
+            workOrderInput.setSaveEnabled(false);
+            workOrderInput.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+
+            final EditText draftView = workOrderInput;
+            draftView.post(() -> {
+                if (draftView == workOrderInput && !draftView.hasFocus()) {
+                    draftView.getText().clear();
+                    draftView.setText("");
+                    draftView.setSelection(0);
+                }
+            });
         }
         updateDateButton();
     }
