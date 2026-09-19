@@ -57,7 +57,6 @@ public final class MultiCompanyDeviceFindingRegressionInstrumentedTest {
                     selectCompany.setAccessible(true);
                     selectCompany.invoke(activity, new DriveFolder("company-a", "TEST COMPANY A"));
 
-                    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
                     assertEquals("", input.getText().toString());
                     assertEquals(LocalDate.now(), dateField.get(activity));
                     assertTrue(!input.hasFocus());
@@ -68,6 +67,14 @@ public final class MultiCompanyDeviceFindingRegressionInstrumentedTest {
                 } catch (Exception error) {
                     throw new AssertionError(error);
                 }
+            });
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            scenario.onActivity(activity -> {
+                EditText input = activity.findViewById(R.id.work_order_name_input);
+                assertEquals("", input.getText().toString());
+                assertTrue(!input.hasFocus());
+                assertTrue(!input.isSaveEnabled());
             });
 
             scenario.recreate();
