@@ -553,6 +553,14 @@ private void buildLegacyWorkOrderUi() {
             showMessage("Set up the company workspace first.");
             return;
         }
+        if (!hasPersistedReadPermission(treeUri) || !hasPersistedWritePermission(treeUri)) {
+            showMessage("The workspace needs read/write access before a company can be added.");
+            return;
+        }
+        if (companyWriteBlockedUntilRefresh) {
+            showMessage("Refresh companies before trying another company write.");
+            return;
+        }
 
         final String requestedName;
         try {
@@ -573,7 +581,7 @@ private void buildLegacyWorkOrderUi() {
                     runOnUiThread(() -> {
                         companyFolders.clear();
                         companyFolders.addAll(folders);
-                        companyWriteBlockedUntilRefresh = true;
+                        companyWriteBlockedUntilRefresh = false;
                         setNotBusy();
                         showCompanyChoiceDialog(matches,
                                 matches.size() + " companies named " + requestedName);
@@ -661,6 +669,14 @@ private void buildLegacyWorkOrderUi() {
             showMessage("Choose a company first.");
             return;
         }
+        if (!hasPersistedReadPermission(treeUri) || !hasPersistedWritePermission(treeUri)) {
+            showMessage("The workspace needs read/write access before a company can be edited.");
+            return;
+        }
+        if (companyWriteBlockedUntilRefresh) {
+            showMessage("Refresh companies before trying another company write.");
+            return;
+        }
 
         final String requestedName;
         try {
@@ -690,7 +706,7 @@ private void buildLegacyWorkOrderUi() {
                 for (DriveFolder match : matches) {
                     if (!match.id().equals(companyId)) {
                         runOnUiThread(() -> {
-                            companyWriteBlockedUntilRefresh = true;
+                            companyWriteBlockedUntilRefresh = false;
                             setNotBusy();
                             showHomeInlineMessage("Another company already uses that exact name. Nothing was renamed.");
                         });
@@ -764,11 +780,13 @@ private void buildLegacyWorkOrderUi() {
         Uri treeUri = folderPrefs.getMasterTreeUri();
         DriveFolder master = folderPrefs.getMasterFolder();
         if (treeUri == null || master == null) {
-            showMessage("Choose a master folder first.");
+            showMessage(folderPrefs.hasWorkspace()
+                    ? "Choose a company first."
+                    : "Choose a master folder first.");
             return;
         }
         if (!hasPersistedReadPermission(treeUri) || !hasPersistedWritePermission(treeUri)) {
-            showMessage("The master folder needs read/write access before an address can be created.");
+            showMessage("The selected Drive location needs read/write access before an address can be created.");
             return;
         }
         if (createBlockedUntilRefresh) {
@@ -797,11 +815,11 @@ private void buildLegacyWorkOrderUi() {
             return;
         }
         if (!hasPersistedReadPermission(treeUri)) {
-            showMessage("Master folder access expired. Choose it again.");
+            showMessage("Drive access expired. Choose the workspace again.");
             return;
         }
         if (!hasPersistedWritePermission(treeUri)) {
-            showMessage("This master folder is read-only. Choose it again and allow write access.");
+            showMessage("This Drive workspace is read-only. Choose it again and allow write access.");
             return;
         }
         if (createBlockedUntilRefresh) {
@@ -903,7 +921,7 @@ private void buildLegacyWorkOrderUi() {
                         AddressFolderAmbiguity.findPossibleMatches(afterCreate, requestedName);
 
                 if (verified == null || !verified.name().equals(requestedName)) {
-                    throw new IOException("Drive returned an address ID that could not be verified under the selected master.");
+                    throw new IOException("Drive returned an address ID that could not be verified under the selected company.");
                 }
 
                 if (verifiedMatches.size() != 1
@@ -994,7 +1012,7 @@ private void buildLegacyWorkOrderUi() {
         }
         Uri treeUri = folderPrefs.getMasterTreeUri();
         if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
-            showMessage("Master folder access expired. Choose it again.");
+            showMessage("Drive access expired. Choose the workspace again.");
             return;
         }
 
@@ -1055,11 +1073,11 @@ private void buildLegacyWorkOrderUi() {
         }
         Uri treeUri = folderPrefs.getMasterTreeUri();
         if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
-            showMessage("Master folder access expired. Choose it again.");
+            showMessage("Drive access expired. Choose the workspace again.");
             return;
         }
         if (!hasPersistedWritePermission(treeUri)) {
-            showMessage("This master folder is read-only. Choose it again and allow write access.");
+            showMessage("This Drive workspace is read-only. Choose it again and allow write access.");
             return;
         }
         if (createBlockedUntilRefresh) {
@@ -1176,11 +1194,11 @@ private void buildLegacyWorkOrderUi() {
         }
         Uri treeUri = folderPrefs.getMasterTreeUri();
         if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
-            showMessage("Master folder access expired. Choose it again.");
+            showMessage("Drive access expired. Choose the workspace again.");
             return;
         }
         if (!hasPersistedWritePermission(treeUri)) {
-            showMessage("This master folder is read-only. Choose it again and allow write access.");
+            showMessage("This Drive workspace is read-only. Choose it again and allow write access.");
             return;
         }
         if (createBlockedUntilRefresh) {
@@ -1321,11 +1339,11 @@ private void buildLegacyWorkOrderUi() {
         }
         Uri treeUri = folderPrefs.getMasterTreeUri();
         if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
-            showMessage("Master folder access expired. Choose it again.");
+            showMessage("Drive access expired. Choose the workspace again.");
             return;
         }
         if (!hasPersistedWritePermission(treeUri)) {
-            showMessage("This master folder is read-only. Choose it again and allow write access.");
+            showMessage("This Drive workspace is read-only. Choose it again and allow write access.");
             return;
         }
         if (createBlockedUntilRefresh) {
