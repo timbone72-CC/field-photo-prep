@@ -75,8 +75,10 @@ public final class MainActivity extends Activity {
     private TextView homePropertyCountText;
     private TextView homeEmptyText;
     private View homeDriveStatusDot;
+    private View homeCompanyClickTarget;
     private ProgressBar homeProgress;
     private ImageButton driveOptionsButton;
+    private Button homeCompanySwitchButton;
     private Button homeNextActionButton;
 
     private TextView addressText;
@@ -182,8 +184,10 @@ private void buildHomeUi() {
     homePropertyCountText = homeRoot.findViewById(R.id.home_property_count);
     homeEmptyText = homeRoot.findViewById(R.id.home_empty_text);
     homeDriveStatusDot = homeRoot.findViewById(R.id.drive_status_dot);
+    homeCompanyClickTarget = homeRoot.findViewById(R.id.home_company_click_target);
     homeProgress = homeRoot.findViewById(R.id.home_progress);
     driveOptionsButton = homeRoot.findViewById(R.id.home_drive_options_button);
+    homeCompanySwitchButton = homeRoot.findViewById(R.id.home_company_switch_button);
     homeNextActionButton = homeRoot.findViewById(R.id.home_next_action);
 
     chooseMasterButton = homeRoot.findViewById(R.id.home_connect_button);
@@ -198,6 +202,8 @@ private void buildHomeUi() {
     refreshAddressButton.setOnClickListener(v -> refreshHomeFolders());
     useCreateAddressButton.setOnClickListener(v -> showAddressEntryDialog());
     driveOptionsButton.setOnClickListener(this::showDriveOptions);
+    homeCompanyClickTarget.setOnClickListener(v -> openCompanySwitcher());
+    homeCompanySwitchButton.setOnClickListener(v -> openCompanySwitcher());
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
     homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
 
@@ -243,6 +249,18 @@ private void openSavedPhotosFromHome() {
 }
 
 
+    private void openCompanySwitcher() {
+        if (busy) {
+            showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            return;
+        }
+        if (!folderPrefs.hasWorkspace()) {
+            showHomeInlineMessage("Set up a company workspace before switching companies.");
+            return;
+        }
+        showCompanyChooser();
+    }
+
     private void showDriveOptions(View anchor) {
         if (busy) {
             showHomeInlineMessage("Wait for the current Drive operation to finish.");
@@ -255,7 +273,7 @@ private void openSavedPhotosFromHome() {
         } else if (folderPrefs.getCurrentCompany() == null) {
             items = new CharSequence[]{"Choose Company", "Add Company", "Change Workspace"};
         } else {
-            items = new CharSequence[]{"Switch Company", "Add Company", "Edit Company", "Change Workspace"};
+            items = new CharSequence[]{"Add Company", "Edit Company", "Change Workspace"};
         }
 
         new AlertDialog.Builder(this)
@@ -1870,7 +1888,26 @@ private void buildLegacyWorkOrderUi() {
         if (driveOptionsButton != null) {
             driveOptionsButton.setEnabled(treeUri != null && !busy);
         }
+        renderCompanySwitchControl(canRead, company);
         renderPropertyCountAndEmptyState();
+    }
+
+    private void renderCompanySwitchControl(boolean canRead, DriveFolder company) {
+        boolean available = folderPrefs != null
+                && folderPrefs.hasWorkspace()
+                && canRead;
+        if (homeCompanySwitchButton != null) {
+            homeCompanySwitchButton.setVisibility(available ? View.VISIBLE : View.GONE);
+            homeCompanySwitchButton.setText(company == null ? "Choose" : "Switch");
+            homeCompanySwitchButton.setEnabled(available && !busy);
+        }
+        if (homeCompanyClickTarget != null) {
+            homeCompanyClickTarget.setEnabled(available && !busy);
+            homeCompanyClickTarget.setClickable(available && !busy);
+            homeCompanyClickTarget.setContentDescription(company == null
+                    ? "Choose company"
+                    : "Current company: " + company.name() + ". Tap to switch company.");
+        }
     }
 
     private void tintDriveStatusDot(int colorRes) {
@@ -1979,6 +2016,13 @@ private void buildLegacyWorkOrderUi() {
         chooseMasterButton.setEnabled(false);
         refreshAddressButton.setEnabled(false);
         driveOptionsButton.setEnabled(false);
+        if (homeCompanySwitchButton != null) {
+            homeCompanySwitchButton.setEnabled(false);
+        }
+        if (homeCompanyClickTarget != null) {
+            homeCompanyClickTarget.setEnabled(false);
+            homeCompanyClickTarget.setClickable(false);
+        }
         useCreateAddressButton.setEnabled(false);
         backButton.setEnabled(false);
         refreshWorkOrdersButton.setEnabled(false);
@@ -2003,6 +2047,7 @@ private void buildLegacyWorkOrderUi() {
             homeProgress.setVisibility(View.GONE);
         }
         boolean companyReady = folderPrefs.getMasterFolder() != null;
+        renderCompanySwitchControl(canRead, folderPrefs.getCurrentCompany());
         folderList.setEnabled(canRead && companyReady);
         if (screen == Screen.ADDRESSES) {
             chooseMasterButton.setEnabled(true);

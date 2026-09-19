@@ -48,8 +48,8 @@ public final class HomeDriveOptionsInstrumentedTest {
                 assertTrue(overflow.performClick());
             });
 
-            assertFalse("Company options must expose Switch Company",
-                    awaitText(instrumentation, "Switch Company").isEmpty());
+            assertTrue("Switch Company should no longer be buried in overflow",
+                    findText(instrumentation, "Switch Company").isEmpty());
             assertFalse("Company options must expose Add Company",
                     awaitText(instrumentation, "Add Company").isEmpty());
             assertFalse("Company options must expose Edit Company",
@@ -67,15 +67,41 @@ public final class HomeDriveOptionsInstrumentedTest {
             instrumentation.waitForIdleSync();
 
             scenario.onActivity(activity -> {
+                View switchButton = activity.findViewById(R.id.home_company_switch_button);
+                View companyTarget = activity.findViewById(R.id.home_company_click_target);
+                switchButton.setVisibility(View.VISIBLE);
+                switchButton.setEnabled(true);
+                companyTarget.setEnabled(true);
+                companyTarget.setClickable(true);
+
+                assertTrue("Home must expose a direct company Switch action",
+                        switchButton.hasOnClickListeners());
+                assertTrue("Company-name area must also switch companies directly",
+                        companyTarget.hasOnClickListeners());
+                assertTrue("Visible company switch must be enabled while idle",
+                        switchButton.isEnabled());
+            });
+
+            scenario.onActivity(activity -> {
                 try {
                     Method setBusy = MainActivity.class.getDeclaredMethod("setBusy", String.class);
                     setBusy.setAccessible(true);
                     View overflow = activity.findViewById(R.id.home_drive_options_button);
+                    View switchButton = activity.findViewById(R.id.home_company_switch_button);
+                    View companyTarget = activity.findViewById(R.id.home_company_click_target);
                     overflow.setVisibility(View.VISIBLE);
                     overflow.setEnabled(true);
+                    switchButton.setVisibility(View.VISIBLE);
+                    switchButton.setEnabled(true);
+                    companyTarget.setEnabled(true);
+                    companyTarget.setClickable(true);
                     setBusy.invoke(activity, "Test Drive operation");
                     assertFalse("Drive options must be disabled while Drive work is busy",
                             overflow.isEnabled());
+                    assertFalse("Company Switch must be disabled while Drive work is busy",
+                            switchButton.isEnabled());
+                    assertFalse("Company-name switch target must be disabled while Drive work is busy",
+                            companyTarget.isEnabled());
                 } catch (Exception error) {
                     throw new AssertionError(error);
                 }
