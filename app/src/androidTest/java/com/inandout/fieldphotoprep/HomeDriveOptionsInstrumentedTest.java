@@ -7,7 +7,7 @@ import static org.junit.Assert.assertTrue;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
+import android.content.SharedPreferences;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -26,12 +26,16 @@ public final class HomeDriveOptionsInstrumentedTest {
     @Test
     public void homeOverflowExposesCompanyActionsAndHonorsBusyState() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
-        FolderPrefs prefs = new FolderPrefs(context);
-        prefs.setWorkspaceFolder(
-                Uri.parse("content://com.example.documents/tree/photos"),
-                new DriveFolder("workspace", "Photos"));
-        prefs.setCurrentCompany(new DriveFolder("company", "HNP Jobs"));
+        SharedPreferences raw =
+                context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE);
+        raw.edit()
+                .clear()
+                .putString("workspace_tree_uri", "content://com.example.documents/tree/photos")
+                .putString("workspace_folder_id", "workspace")
+                .putString("workspace_folder_name", "Photos")
+                .putString("current_company_folder_id", "company")
+                .putString("current_company_folder_name", "HNP Jobs")
+                .commit();
 
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         Intent intent = new Intent(context, MainActivity.class)
@@ -77,7 +81,7 @@ public final class HomeDriveOptionsInstrumentedTest {
                 }
             });
         } finally {
-            context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
+            raw.edit().clear().commit();
         }
     }
 
