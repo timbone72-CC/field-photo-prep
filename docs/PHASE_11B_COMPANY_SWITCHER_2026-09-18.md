@@ -12,19 +12,21 @@ Company switching is a frequent field action, so the current control makes the o
 ## Approved behavior
 
 - The active company card on Home remains the primary company/status surface.
-- In multi-company workspace mode, the card exposes a visible **Switch** control.
-- Tapping the company-name area also opens the company chooser directly.
+- In multi-company workspace mode, the company name shows a small **▼** affordance.
+- Tapping the company-name area opens the existing company chooser directly.
+- There is no separate Switch button, no company tab row, no permanent search bar, and no new company-management screen.
 - The company chooser continues to use the existing exact provider-ID selection path.
 - The overflow menu remains for lower-frequency actions: Add Company, Edit Company, Change Workspace.
-- Legacy single-company mode does not show a misleading company switch control.
+- Legacy single-company mode hides the ▼ affordance and does not make the company header a selector.
 
 ## Owning files/functions
 
 - `screen_home_properties.xml`
 - `MainActivity.buildHomeUi()`
 - `MainActivity.renderSavedMaster()`
+- `MainActivity.renderCompanySwitchControl()`
 - `MainActivity.setBusy()/setNotBusy()`
-- focused Home company-switch instrumentation tests
+- focused Home company-selector instrumentation tests
 
 ## Read surfaces
 
@@ -55,11 +57,11 @@ This change must not alter:
 ## Focused tests
 
 Prove:
-- multi-company Home renders a visible Switch control;
-- tapping Switch invokes the existing company chooser;
-- tapping the company-name region invokes the same chooser;
-- Switch is disabled while busy;
-- legacy single-company mode hides the Switch control.
+- multi-company Home renders the ▼ company-selector affordance;
+- tapping the company-name region invokes the existing chooser;
+- the company-name selector is disabled while busy;
+- legacy single-company mode hides the ▼ and leaves the header non-clickable;
+- the overflow does not duplicate the routine switch action.
 
 ## Rollback
 
