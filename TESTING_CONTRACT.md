@@ -25,8 +25,8 @@ A successful CI run on the exact final runtime head satisfies the final complete
 
 As features are implemented, automated coverage should be organized around these behavior boundaries rather than UI snapshots alone:
 
-- job identity and stored remote/provider folder identity;
-- folder creation request and returned provider folder identity;
+- workspace/company/job identity and stored remote/provider folder identity;
+- company/address/work-order folder creation or rename request and returned/preserved provider folder identity;
 - capture-to-job binding;
 - repeated multi-shot capture with a unique protected record/file per shutter press;
 - camera flash-mode state/cycling independent of photo identity and persistence;
@@ -47,7 +47,7 @@ As features are implemented, automated coverage should be organized around these
 - confirmed remote success handling;
 - failed/unknown upload handling;
 - retry idempotency and destination preservation;
-- duplicate-folder prevention;
+- duplicate-folder prevention at company, address, and work-order levels;
 - document-provider access/permission failure behavior; and
 - destructive-action guards.
 
@@ -99,13 +99,29 @@ The UI selected count and checkbox rendering are useful smoke surfaces, but they
 
 Drive-related unit tests may mock provider/API responses while developing, but a Level 3 Drive change is not considered fully verified from mocks alone.
 
-For the current Android implementation, use the affected parts of the safe SAF/DocumentsProvider reality gate in `INTEGRATION_CONTRACT.md`. The real path must prove the operator-selected master tree, actual address/work-order provider identities, the changed create/reuse/upload operation, returned remote identity where applicable, and preservation of unrelated Drive content.
+For the current Android implementation, use the affected parts of the safe SAF/DocumentsProvider reality gate in `INTEGRATION_CONTRACT.md`. The real path must prove the operator-selected workspace tree, actual company/address/work-order provider identities, the changed company create/rename/switch or address/work-order create/reuse/upload operation, returned or preserved remote identity where applicable, and preservation of unrelated Drive content.
 
 For selectable batch upload, the safe Drive gate must use disposable prepared photos only. Select a proper subset first, prove exactly that subset is created under the correct stored work-order parent while the unselected photos remain local/unattempted, then send the remaining subset and verify no duplicates or wrong-parent files.
 
 Do not inject fake folder IDs and call that a completed Drive reality gate. Synthetic IDs remain useful unit coverage only.
 
 Never use a live customer/job folder when a dedicated test folder can prove the behavior.
+
+## Multi-company regression boundary
+
+For any workspace/company change, focused coverage must prove at least:
+
+- legacy single-company preferences remain readable until explicit workspace migration;
+- selecting a workspace does not rewrite queued photo destination IDs;
+- an exact legacy company provider ID may be restored only by ID when it is a direct workspace child;
+- company switching clears current address/work-order navigation state but preserves queued-photo records;
+- company create reuses one exact match, requires operator choice for duplicates, and creates exactly one folder only after authoritative-enough absence;
+- company rename preserves provider identity and is blocked on an exact sibling-name collision;
+- address discovery/creation uses the exact selected company provider ID, never the workspace root or a sibling company;
+- restart restores the workspace and selected company without inventing a new folder; and
+- upload/reconciliation continues to use each photo's immutable stored work-order provider ID regardless of later company switching.
+
+These tests may use fake providers for focused development, but the broader-tree Android provider behavior still requires the safe real-device Drive gate before merge approval.
 
 ## Provider freshness tests
 

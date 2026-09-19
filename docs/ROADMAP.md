@@ -499,6 +499,48 @@ Default order:
 
 A later step may move earlier only when field evidence makes it more urgent and the change remains independently testable.
 
+## Phase 11 — Multi-Company Field Workflow — IN PROGRESS
+
+Goal:
+support multiple client/company Drive folders without forcing the operator through Android's folder picker every time and without weakening exact destination identity.
+
+### Phase 11A — Multi-company foundation — IN PROGRESS
+
+Field basis:
+- the business now has more than one active client/company;
+- HNP and Tresmolino are intentionally separated in Drive;
+- the current app persists one company folder as its master, so switching clients requires replacing that Drive selection;
+- the operator needs to add, edit, and switch companies inside FPP.
+
+Approved hierarchy:
+
+**field-work workspace → company → property/address → dated work order → photos**
+
+Plan:
+- keep one operator-approved SAF workspace tree;
+- discover direct company folders from Drive;
+- persist exact selected company provider identity separately from the workspace;
+- add **Switch Company**, **Add Company**, and **Edit Company** inside FPP;
+- create companies only under the exact workspace after authoritative-enough duplicate checking;
+- edit/rename only the exact selected company provider ID and block exact-name collisions;
+- scope property discovery/creation to the selected company;
+- keep existing work-order/photo destination IDs immutable across company switching;
+- retain the legacy single-company preference state as a rollback/migration source until the broader workspace path is proven;
+- require a safe disposable Android + Google Drive fixture before merge approval.
+
+Protected behavior:
+- no company deletion or move;
+- no automatic sharing change;
+- no second upload path;
+- no queued-photo destination rewrite;
+- no weakening of provider freshness, duplicate prevention, retry, reconciliation, or protected-original rules.
+
+Completion gate:
+- focused company/workspace/persistence tests pass;
+- complete Android CI passes once on the final runtime head;
+- disposable real-device Google Drive gate proves workspace persistence, company add/reuse/rename/switch, company-scoped properties, restart behavior, and one immutable-destination photo upload;
+- explicit Level 3 operator approval is given immediately before merge.
+
 ## Phase development staging rule
 
 The governed process is recorded in:
@@ -531,7 +573,7 @@ Keep out unless separately approved:
 - OCR;
 - AI photo classification;
 - separate numeric work-order IDs without demonstrated ambiguity;
-- deeper folder nesting beyond master → address → dated work order → photos.
+- deeper folder nesting beyond workspace → company → address → dated work order → photos.
 
 ## Roadmap maintenance rule
 

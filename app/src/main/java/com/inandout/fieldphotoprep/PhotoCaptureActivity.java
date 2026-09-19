@@ -354,7 +354,7 @@ private void buildUi() {
                 if (cameraError != null && !cameraError.trim().isEmpty()) {
                     summary += " Camera note: " + cameraError;
                 }
-                showPhotoStatus(summary);
+                showPhotoSuccess(summary);
             } else if (cameraError != null && !cameraError.trim().isEmpty()) {
                 showPhotoStatus(cameraError);
             } else if (resultCode == RESULT_OK) {
@@ -400,7 +400,7 @@ private void buildUi() {
                 showPhotoStatus(incomplete
                         + " confirmed upload(s) still have local cleanup pending. Drive success remains confirmed.");
             } else if (cleaned > 0) {
-                showPhotoStatus("Removed local image copies for " + cleaned
+                showPhotoSuccess("Removed local image copies for " + cleaned
                         + " previously confirmed upload(s). Drive copies and metadata were kept.");
             }
         } catch (Exception error) {
@@ -812,7 +812,7 @@ private File thumbnailSource(PendingPhotoRecord record) {
             clipboard.setPrimaryClip(ClipData.newPlainText(
                     "Field Photo Prep capture order",
                     manifest.text()));
-            showPhotoStatus("Copied exact capture order for " + manifest.count()
+            showPhotoSuccess("Copied exact capture order for " + manifest.count()
                     + " confirmed photos. Drive was unchanged.");
         } catch (Exception error) {
             showError("Could not copy a safe capture-order manifest", error);
@@ -922,7 +922,7 @@ private File thumbnailSource(PendingPhotoRecord record) {
         }
 
         if (result.complete()) {
-            showPhotoStatus(result.discardedCount() + " selected temporary photo"
+            showPhotoSuccess(result.discardedCount() + " selected temporary photo"
                     + (result.discardedCount() == 1 ? " was" : "s were")
                     + " discarded locally. Drive was unchanged.");
         } else if (result.discardedCount() == 0) {
@@ -1072,7 +1072,14 @@ private File thumbnailSource(PendingPhotoRecord record) {
                                 : completedFailure);
             } else {
                 batchSelectedPhotoIds.removeAll(completedBatch.confirmedPhotoIds());
-                showPhotoStatus(formatBatchResult(completedBatch));
+                String summary = formatBatchResult(completedBatch);
+                if (completedBatch.confirmedCount() == completedBatch.selectedCount()
+                        && completedBatch.safeFailureCount() == 0
+                        && !completedBatch.stoppedEarly()) {
+                    showPhotoSuccess(summary);
+                } else {
+                    showPhotoStatus(summary);
+                }
             }
             refreshPhotoList();
         });
@@ -1397,7 +1404,7 @@ private File thumbnailSource(PendingPhotoRecord record) {
                 return;
             }
             if (completedFailure == null && completedResult != null) {
-                showPhotoStatus("Prepared for upload: "
+                showPhotoSuccess("Prepared for upload: "
                         + formatBytes(completedResult.originalBytes()) + " → "
                         + formatBytes(completedResult.preparedBytes()) + " · "
                         + completedResult.width() + "×" + completedResult.height()
@@ -1517,10 +1524,10 @@ private File thumbnailSource(PendingPhotoRecord record) {
                 if (completedCleanupFailure == null
                         && completedCleanup != null
                         && completedCleanup.complete()) {
-                    showPhotoStatus(remote
+                    showPhotoSuccess(remote
                             + "Local original and prepared copy were removed; upload metadata was kept.");
                 } else {
-                    showPhotoStatus(remote
+                    showPhotoSuccess(remote
                             + "Local cleanup is incomplete, but remote success remains confirmed and cleanup can be retried safely.");
                 }
             } else {
@@ -1636,10 +1643,10 @@ private File thumbnailSource(PendingPhotoRecord record) {
                         if (completedCleanupFailure == null
                                 && completedCleanup != null
                                 && completedCleanup.complete()) {
-                            showPhotoStatus(remote
+                            showPhotoSuccess(remote
                                     + "Upload is confirmed and local image copies were removed.");
                         } else {
-                            showPhotoStatus(remote
+                            showPhotoSuccess(remote
                                     + "Upload is confirmed; local cleanup is incomplete but can be retried safely.");
                         }
                         break;
@@ -1888,7 +1895,7 @@ private File thumbnailSource(PendingPhotoRecord record) {
             if (id.equals(selectedPhotoId)) {
                 selectedPhotoId = null;
             }
-            showPhotoStatus("Selected temporary photo discarded locally. Drive was unchanged.");
+            showPhotoSuccess("Selected temporary photo discarded locally. Drive was unchanged.");
         } catch (Exception error) {
             showError("Could not completely discard the selected temporary photo", error);
         }
@@ -1978,16 +1985,27 @@ private File thumbnailSource(PendingPhotoRecord record) {
 
 
     private void showPhotoStatus(String message) {
+        showPhotoStatus(message, StatusBanner.Tone.INFO);
+    }
+
+    private void showPhotoSuccess(String message) {
+        showPhotoStatus(message, StatusBanner.Tone.SUCCESS);
+    }
+
+    private void showPhotoStatus(String message, StatusBanner.Tone tone) {
         if (statusText == null) {
             return;
         }
+        StatusBanner.apply(statusText, tone);
         statusText.setText(message == null ? "" : message);
         statusText.setVisibility(message == null || message.trim().isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     private void showError(String prefix, Throwable error) {
         String detail = error == null ? null : error.getMessage();
-        showPhotoStatus(prefix + (detail == null ? "." : ": " + detail));
+        showPhotoStatus(
+                prefix + (detail == null ? "." : ": " + detail),
+                StatusBanner.Tone.ERROR);
     }
 
     private int dp(int value) {

@@ -89,9 +89,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_concept_status"
-        android:padding="9dp"
-        android:textColor="@color/home_error"
+        android:background="@drawable/bg_concept_info_status"
+            android:padding="9dp"
+            android:textColor="@color/home_blue_dark"
         android:textSize="12sp"
         android:visibility="gone" />
     <ScrollView
@@ -139,6 +139,8 @@
                 android:layout_marginTop="6dp"
                 android:background="@drawable/bg_concept_card"
                 android:hint="Work order name"
+                android:importantForAutofill="no"
+                android:saveEnabled="false"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
                 android:singleLine="true"

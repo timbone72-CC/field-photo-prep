@@ -10,22 +10,32 @@ public final class NextActionGuideTest {
     @Test
     public void homeGuidanceUsesExistingConnectionAndSelectionState() {
         assertAction(
-                NextActionGuide.home(false, false, 0, false),
+                NextActionGuide.home(false, false, false, 0, 0, false),
                 NextActionGuide.Kind.CONNECT_DRIVE,
                 "Next: Connect Google Drive",
                 true);
         assertAction(
-                NextActionGuide.home(false, true, 0, false),
+                NextActionGuide.home(false, true, false, 0, 0, false),
+                NextActionGuide.Kind.ADD_COMPANY,
+                "Next: Add a Company",
+                true);
+        assertAction(
+                NextActionGuide.home(false, true, false, 2, 0, false),
+                NextActionGuide.Kind.CHOOSE_COMPANY,
+                "Next: Choose a Company",
+                true);
+        assertAction(
+                NextActionGuide.home(false, true, true, 2, 0, false),
                 NextActionGuide.Kind.ADD_PROPERTY,
                 "Next: Add a Property",
                 true);
         assertAction(
-                NextActionGuide.home(false, true, 3, false),
+                NextActionGuide.home(false, true, true, 2, 3, false),
                 NextActionGuide.Kind.CHOOSE_PROPERTY,
                 "Next: Choose a Property",
                 false);
         assertAction(
-                NextActionGuide.home(false, true, 3, true),
+                NextActionGuide.home(false, true, true, 2, 3, true),
                 NextActionGuide.Kind.OPEN_WORK_ORDERS,
                 "Next: Open Work Orders",
                 true);
@@ -107,7 +117,7 @@ public final class NextActionGuideTest {
 
     @Test
     public void busyGuidanceNeverInventsASecondActionPath() {
-        NextActionGuide.Action home = NextActionGuide.home(true, true, 10, true);
+        NextActionGuide.Action home = NextActionGuide.home(true, true, true, 2, 10, true);
         assertFalse(home.enabled());
         assertEquals("Loading…", home.label());
 
