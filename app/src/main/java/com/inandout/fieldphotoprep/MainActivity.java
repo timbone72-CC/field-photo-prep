@@ -71,6 +71,7 @@ public final class MainActivity extends Activity {
     private TextView legacyStatusText;
     private TextView legacyMasterText;
     private TextView homeMasterNameText;
+    private TextView homeCompanyChevronText;
     private TextView homeDriveStateText;
     private TextView homePropertyCountText;
     private TextView homeEmptyText;
@@ -78,7 +79,6 @@ public final class MainActivity extends Activity {
     private View homeCompanyClickTarget;
     private ProgressBar homeProgress;
     private ImageButton driveOptionsButton;
-    private Button homeCompanySwitchButton;
     private Button homeNextActionButton;
 
     private TextView addressText;
@@ -180,6 +180,7 @@ private void buildHomeUi() {
     homeRoot = LayoutInflater.from(this).inflate(R.layout.screen_home_properties, appRoot, false);
     homeStatusText = homeRoot.findViewById(R.id.home_status_text);
     homeMasterNameText = homeRoot.findViewById(R.id.home_master_name);
+    homeCompanyChevronText = homeRoot.findViewById(R.id.home_company_chevron);
     homeDriveStateText = homeRoot.findViewById(R.id.home_drive_state);
     homePropertyCountText = homeRoot.findViewById(R.id.home_property_count);
     homeEmptyText = homeRoot.findViewById(R.id.home_empty_text);
@@ -187,7 +188,6 @@ private void buildHomeUi() {
     homeCompanyClickTarget = homeRoot.findViewById(R.id.home_company_click_target);
     homeProgress = homeRoot.findViewById(R.id.home_progress);
     driveOptionsButton = homeRoot.findViewById(R.id.home_drive_options_button);
-    homeCompanySwitchButton = homeRoot.findViewById(R.id.home_company_switch_button);
     homeNextActionButton = homeRoot.findViewById(R.id.home_next_action);
 
     chooseMasterButton = homeRoot.findViewById(R.id.home_connect_button);
@@ -203,7 +203,6 @@ private void buildHomeUi() {
     useCreateAddressButton.setOnClickListener(v -> showAddressEntryDialog());
     driveOptionsButton.setOnClickListener(this::showDriveOptions);
     homeCompanyClickTarget.setOnClickListener(v -> openCompanySwitcher());
-    homeCompanySwitchButton.setOnClickListener(v -> openCompanySwitcher());
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
     homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
 
@@ -1896,17 +1895,15 @@ private void buildLegacyWorkOrderUi() {
         boolean available = folderPrefs != null
                 && folderPrefs.hasWorkspace()
                 && canRead;
-        if (homeCompanySwitchButton != null) {
-            homeCompanySwitchButton.setVisibility(available ? View.VISIBLE : View.GONE);
-            homeCompanySwitchButton.setText(company == null ? "Choose" : "Switch");
-            homeCompanySwitchButton.setEnabled(available && !busy);
+        if (homeCompanyChevronText != null) {
+            homeCompanyChevronText.setVisibility(available ? View.VISIBLE : View.GONE);
         }
         if (homeCompanyClickTarget != null) {
             homeCompanyClickTarget.setEnabled(available && !busy);
             homeCompanyClickTarget.setClickable(available && !busy);
             homeCompanyClickTarget.setContentDescription(company == null
                     ? "Choose company"
-                    : "Current company: " + company.name() + ". Tap to switch company.");
+                    : "Current company: " + company.name() + ". Tap to choose company.");
         }
     }
 
@@ -2016,9 +2013,6 @@ private void buildLegacyWorkOrderUi() {
         chooseMasterButton.setEnabled(false);
         refreshAddressButton.setEnabled(false);
         driveOptionsButton.setEnabled(false);
-        if (homeCompanySwitchButton != null) {
-            homeCompanySwitchButton.setEnabled(false);
-        }
         if (homeCompanyClickTarget != null) {
             homeCompanyClickTarget.setEnabled(false);
             homeCompanyClickTarget.setClickable(false);

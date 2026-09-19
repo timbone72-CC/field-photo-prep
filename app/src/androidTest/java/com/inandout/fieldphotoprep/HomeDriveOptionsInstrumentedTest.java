@@ -67,19 +67,29 @@ public final class HomeDriveOptionsInstrumentedTest {
             instrumentation.waitForIdleSync();
 
             scenario.onActivity(activity -> {
-                View switchButton = activity.findViewById(R.id.home_company_switch_button);
-                View companyTarget = activity.findViewById(R.id.home_company_click_target);
-                switchButton.setVisibility(View.VISIBLE);
-                switchButton.setEnabled(true);
-                companyTarget.setEnabled(true);
-                companyTarget.setClickable(true);
+                try {
+                    Method renderSelector = MainActivity.class.getDeclaredMethod(
+                            "renderCompanySwitchControl", boolean.class, DriveFolder.class);
+                    renderSelector.setAccessible(true);
+                    renderSelector.invoke(
+                            activity,
+                            true,
+                            new DriveFolder("company", "HNP Jobs"));
 
-                assertTrue("Home must expose a direct company Switch action",
-                        switchButton.hasOnClickListeners());
-                assertTrue("Company-name area must also switch companies directly",
-                        companyTarget.hasOnClickListeners());
-                assertTrue("Visible company switch must be enabled while idle",
-                        switchButton.isEnabled());
+                    View companyTarget = activity.findViewById(R.id.home_company_click_target);
+                    View chevron = activity.findViewById(R.id.home_company_chevron);
+
+                    assertTrue("Company selector chevron must be visible in multi-company mode",
+                            chevron.getVisibility() == View.VISIBLE);
+                    assertTrue("Company-name area must open the company chooser directly",
+                            companyTarget.hasOnClickListeners());
+                    assertTrue("Company selector must be enabled while idle",
+                            companyTarget.isEnabled());
+                    assertTrue("Company selector must be clickable while idle",
+                            companyTarget.isClickable());
+                } catch (Exception error) {
+                    throw new AssertionError(error);
+                }
             });
 
             scenario.onActivity(activity -> {
@@ -87,21 +97,61 @@ public final class HomeDriveOptionsInstrumentedTest {
                     Method setBusy = MainActivity.class.getDeclaredMethod("setBusy", String.class);
                     setBusy.setAccessible(true);
                     View overflow = activity.findViewById(R.id.home_drive_options_button);
-                    View switchButton = activity.findViewById(R.id.home_company_switch_button);
                     View companyTarget = activity.findViewById(R.id.home_company_click_target);
+                    View chevron = activity.findViewById(R.id.home_company_chevron);
                     overflow.setVisibility(View.VISIBLE);
                     overflow.setEnabled(true);
-                    switchButton.setVisibility(View.VISIBLE);
-                    switchButton.setEnabled(true);
                     companyTarget.setEnabled(true);
                     companyTarget.setClickable(true);
                     setBusy.invoke(activity, "Test Drive operation");
                     assertFalse("Drive options must be disabled while Drive work is busy",
                             overflow.isEnabled());
-                    assertFalse("Company Switch must be disabled while Drive work is busy",
-                            switchButton.isEnabled());
-                    assertFalse("Company-name switch target must be disabled while Drive work is busy",
+                    assertFalse("Company selector must be disabled while Drive work is busy",
                             companyTarget.isEnabled());
+                    assertFalse("Company selector must not remain clickable while Drive work is busy",
+                            companyTarget.isClickable());
+                    assertTrue("Busy state may leave the selector affordance visible",
+                            chevron.getVisibility() == View.VISIBLE);
+                } catch (Exception error) {
+                    throw new AssertionError(error);
+                }
+            });
+        } finally {
+            raw.edit().clear().commit();
+        }
+    }
+
+    @Test
+    public void legacySingleCompanyModeHidesCompanySelectorChevron() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences raw =
+                context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE);
+        raw.edit()
+                .clear()
+                .putString("master_tree_uri", "content://com.example.documents/tree/hnp")
+                .putString("master_folder_id", "hnp")
+                .putString("master_folder_name", "HNP Jobs")
+                .commit();
+
+        Intent intent = new Intent(context, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(intent)) {
+            scenario.onActivity(activity -> {
+                try {
+                    Method renderSelector = MainActivity.class.getDeclaredMethod(
+                            "renderCompanySwitchControl", boolean.class, DriveFolder.class);
+                    renderSelector.setAccessible(true);
+                    renderSelector.invoke(
+                            activity,
+                            true,
+                            new DriveFolder("hnp", "HNP Jobs"));
+
+                    View companyTarget = activity.findViewById(R.id.home_company_click_target);
+                    View chevron = activity.findViewById(R.id.home_company_chevron);
+                    assertTrue("Legacy single-company mode must hide the multi-company chevron",
+                            chevron.getVisibility() == View.GONE);
+                    assertFalse("Legacy single-company header must not act as a company chooser",
+                            companyTarget.isClickable());
                 } catch (Exception error) {
                     throw new AssertionError(error);
                 }

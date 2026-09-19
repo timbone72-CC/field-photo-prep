@@ -548,16 +548,17 @@ Field basis:
 - switching companies is a frequent field action and should be visible without hunting through secondary controls.
 
 Approved behavior:
-- Home shows a visible **Switch** control in the active company card when a multi-company workspace is connected;
-- tapping the current company area opens the same existing company chooser;
+- Home shows the current company with a small **▼** selector affordance when a multi-company workspace is connected;
+- tapping the company-name area opens the same existing company chooser;
+- no separate Switch button, company tabs, permanent search bar, or extra company-management screen;
 - overflow keeps lower-frequency **Add Company**, **Edit Company**, and **Change Workspace** actions;
-- legacy single-company mode does not show a misleading Switch control;
+- legacy single-company mode hides the selector affordance;
 - no Drive identity, persistence, upload, queue, or permission behavior changes.
 
 Completion gate:
-- focused Home-switcher regression passes;
+- focused Home company-selector regression passes;
 - complete Android CI passes on the exact final runtime head;
-- proportional phone smoke confirms HNP ↔ Tresmolino can be switched from the visible Home control.
+- proportional phone smoke confirms HNP ↔ Tresmolino can be switched from the compact Home selector.
 
 ## Phase development staging rule
 
