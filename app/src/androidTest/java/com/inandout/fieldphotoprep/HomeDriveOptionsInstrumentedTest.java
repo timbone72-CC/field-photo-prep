@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -23,9 +24,14 @@ import java.util.List;
 @RunWith(AndroidJUnit4.class)
 public final class HomeDriveOptionsInstrumentedTest {
     @Test
-    public void homeOverflowExposesOnlyChangeDriveAndHonorsBusyState() throws Exception {
+    public void homeOverflowExposesCompanyActionsAndHonorsBusyState() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE).edit().clear().commit();
+        FolderPrefs prefs = new FolderPrefs(context);
+        prefs.setWorkspaceFolder(
+                Uri.parse("content://com.example.documents/tree/photos"),
+                new DriveFolder("workspace", "Photos"));
+        prefs.setCurrentCompany(new DriveFolder("company", "HNP Jobs"));
 
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         Intent intent = new Intent(context, MainActivity.class)
@@ -38,9 +44,15 @@ public final class HomeDriveOptionsInstrumentedTest {
                 assertTrue(overflow.performClick());
             });
 
-            List<AccessibilityNodeInfo> changeDrive = awaitText(instrumentation, "Change Drive");
-            assertFalse("Drive options must expose Change Drive", changeDrive.isEmpty());
-            assertTrue("Step 3 must not add a Settings option",
+            assertFalse("Company options must expose Switch Company",
+                    awaitText(instrumentation, "Switch Company").isEmpty());
+            assertFalse("Company options must expose Add Company",
+                    awaitText(instrumentation, "Add Company").isEmpty());
+            assertFalse("Company options must expose Edit Company",
+                    awaitText(instrumentation, "Edit Company").isEmpty());
+            assertFalse("Company options must expose Change Workspace",
+                    awaitText(instrumentation, "Change Workspace").isEmpty());
+            assertTrue("Company options must not invent a Settings surface",
                     findText(instrumentation, "Settings").isEmpty());
 
             List<AccessibilityNodeInfo> cancelNodes = awaitText(instrumentation, "Cancel");
