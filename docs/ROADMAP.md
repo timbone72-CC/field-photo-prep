@@ -541,6 +541,24 @@ Completion gate:
 - disposable real-device Google Drive gate proves workspace persistence, company add/reuse/rename/switch, company-scoped properties, restart behavior, and one immutable-destination photo upload;
 - explicit Level 3 operator approval is given immediately before merge.
 
+## Phase 11B — Clear Company Switcher — IN PROGRESS
+
+Field basis:
+- multi-company switching works safely, but the routine switch action is hidden under the Home overflow menu;
+- switching companies is a frequent field action and should be visible without hunting through secondary controls.
+
+Approved behavior:
+- Home shows a visible **Switch** control in the active company card when a multi-company workspace is connected;
+- tapping the current company area opens the same existing company chooser;
+- overflow keeps lower-frequency **Add Company**, **Edit Company**, and **Change Workspace** actions;
+- legacy single-company mode does not show a misleading Switch control;
+- no Drive identity, persistence, upload, queue, or permission behavior changes.
+
+Completion gate:
+- focused Home-switcher regression passes;
+- complete Android CI passes on the exact final runtime head;
+- proportional phone smoke confirms HNP ↔ Tresmolino can be switched from the visible Home control.
+
 ## Phase development staging rule
 
 The governed process is recorded in:
