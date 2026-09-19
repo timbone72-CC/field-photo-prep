@@ -48,6 +48,7 @@ public final class MainActivity extends Activity {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final DriveClient driveClient = new DriveClient();
+    private final List<DriveFolder> companyFolders = new ArrayList<>();
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
 
@@ -57,6 +58,7 @@ public final class MainActivity extends Activity {
     private DriveFolder selectedWorkOrder;
     private LocalDate selectedDate = LocalDate.now();
     private boolean createBlockedUntilRefresh;
+    private boolean companyWriteBlockedUntilRefresh;
     private boolean busy;
 
     private FrameLayout appRoot;
@@ -115,9 +117,13 @@ public final class MainActivity extends Activity {
             showHomeInlineMessage("Google Drive is not connected.");
         } else if (hasPersistedReadPermission(savedTree)) {
             clearHomeInlineMessage();
-            refreshAddressFolders();
+            if (folderPrefs.hasWorkspace()) {
+                refreshCompanyFolders(true, false);
+            } else {
+                refreshAddressFolders();
+            }
         } else {
-            showHomeInlineMessage("Drive access expired. Reconnect the master folder.");
+            showHomeInlineMessage("Drive access expired. Reconnect the workspace.");
         }
     }
 
@@ -188,7 +194,7 @@ private void buildHomeUi() {
     homeRoot.findViewById(R.id.nav_home).setSelected(true);
 
     chooseMasterButton.setOnClickListener(v -> chooseMasterFolder());
-    refreshAddressButton.setOnClickListener(v -> refreshAddressFolders());
+    refreshAddressButton.setOnClickListener(v -> refreshHomeFolders());
     useCreateAddressButton.setOnClickListener(v -> showAddressEntryDialog());
     driveOptionsButton.setOnClickListener(this::showDriveOptions);
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
@@ -241,9 +247,38 @@ private void openSavedPhotosFromHome() {
             showHomeInlineMessage("Wait for the current Drive operation to finish.");
             return;
         }
+
+        final CharSequence[] items;
+        if (!folderPrefs.hasWorkspace()) {
+            items = new CharSequence[]{"Set Up Companies"};
+        } else if (folderPrefs.getCurrentCompany() == null) {
+            items = new CharSequence[]{"Choose Company", "Add Company", "Change Workspace"};
+        } else {
+            items = new CharSequence[]{"Switch Company", "Add Company", "Edit Company", "Change Workspace"};
+        }
+
         new AlertDialog.Builder(this)
-                .setTitle("Drive options")
-                .setItems(new CharSequence[]{"Change Drive"}, (dialog, which) -> chooseMasterFolder())
+                .setTitle("Company & Drive")
+                .setItems(items, (dialog, which) -> {
+                    String action = items[which].toString();
+                    switch (action) {
+                        case "Choose Company":
+                        case "Switch Company":
+                            showCompanyChooser();
+                            break;
+                        case "Add Company":
+                            showAddCompanyDialog();
+                            break;
+                        case "Edit Company":
+                            showEditCompanyDialog();
+                            break;
+                        case "Set Up Companies":
+                        case "Change Workspace":
+                        default:
+                            chooseMasterFolder();
+                            break;
+                    }
+                })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
@@ -339,35 +374,378 @@ private void buildLegacyWorkOrderUi() {
                 & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         try {
             getContentResolver().takePersistableUriPermission(treeUri, grantedFlags);
-            DriveFolder master = driveClient.getTreeFolder(getContentResolver(), treeUri);
-            folderPrefs.setMasterFolder(treeUri, master);
+            DriveFolder workspace = driveClient.getTreeFolder(getContentResolver(), treeUri);
+            folderPrefs.setWorkspaceFolder(treeUri, workspace);
+            companyFolders.clear();
             propertyFolders.clear();
             notifyFolderAdapters();
             showAddressScreen(false);
             renderSavedMaster();
-            refreshAddressFolders();
+            refreshCompanyFolders(true, false);
         } catch (Exception error) {
-            showError("Could not keep access to that folder", error);
+            showError("Could not keep access to that workspace", error);
         }
+    }
+
+    private void refreshHomeFolders() {
+        if (folderPrefs.hasWorkspace() && folderPrefs.getCurrentCompany() == null) {
+            refreshCompanyFolders(false, false);
+        } else {
+            refreshAddressFolders();
+        }
+    }
+
+    private void refreshCompanyFolders(boolean restoreLegacyCompany, boolean showChooserAfter) {
+        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        DriveFolder workspace = folderPrefs.getWorkspaceFolder();
+        if (treeUri == null || workspace == null) {
+            showMessage("Choose the field-work workspace first.");
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri)) {
+            showMessage("Workspace access expired. Choose it again.");
+            return;
+        }
+
+        companyWriteBlockedUntilRefresh = false;
+        setBusy("Refreshing companies…");
+        executor.execute(() -> {
+            try {
+                List<DriveFolder> folders = driveClient.listFolders(
+                        getContentResolver(), treeUri, workspace.id());
+                runOnUiThread(() -> {
+                    companyFolders.clear();
+                    companyFolders.addAll(folders);
+
+                    DriveFolder selected = folderPrefs.getCurrentCompany();
+                    DriveFolder actual = selected == null
+                            ? null
+                            : DriveClient.findById(folders, selected.id());
+
+                    if (actual == null && restoreLegacyCompany) {
+                        DriveFolder legacy = folderPrefs.getLegacyMasterFolder();
+                        if (legacy != null) {
+                            actual = DriveClient.findById(folders, legacy.id());
+                        }
+                    }
+
+                    propertyFolders.clear();
+                    notifyFolderAdapters();
+
+                    if (actual != null) {
+                        folderPrefs.setCurrentCompany(actual);
+                    } else {
+                        folderPrefs.clearCurrentCompany();
+                    }
+
+                    renderSavedMaster();
+                    setNotBusy();
+
+                    if (showChooserAfter) {
+                        if (companyFolders.isEmpty()) {
+                            showHomeInlineMessage("No companies are in this workspace yet. Use Add Company.");
+                        } else {
+                            showCompanyChoiceDialog(companyFolders, "Choose Company");
+                        }
+                    } else if (actual != null) {
+                        refreshAddressFolders();
+                    } else {
+                        showHomeInlineMessage(companyFolders.isEmpty()
+                                ? "No companies yet. Use ⋯ → Add Company."
+                                : "Choose a company to see its properties.");
+                    }
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    companyWriteBlockedUntilRefresh = true;
+                    showError("Could not read company folders", error);
+                });
+            }
+        });
+    }
+
+    private void showCompanyChooser() {
+        if (!folderPrefs.hasWorkspace()) {
+            chooseMasterFolder();
+            return;
+        }
+        refreshCompanyFolders(false, true);
+    }
+
+    private void showCompanyChoiceDialog(List<DriveFolder> choices, String title) {
+        if (choices == null || choices.isEmpty()) {
+            showHomeInlineMessage("No companies are available.");
+            return;
+        }
+
+        CharSequence[] labels = new CharSequence[choices.size()];
+        for (int i = 0; i < choices.size(); i++) {
+            DriveFolder choice = choices.get(i);
+            int sameNameCount = 0;
+            for (DriveFolder candidate : choices) {
+                if (candidate.name().equals(choice.name())) {
+                    sameNameCount++;
+                }
+            }
+            labels[i] = sameNameCount > 1
+                    ? choice.name() + " • " + shortFolderId(choice.id())
+                    : choice.name();
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setItems(labels, (dialog, which) -> selectCompany(choices.get(which)))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private String shortFolderId(String id) {
+        if (id == null || id.length() <= 6) {
+            return id == null ? "unknown" : id;
+        }
+        return id.substring(id.length() - 6);
+    }
+
+    private void selectCompany(DriveFolder company) {
+        folderPrefs.setCurrentCompany(company);
+        selectedAddress = null;
+        selectedWorkOrder = null;
+        propertyFolders.clear();
+        workOrderFolders.clear();
+        notifyFolderAdapters();
+        renderSavedMaster();
+        clearHomeInlineMessage();
+        refreshAddressFolders();
+    }
+
+    private void showAddCompanyDialog() {
+        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        DriveFolder workspace = folderPrefs.getWorkspaceFolder();
+        if (treeUri == null || workspace == null) {
+            showMessage("Set up the company workspace first.");
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri) || !hasPersistedWritePermission(treeUri)) {
+            showMessage("The workspace needs read/write access before a company can be added.");
+            return;
+        }
+        if (companyWriteBlockedUntilRefresh) {
+            showMessage("Refresh companies before trying another company write.");
+            return;
+        }
+
+        EditText input = new EditText(this);
+        input.setHint("Company name");
+        input.setSingleLine(true);
+        new AlertDialog.Builder(this)
+                .setTitle("Add Company")
+                .setView(input)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Use / Create", (dialog, which) ->
+                        useOrCreateCompany(input.getText().toString()))
+                .show();
+    }
+
+    private void useOrCreateCompany(String rawName) {
+        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        DriveFolder workspace = folderPrefs.getWorkspaceFolder();
+        if (treeUri == null || workspace == null) {
+            showMessage("Set up the company workspace first.");
+            return;
+        }
+
+        final String requestedName;
+        try {
+            requestedName = CompanyFolderName.build(rawName);
+        } catch (IllegalArgumentException error) {
+            showMessage(error.getMessage());
+            return;
+        }
+
+        setBusy("Checking for company " + requestedName + "…");
+        executor.execute(() -> {
+            try {
+                List<DriveFolder> folders = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, workspace.id());
+                List<DriveFolder> matches = DriveClient.findExactNameMatches(folders, requestedName);
+
+                if (matches.size() > 1) {
+                    runOnUiThread(() -> {
+                        companyFolders.clear();
+                        companyFolders.addAll(folders);
+                        companyWriteBlockedUntilRefresh = true;
+                        setNotBusy();
+                        showCompanyChoiceDialog(matches,
+                                matches.size() + " companies named " + requestedName);
+                    });
+                    return;
+                }
+
+                if (matches.size() == 1) {
+                    DriveFolder existing = matches.get(0);
+                    runOnUiThread(() -> {
+                        companyFolders.clear();
+                        companyFolders.addAll(folders);
+                        setNotBusy();
+                        selectCompany(existing);
+                    });
+                    return;
+                }
+
+                DriveFolder created = driveClient.createFolder(
+                        getContentResolver(), treeUri, workspace.id(), requestedName);
+                List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, workspace.id());
+                DriveFolder verified = DriveClient.findById(afterCreate, created.id());
+                List<DriveFolder> verifiedMatches =
+                        DriveClient.findExactNameMatches(afterCreate, requestedName);
+
+                if (verified == null
+                        || !verified.name().equals(requestedName)
+                        || verifiedMatches.size() != 1
+                        || !verifiedMatches.get(0).id().equals(created.id())) {
+                    throw new IOException("Drive could not verify exactly one new company under the workspace.");
+                }
+
+                runOnUiThread(() -> {
+                    companyFolders.clear();
+                    companyFolders.addAll(afterCreate);
+                    companyWriteBlockedUntilRefresh = false;
+                    setNotBusy();
+                    selectCompany(verified);
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    companyWriteBlockedUntilRefresh = true;
+                    showError("Company create result is not safe to repeat. Refresh companies before trying again", error);
+                });
+            }
+        });
+    }
+
+    private void showEditCompanyDialog() {
+        DriveFolder company = folderPrefs.getCurrentCompany();
+        if (company == null) {
+            showMessage("Choose a company first.");
+            return;
+        }
+        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        if (treeUri == null || !hasPersistedReadPermission(treeUri)
+                || !hasPersistedWritePermission(treeUri)) {
+            showMessage("The workspace needs read/write access before a company can be edited.");
+            return;
+        }
+        if (companyWriteBlockedUntilRefresh) {
+            showMessage("Refresh companies before trying another company write.");
+            return;
+        }
+
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setText(company.name());
+        input.setSelection(input.getText().length());
+        new AlertDialog.Builder(this)
+                .setTitle("Edit Company")
+                .setView(input)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Rename", (dialog, which) ->
+                        renameCurrentCompany(input.getText().toString()))
+                .show();
+    }
+
+    private void renameCurrentCompany(String rawName) {
+        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        DriveFolder workspace = folderPrefs.getWorkspaceFolder();
+        DriveFolder company = folderPrefs.getCurrentCompany();
+        if (treeUri == null || workspace == null || company == null) {
+            showMessage("Choose a company first.");
+            return;
+        }
+
+        final String requestedName;
+        try {
+            requestedName = CompanyFolderName.build(rawName);
+        } catch (IllegalArgumentException error) {
+            showMessage(error.getMessage());
+            return;
+        }
+
+        if (requestedName.equals(company.name())) {
+            showMessage("Company name is unchanged.");
+            return;
+        }
+
+        final String companyId = company.id();
+        setBusy("Checking company name…");
+        executor.execute(() -> {
+            try {
+                List<DriveFolder> folders = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, workspace.id());
+                DriveFolder actual = DriveClient.findById(folders, companyId);
+                if (actual == null) {
+                    throw new IOException("The selected company is no longer present under this workspace.");
+                }
+
+                List<DriveFolder> matches = DriveClient.findExactNameMatches(folders, requestedName);
+                for (DriveFolder match : matches) {
+                    if (!match.id().equals(companyId)) {
+                        runOnUiThread(() -> {
+                            companyWriteBlockedUntilRefresh = true;
+                            setNotBusy();
+                            showHomeInlineMessage("Another company already uses that exact name. Nothing was renamed.");
+                        });
+                        return;
+                    }
+                }
+
+                DriveFolder renamed = driveClient.renameFolder(
+                        getContentResolver(), treeUri, companyId, requestedName);
+                List<DriveFolder> afterRename = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, workspace.id());
+                DriveFolder verified = DriveClient.findById(afterRename, renamed.id());
+                if (verified == null || !verified.name().equals(requestedName)) {
+                    throw new IOException("Drive did not verify the renamed company under the workspace.");
+                }
+
+                runOnUiThread(() -> {
+                    companyFolders.clear();
+                    companyFolders.addAll(afterRename);
+                    folderPrefs.setCurrentCompany(verified);
+                    companyWriteBlockedUntilRefresh = false;
+                    renderSavedMaster();
+                    setNotBusy();
+                    showHomeInlineMessage("Company renamed to " + verified.name() + ".");
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    companyWriteBlockedUntilRefresh = true;
+                    showError("Company rename could not be verified. Refresh companies before trying again", error);
+                });
+            }
+        });
     }
 
     private void refreshAddressFolders() {
         Uri treeUri = folderPrefs.getMasterTreeUri();
         DriveFolder master = folderPrefs.getMasterFolder();
         if (treeUri == null || master == null) {
-            showMessage("Choose a master folder first.");
+            showMessage(folderPrefs.hasWorkspace()
+                    ? "Choose a company first."
+                    : "Choose a master folder first.");
             return;
         }
         if (!hasPersistedReadPermission(treeUri)) {
-            showMessage("Master folder access expired. Choose it again.");
+            showMessage("Drive access expired. Choose the workspace again.");
             return;
         }
 
         createBlockedUntilRefresh = false;
+        final String parentId = master.id();
         setBusy("Refreshing address folders…");
         executor.execute(() -> {
             try {
-                List<DriveFolder> folders = driveClient.listFolders(getContentResolver(), treeUri);
+                List<DriveFolder> folders = driveClient.listFolders(
+                        getContentResolver(), treeUri, parentId);
                 runOnUiThread(() -> {
                     propertyFolders.clear();
                     propertyFolders.addAll(folders);
@@ -601,7 +979,11 @@ private void buildLegacyWorkOrderUi() {
         applySystemBarAppearance(true);
         setNotBusy();
         if (refresh && folderPrefs.getMasterTreeUri() != null) {
-            refreshAddressFolders();
+            if (folderPrefs.hasWorkspace() && folderPrefs.getCurrentCompany() == null) {
+                refreshCompanyFolders(false, false);
+            } else {
+                refreshAddressFolders();
+            }
         }
     }
 
@@ -1344,18 +1726,25 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void renderSavedMaster() {
-        DriveFolder master = folderPrefs == null ? null : folderPrefs.getMasterFolder();
-        Uri treeUri = folderPrefs == null ? null : folderPrefs.getMasterTreeUri();
+        if (folderPrefs == null) {
+            return;
+        }
+
+        DriveFolder workspace = folderPrefs.getWorkspaceFolder();
+        DriveFolder company = folderPrefs.getCurrentCompany();
+        DriveFolder legacyMaster = folderPrefs.getLegacyMasterFolder();
+        DriveFolder activeParent = folderPrefs.getMasterFolder();
+        Uri treeUri = folderPrefs.getMasterTreeUri();
         boolean canRead = treeUri != null && hasPersistedReadPermission(treeUri);
 
         if (legacyMasterText != null) {
-            legacyMasterText.setText(master == null
-                    ? "Master folder: not selected"
-                    : "Master folder: " + master.name());
+            legacyMasterText.setText(activeParent == null
+                    ? "Company: not selected"
+                    : "Company: " + activeParent.name());
         }
 
         if (homeMasterNameText != null) {
-            if (master == null) {
+            if (treeUri == null) {
                 homeMasterNameText.setText("Google Drive");
                 homeDriveStateText.setText("Not connected");
                 chooseMasterButton.setText("Connect Drive");
@@ -1363,21 +1752,39 @@ private void buildLegacyWorkOrderUi() {
                 refreshAddressButton.setVisibility(View.GONE);
                 driveOptionsButton.setVisibility(View.GONE);
                 tintDriveStatusDot(R.color.home_text_secondary);
-            } else if (canRead) {
-                homeMasterNameText.setText(master.name());
-                homeDriveStateText.setText("Drive connected");
-                chooseMasterButton.setVisibility(View.GONE);
-                refreshAddressButton.setVisibility(View.VISIBLE);
-                driveOptionsButton.setVisibility(View.VISIBLE);
-                tintDriveStatusDot(R.color.home_primary);
-            } else {
-                homeMasterNameText.setText(master.name());
+            } else if (!canRead) {
+                DriveFolder labelFolder = company != null
+                        ? company
+                        : (workspace != null ? workspace : legacyMaster);
+                homeMasterNameText.setText(labelFolder == null ? "Google Drive" : labelFolder.name());
                 homeDriveStateText.setText("Drive access expired");
                 chooseMasterButton.setText("Reconnect");
                 chooseMasterButton.setVisibility(View.VISIBLE);
                 refreshAddressButton.setVisibility(View.GONE);
                 driveOptionsButton.setVisibility(View.VISIBLE);
                 tintDriveStatusDot(R.color.home_error);
+            } else if (folderPrefs.hasWorkspace()) {
+                chooseMasterButton.setVisibility(View.GONE);
+                refreshAddressButton.setVisibility(View.VISIBLE);
+                driveOptionsButton.setVisibility(View.VISIBLE);
+                if (company == null) {
+                    homeMasterNameText.setText(workspace == null ? "Company Workspace" : workspace.name());
+                    homeDriveStateText.setText("Choose a company");
+                    tintDriveStatusDot(R.color.home_text_secondary);
+                } else {
+                    homeMasterNameText.setText(company.name());
+                    homeDriveStateText.setText(workspace == null
+                            ? "Drive connected"
+                            : "Workspace: " + workspace.name());
+                    tintDriveStatusDot(R.color.home_primary);
+                }
+            } else {
+                homeMasterNameText.setText(legacyMaster == null ? "Google Drive" : legacyMaster.name());
+                homeDriveStateText.setText("Single-company Drive");
+                chooseMasterButton.setVisibility(View.GONE);
+                refreshAddressButton.setVisibility(View.VISIBLE);
+                driveOptionsButton.setVisibility(View.VISIBLE);
+                tintDriveStatusDot(R.color.home_primary);
             }
         }
 
@@ -1385,7 +1792,7 @@ private void buildLegacyWorkOrderUi() {
             refreshAddressButton.setEnabled(canRead && !busy);
         }
         if (driveOptionsButton != null) {
-            driveOptionsButton.setEnabled(master != null && !busy);
+            driveOptionsButton.setEnabled(treeUri != null && !busy);
         }
         renderPropertyCountAndEmptyState();
     }
@@ -1405,7 +1812,9 @@ private void buildLegacyWorkOrderUi() {
         }
         if (homeEmptyText != null) {
             Uri treeUri = folderPrefs == null ? null : folderPrefs.getMasterTreeUri();
-            boolean connected = treeUri != null && hasPersistedReadPermission(treeUri);
+            boolean connected = treeUri != null
+                    && hasPersistedReadPermission(treeUri)
+                    && folderPrefs.getMasterFolder() != null;
             homeEmptyText.setVisibility(connected && !busy && propertyFolders.isEmpty()
                     ? View.VISIBLE : View.GONE);
         }
@@ -1418,16 +1827,17 @@ private void buildLegacyWorkOrderUi() {
         }
         DriveFolder master = folderPrefs.getMasterFolder();
         Uri treeUri = folderPrefs.getMasterTreeUri();
-        boolean driveConnected = master != null
-                && treeUri != null
+        boolean workspaceConnected = treeUri != null
                 && hasPersistedReadPermission(treeUri);
+        boolean companySelected = master != null;
         DriveFolder saved = folderPrefs.getCurrentAddress();
         boolean savedPropertyAvailable = saved != null
                 && DriveClient.findById(propertyFolders, saved.id()) != null;
 
         NextActionGuide.Action action = NextActionGuide.home(
                 busy,
-                driveConnected,
+                workspaceConnected,
+                companySelected,
                 propertyFolders.size(),
                 savedPropertyAvailable);
         homeNextActionButton.setText(action.label());
@@ -1439,6 +1849,9 @@ private void buildLegacyWorkOrderUi() {
         switch (action.kind()) {
             case CONNECT_DRIVE:
                 homeNextActionButton.setOnClickListener(v -> chooseMasterFolder());
+                break;
+            case CHOOSE_COMPANY:
+                homeNextActionButton.setOnClickListener(v -> showCompanyChooser());
                 break;
             case ADD_PROPERTY:
                 homeNextActionButton.setOnClickListener(v -> showAddressEntryDialog());
@@ -1500,11 +1913,13 @@ private void buildLegacyWorkOrderUi() {
         if (homeProgress != null) {
             homeProgress.setVisibility(View.GONE);
         }
-        folderList.setEnabled(canRead);
+        boolean companyReady = folderPrefs.getMasterFolder() != null;
+        folderList.setEnabled(canRead && companyReady);
         if (screen == Screen.ADDRESSES) {
             chooseMasterButton.setEnabled(true);
             refreshAddressButton.setEnabled(canRead);
-            useCreateAddressButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
+            useCreateAddressButton.setEnabled(
+                    canRead && canWrite && companyReady && !createBlockedUntilRefresh);
             photosButton.setEnabled(false);
             renderSavedMaster();
         } else {
