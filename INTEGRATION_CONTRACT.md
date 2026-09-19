@@ -5,42 +5,49 @@
 - Current local app: Android Field Photo Prep
 - Current Android Drive access: Android Storage Access Framework (SAF) and the system DocumentsProvider selected by the operator
 - Remote storage: the operator-selected Google Drive-backed document tree
-- Primary folder flow: approved master Drive folder → address folder → dated work-order folder
+- Primary folder flow: approved field-work workspace → company folder → address folder → dated work-order folder
 - Primary photo flow: captured photo → protected temporary local state → prepared copy → exact Drive work-order folder → confirmed remote file
 
-Google Drive is the long-term source of truth for address folders, work-order folders, and uploaded photos. The app may keep lightweight folder mappings and temporary upload state, but it is not a second photo archive.
+Google Drive is the long-term source of truth for company folders, address folders, work-order folders, and uploaded photos. The app may keep lightweight folder mappings and temporary upload state, but it is not a second photo archive.
 
 This contract covers the Drive boundary only. Future workbook, Free Map Router, or other-system integrations require their own documented handoff rules before runtime coupling is added.
 
 ## Current Android access model
 
 1. The Android app opens the system folder picker with `ACTION_OPEN_DOCUMENT_TREE`.
-2. The operator chooses the intended Google Drive provider/account context and the approved master folder in that system UI.
+2. The operator chooses the intended Google Drive provider/account context and the approved field-work workspace in that system UI.
 3. The app requests and persists the returned read/write tree URI permission.
 4. The persisted tree URI defines the app's approved remote-document boundary for the current Android workflow.
 5. Provider document ID is authoritative folder/file identity inside that persisted tree grant. Display name is context only.
 6. The app does not manage Google OAuth access tokens, refresh tokens, OAuth client configuration, or a service-account credential for this Android workflow.
-7. Provider/account choice remains owned by Android's system document picker and installed document provider. The app must not silently switch to another provider, account, or same-named master folder.
+7. Provider/account choice remains owned by Android's system document picker and installed document provider. The app must not silently switch to another provider, account, or same-named workspace.
 8. Any future Android change away from this SAF model is a Level 3 integration change and must be explicitly reviewed before merge.
 
 A future iOS or other-platform implementation may use a different platform access mechanism, but it must preserve the stable-identity, destination, duplicate, retry, sharing, and photo-protection behavior in `CONTRACT.md`.
 
-## Master folder contract
+## Workspace and company contract
 
-1. The operator selects or approves one master Drive folder for the initial workflow.
-2. On Android, the app stores the persisted tree URI plus the master provider document ID and display name.
-3. The master provider document ID inside the persisted tree grant is authoritative identity; name is display context.
-4. A rename of the same remote folder does not invalidate its identity when the provider identity remains the same.
-5. Loss of the persisted tree grant or inability to resolve the stored master must stop affected discovery and new child-folder creation until the operator resolves or replaces the destination.
-6. The app must not silently substitute another same-named master folder.
+1. The operator selects or approves one field-work workspace for the multi-company workflow.
+2. On Android, the app stores the persisted tree URI plus the workspace provider document ID and display name.
+3. The workspace provider document ID inside the persisted tree grant is authoritative identity; name is display context.
+4. Company folders live directly under the approved workspace. The app stores the selected company's provider document ID and display name separately from the workspace identity.
+5. The selected company provider document ID is the authoritative parent for address discovery and address creation.
+6. A rename of the same workspace or company folder does not invalidate its identity when the provider document ID remains unchanged.
+7. Before company creation or rename collision decisions, the app requires provider state safe enough for absence/collision decisions using the same fail-closed freshness rules used for address/work-order writes.
+8. One exact existing company-name match is reused; multiple exact matches require operator choice; no exact match may create one company under the exact workspace.
+9. Company rename operates only on the exact selected company provider document ID and is blocked if a different company already has the requested exact name.
+10. Switching companies clears current address/work-order navigation binding but never changes a queued photo's stored work-order destination ID.
+11. Company deletion, moving, automatic merging, and sharing changes are outside this initial multi-company scope.
+12. Loss of the persisted workspace grant or inability to resolve the selected company must stop affected discovery and new child-folder creation until the operator resolves the destination.
+13. A legacy single-company tree may remain usable until the operator explicitly selects the broader workspace. Migration must not rewrite queued work-order destination IDs or guess the legacy company from name alone.
 
 ## Address-folder discovery contract
 
-1. Google Drive as exposed through the approved document tree is authoritative for which address folders currently exist under the approved master folder.
+1. Google Drive as exposed through the approved document tree is authoritative for which address folders currently exist under the exact selected company folder.
 2. The app may query the document provider for folder metadata needed to present those address folders, including provider document ID and display name.
 3. A locally remembered address-folder list is a cache only. The app must be able to refresh from the provider.
 4. A provider document ID already linked to a remembered address remains authoritative even if its visible name changes.
-5. Before address-folder creation, the app checks the approved master folder for an exact usable name match using provider state safe enough to make an absence/create decision.
+5. Before address-folder creation, the app checks the exact selected company folder for an exact usable name match using provider state safe enough to make an absence/create decision.
 6. One exact match is reused, multiple exact matches require operator choice, and no exact match may be created as one new address folder.
 7. Discovery must not modify, rename, move, delete, or change permissions on address folders it reads.
 8. Address folders are not eligible for automatic recycling or **Clear & Reuse** in the initial model.
@@ -125,7 +132,7 @@ The Phase 3B and Phase 4 development branches implement repeated matching settle
 ## Access and permissions
 
 1. Android remote access is granted through the operator-selected persisted SAF tree URI, not through app-managed Google OAuth credentials.
-2. Use the least tree/document access that can support selecting the master folder, discovering address/work-order folders, creating folders, uploading photos, and the explicitly approved work-order-folder rename/child-deletion reuse flow.
+2. Use the least tree/document access that can support selecting the field-work workspace, discovering/creating/renaming company folders, discovering address/work-order folders, creating folders, uploading photos, and the explicitly approved work-order-folder rename/child-deletion reuse flow.
 3. Any requested platform permission or provider access that can expose metadata or content outside the approved workflow must be documented with its exact purpose before merge.
 4. If pre-existing-folder discovery or approved recycling cannot be implemented within the currently approved persisted tree grant, any broader access mechanism must be explicitly reviewed rather than silently added.
 5. Persisted URI/access data and remote identities must not be exposed unnecessarily in logs, exported job data, image metadata added by the app, or repository files.
@@ -152,24 +159,24 @@ The Phase 3B and Phase 4 development branches implement repeated matching settle
 
 ## Safe-environment rule
 
-Drive integration development and verification uses a dedicated test master folder or equivalent safe fixture whenever possible. Live customer/job folders are not test targets.
+Drive integration development and verification uses a dedicated test workspace/company fixture or equivalent safe fixture whenever possible. Live customer/job folders are not test targets.
 
 ## Android Google Drive Reality Gate
 
-Any Android runtime change that alters or depends on master-tree access, address-folder discovery, work-order-folder discovery, folder creation, folder identity, provider freshness, folder recycling, child deletion, rename, upload destination, upload confirmation, retry, batch upload orchestration, or remote file identity must complete the affected parts of this gate before being called ready for Level 3 merge approval:
+Any Android runtime change that alters or depends on workspace-tree access, company-folder discovery/creation/rename/switching, address-folder discovery, work-order-folder discovery, folder creation, folder identity, provider freshness, folder recycling, child deletion, rename, upload destination, upload confirmation, retry, batch upload orchestration, or remote file identity must complete the affected parts of this gate before being called ready for Level 3 merge approval:
 
 1. Write the real operator sequence from the initiating tap to the final visible result.
-2. Map the boundary as `app state → persisted master tree URI → address provider document ID → work-order provider document ID → DocumentsProvider operation/result → persisted app state`.
+2. Map the boundary as `app state → persisted workspace tree URI → company provider document ID → address provider document ID → work-order provider document ID → DocumentsProvider operation/result → persisted app state`.
 3. Verify the safe test folder, system document provider, persisted permission, and expected read/write access actually exist before the smoke check.
 4. Focused coverage must exercise the real state-building path; directly injecting fake document IDs or success state is useful unit coverage but is not sufficient by itself.
-5. In the safe Drive fixture, prove existing address-folder discovery returns the real children expected for the selected master folder.
+5. In the safe Drive fixture, prove workspace selection persists, company discovery returns the real direct company children, company add/reuse/rename/switch behavior preserves exact provider IDs, and address discovery returns only the real children of the selected company.
 6. Under a selected address folder, prove dated work-order discovery returns the real work-order children expected there.
 7. Prove one exact existing folder is reused without creating a duplicate and that multiple same-named folders require operator choice at each relevant level.
 8. Prove an empty old same-work-order folder can be renamed/reused without changing its provider document ID or parent.
 9. For **Clear & Reuse**, use disposable test content and prove the app shows the correct full hierarchy and child count before confirmation, removes only that folder's confirmed children, verifies emptiness, then renames/reuses the same provider identity.
 10. Attempt a safe deterministic child-deletion or rename failure when it can be produced without a production destructive testing backdoor or risk to unrelated content. If it cannot be produced safely, document that limitation and do not claim the real-provider failure path was tested.
 11. For newly created folders/files, inspect the actual Drive item and confirm it is under the expected parent and has the expected type/name.
-12. Confirm the app persisted the returned/selected provider identities and can reopen/retry without creating duplicates.
+12. Confirm the app persisted the returned/selected workspace, company, address, work-order, and remote-file provider identities as applicable and can reopen/retry without creating duplicates.
 13. Confirm unrelated test Drive content is unchanged.
 14. For upload changes, force or simulate one interrupted/failed attempt and prove the temporary recoverable photo and exact work-order destination identity survive.
 15. After confirmed upload, prove the app can remove unnecessary temporary image data without deleting the Drive copy.
