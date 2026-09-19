@@ -8,6 +8,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 
+import java.io.File;
+
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -82,6 +84,47 @@ public final class FolderPrefsParentBindingInstrumentedTest {
     }
 
     @Test
+    public void companySwitchDoesNotRewriteQueuedPhotoDestination() throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        File root = new File(context.getCacheDir(), "company-switch-queued-photo");
+        deleteRecursively(root);
+        raw.edit().clear().commit();
+        try {
+            FolderPrefs prefs = new FolderPrefs(context);
+            prefs.setWorkspaceFolder(
+                    Uri.parse("content://com.example.documents/tree/photos"),
+                    new DriveFolder("workspace", "Photos"));
+            prefs.setCurrentCompany(new DriveFolder("company-hnp", "HNP Jobs"));
+
+            DriveFolder address = new DriveFolder("address-hnp", "1607 Crestview Drive");
+            DriveFolder workOrder = new DriveFolder("work-hnp", "Grass Cut - 2026-09-18");
+            prefs.setCurrentAddress(address);
+            prefs.setCurrentWorkOrder(workOrder);
+
+            PendingPhotoStore store = new PendingPhotoStore(
+                    root,
+                    () -> "11111111-1111-1111-1111-111111111111",
+                    () -> 1_000L);
+            PendingPhotoRecord before = store.beginCapture(address, workOrder);
+
+            prefs.setCurrentCompany(new DriveFolder("company-tres", "Tresmolino Jobs"));
+
+            PendingPhotoRecord after = store.getById(before.id());
+            assertEquals("address-hnp", after.addressId());
+            assertEquals("work-hnp", after.workOrderId());
+            assertEquals("Grass Cut - 2026-09-18", after.workOrderName());
+            assertEquals(PendingPhotoRecord.State.CAPTURING, after.state());
+            assertNull(prefs.getCurrentAddress());
+            assertNull(prefs.getCurrentWorkOrder());
+        } finally {
+            raw.edit().clear().commit();
+            deleteRecursively(root);
+        }
+    }
+
+
+    @Test
     public void companyRenameBySameIdentityKeepsAddressAndWorkOrderBinding() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SharedPreferences raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -128,4 +171,17 @@ public final class FolderPrefsParentBindingInstrumentedTest {
             raw.edit().clear().commit();
         }
     }
+    private static void deleteRecursively(File file) {
+        if (file == null || !file.exists()) {
+            return;
+        }
+        File[] children = file.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                deleteRecursively(child);
+            }
+        }
+        file.delete();
+    }
+
 }
