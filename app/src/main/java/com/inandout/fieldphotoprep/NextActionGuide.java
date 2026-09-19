@@ -10,6 +10,7 @@ final class NextActionGuide {
     enum Kind {
         CONNECT_DRIVE,
         CHOOSE_COMPANY,
+        ADD_COMPANY,
         ADD_PROPERTY,
         CHOOSE_PROPERTY,
         OPEN_WORK_ORDERS,
@@ -57,6 +58,7 @@ final class NextActionGuide {
             boolean busy,
             boolean workspaceConnected,
             boolean companySelected,
+            int companyCount,
             int propertyCount,
             boolean savedPropertyAvailable) {
         if (busy) {
@@ -66,7 +68,9 @@ final class NextActionGuide {
             return enabled(Kind.CONNECT_DRIVE, "Next: Connect Google Drive");
         }
         if (!companySelected) {
-            return enabled(Kind.CHOOSE_COMPANY, "Next: Choose a Company");
+            return companyCount <= 0
+                    ? enabled(Kind.ADD_COMPANY, "Next: Add a Company")
+                    : enabled(Kind.CHOOSE_COMPANY, "Next: Choose a Company");
         }
         if (propertyCount <= 0) {
             return enabled(Kind.ADD_PROPERTY, "Next: Add a Property");
