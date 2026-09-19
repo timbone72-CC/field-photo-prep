@@ -67,17 +67,29 @@ public final class HomeDriveOptionsInstrumentedTest {
             instrumentation.waitForIdleSync();
 
             scenario.onActivity(activity -> {
-                View companyTarget = activity.findViewById(R.id.home_company_click_target);
-                View chevron = activity.findViewById(R.id.home_company_chevron);
+                try {
+                    Method renderSelector = MainActivity.class.getDeclaredMethod(
+                            "renderCompanySwitchControl", boolean.class, DriveFolder.class);
+                    renderSelector.setAccessible(true);
+                    renderSelector.invoke(
+                            activity,
+                            true,
+                            new DriveFolder("company", "HNP Jobs"));
 
-                assertTrue("Company selector chevron must be visible in multi-company mode",
-                        chevron.getVisibility() == View.VISIBLE);
-                assertTrue("Company-name area must open the company chooser directly",
-                        companyTarget.hasOnClickListeners());
-                assertTrue("Company selector must be enabled while idle",
-                        companyTarget.isEnabled());
-                assertTrue("Company selector must be clickable while idle",
-                        companyTarget.isClickable());
+                    View companyTarget = activity.findViewById(R.id.home_company_click_target);
+                    View chevron = activity.findViewById(R.id.home_company_chevron);
+
+                    assertTrue("Company selector chevron must be visible in multi-company mode",
+                            chevron.getVisibility() == View.VISIBLE);
+                    assertTrue("Company-name area must open the company chooser directly",
+                            companyTarget.hasOnClickListeners());
+                    assertTrue("Company selector must be enabled while idle",
+                            companyTarget.isEnabled());
+                    assertTrue("Company selector must be clickable while idle",
+                            companyTarget.isClickable());
+                } catch (Exception error) {
+                    throw new AssertionError(error);
+                }
             });
 
             scenario.onActivity(activity -> {
@@ -125,12 +137,24 @@ public final class HomeDriveOptionsInstrumentedTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(intent)) {
             scenario.onActivity(activity -> {
-                View companyTarget = activity.findViewById(R.id.home_company_click_target);
-                View chevron = activity.findViewById(R.id.home_company_chevron);
-                assertTrue("Legacy single-company mode must hide the multi-company chevron",
-                        chevron.getVisibility() == View.GONE);
-                assertFalse("Legacy single-company header must not act as a company chooser",
-                        companyTarget.isClickable());
+                try {
+                    Method renderSelector = MainActivity.class.getDeclaredMethod(
+                            "renderCompanySwitchControl", boolean.class, DriveFolder.class);
+                    renderSelector.setAccessible(true);
+                    renderSelector.invoke(
+                            activity,
+                            true,
+                            new DriveFolder("hnp", "HNP Jobs"));
+
+                    View companyTarget = activity.findViewById(R.id.home_company_click_target);
+                    View chevron = activity.findViewById(R.id.home_company_chevron);
+                    assertTrue("Legacy single-company mode must hide the multi-company chevron",
+                            chevron.getVisibility() == View.GONE);
+                    assertFalse("Legacy single-company header must not act as a company chooser",
+                            companyTarget.isClickable());
+                } catch (Exception error) {
+                    throw new AssertionError(error);
+                }
             });
         } finally {
             raw.edit().clear().commit();
