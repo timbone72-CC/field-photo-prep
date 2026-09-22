@@ -570,7 +570,7 @@ Governing design:
 - `docs/PHASE_12_IDENTITY_MODEL_IMPACT_2026-09-21.md`.
 
 Current status:
-- Identity Model v1 is settled design pending Level 3 governance merge;
+- Identity Model v1 is the settled Phase 12A design;
 - no Phase 12 runtime identity/authentication implementation has started;
 - current personal-Drive production remains valid;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
