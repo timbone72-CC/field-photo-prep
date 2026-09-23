@@ -37,6 +37,29 @@ In this core contract, **remote folder identity** means the stable identity retu
 
 For the current Android implementation, `INTEGRATION_CONTRACT.md` maps remote folder identity to the Android document provider's stable document ID inside the persisted Storage Access Framework (SAF) workspace-tree grant. The app does not manage Google OAuth tokens for that Android workflow.
 
+### FPP account identity
+
+The approved account identity model is recorded in `docs/IDENTITY_MODEL_V1.md`.
+
+For account/authentication work, the following rules are contractual:
+
+1. A **User** is a permanent FPP human identity. Email/login address is authentication/profile data and is not the permanent User identity.
+2. An **Organization** is the field-service business using FPP. Organization identity is not a Google account, Drive folder, provider document ID, Android device, client company, or Google Workspace subscription.
+3. Existing Drive **Company folders** represent client companies under the approved workspace. They are not FPP Organizations. HNP, Tresmolino, Tasre, and future client folders remain Drive-side business data.
+4. A **Membership** explicitly joins one User to one Organization. Identity v1 roles are only **Owner** and **Member** unless later field evidence justifies more.
+5. FPP authentication and Google Drive authorization are separate. Signing into FPP, including through Google, must not silently grant, select, change, or infer the Android Drive provider/account/workspace.
+6. Google Drive access likewise does not automatically grant FPP Organization Membership.
+7. The current Android SAF tree grant and workspace/company/property/work-order provider IDs remain platform/provider-context identity. They must not be treated as portable FPP account identity or silently restored/copied into another device/account/provider context.
+8. Moving an Organization from the current personal Drive workspace to a later business-controlled Shared Drive changes the local Drive binding/provider identities, not the User, Organization, Membership, or authentication identity.
+9. A User may eventually hold Membership in more than one Organization, but Identity v1 permits only one active Organization per app installation at a time. Organization switching must be blocked while unresolved/protected local work could cross Organization boundaries.
+10. Client-Company switching inside one active Organization continues to use the existing immutable queued-photo destination rules and must never rewrite queued destination identity.
+11. Temporary loss of account-service connectivity must not by itself destroy protected work or make ordinary safe offline capture impossible for a previously authenticated/validated active Membership. Exact session/revalidation intervals require a separately recorded authentication design.
+12. Once Membership revocation is successfully learned, the app must not authorize new ordinary Organization work under that Membership. Revocation must not automatically delete protected originals, delete Drive data, rewrite destinations, or blindly continue unresolved uploads.
+13. Sign-out and account closure are identity/account operations. They must not automatically delete protected photos or business Drive records, change Drive sharing, or rewrite provider identities.
+14. A new device must deliberately establish its own Drive binding through the supported platform access flow rather than inheriting another device's provider-bound identity.
+15. The FPP identity backend must remain an identity/account service, not a second property/work-order/photo database. Customer addresses, photos, work orders, SAF URIs, and Drive provider IDs are not required merely to authenticate a User.
+16. Identity implementation must preserve all existing photo-protection, exact-destination, upload, retry, reconciliation, cleanup, and Drive-access contracts.
+
 ## 2. Company, property, work-order, and folder identity
 
 ### Company/workspace identity

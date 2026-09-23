@@ -560,6 +560,62 @@ Completion gate:
 - complete Android CI passes on the exact final runtime head;
 - proportional phone smoke confirms HNP ↔ Tresmolino can be switched from the compact Home selector.
 
+## Phase 12 — User Identity & Release Readiness — DESIGNING
+
+Goal:
+add durable FPP User/Organization identity and release-readiness controls without conflating FPP sign-in with Google Drive authorization or turning FPP into a second job/photo database.
+
+Governing design:
+- `docs/IDENTITY_MODEL_V1.md`;
+- `docs/PHASE_12_IDENTITY_MODEL_IMPACT_2026-09-21.md`.
+
+Current status:
+- Identity Model v1 is the settled Phase 12A design;
+- no Phase 12 runtime identity/authentication implementation has started;
+- current personal-Drive production remains valid;
+- later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
+
+### Phase 12A — Identity model — DESIGN APPROVED / NOT IMPLEMENTED
+
+Approved model:
+- permanent User identity independent of email;
+- permanent Organization identity representing the field-service business;
+- explicit Membership joining User ↔ Organization;
+- only Owner and Member roles in v1;
+- invitations grant FPP Membership, never Drive permission;
+- FPP authentication is separate from Android SAF/Drive authorization;
+- Drive Client Company folders remain Drive-side data, not Organizations;
+- provider-bound Drive IDs remain local/platform-context identity;
+- one active Organization per installation in v1;
+- Organization switching blocked while unresolved/protected local work could cross the boundary;
+- offline field capture remains possible for previously authenticated/validated Membership when the account service is temporarily unavailable;
+- sign-out/revocation/account closure never automatically delete protected photos or Drive business records;
+- identity backend remains small and does not duplicate property/work-order/photo data.
+
+Deferred to the next recorded design slice:
+- authentication/backend provider;
+- Continue with Google implementation;
+- session/token storage;
+- exact offline revalidation/grace policy;
+- invitation delivery/acceptance mechanics;
+- account recovery;
+- organization-close UX.
+
+No implementation may select those choices silently; record the decision before building the dependent behavior.
+
+### Phase 12B+ — Authentication and release-readiness slices — NOT YET DESIGNED
+
+Expected later areas, to be split and governed as decisions are settled:
+- authentication architecture and first-run/new-device flow;
+- account/Drive mismatch protection;
+- App Status & Diagnostics;
+- safe recovery guidance;
+- production signing/update path;
+- clean-install/another-user reality gate;
+- account/privacy/release closeout.
+
+The sequence and exact subphase labels remain provisional until each design is recorded. Settled Phase 12A identity rules must not drift while later slices are designed.
+
 ## Phase development staging rule
 
 The governed process is recorded in:
