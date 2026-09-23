@@ -191,6 +191,6 @@ Future identity implementation must preserve all existing field-flow smoke check
 
 ## Explicit pre-merge approval status
 
-**PENDING.**
+**APPROVED — 2026-09-23.**
 
-Level 3 requires explicit operator approval after review of the exact governed diff and immediately before merge.
+The operator gave explicit pre-merge approval for PR #61 after review of the exact governed diff. This satisfies the Level 3 pre-merge approval gate.
