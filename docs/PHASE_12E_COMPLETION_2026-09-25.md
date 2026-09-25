@@ -1,12 +1,12 @@
 # Phase 12E — Runtime Authorization Enforcement Evidence
 
 Date: 2026-09-25  
-Status: **AUTOMATED GATES PASS; SAMSUNG REALITY GATE PARTIALLY PASS; PR #72 DRAFT AND UNMERGED**
+Status: **PHASE 12E COMPLETE; AUTOMATED GATES PASS; SAMSUNG REALITY GATE PASS; PR #72 APPROVED FOR MERGE**
 
 ## Exact implementation
 
 Branch: `phase-12e/runtime-authorization-enforcement`  
-Runtime head: `87720f6f660051e38eeb762497320fcfd99730f6`  
+Runtime head: `ff8403edec07e4b60bb23e17eccd3af08c66ad2c`  
 Base: `0e1104db2c2d6026a427bfa7b5baa9213b2fac25`  
 PR: https://github.com/timbone72-CC/field-photo-prep/pull/72
 
@@ -44,13 +44,15 @@ PASS on Samsung device:
 - Protected-photo counts appeared beside the correct Home property and exact work order.
 - Sign Out was correctly blocked while protected photos remained.
 - After protected work was resolved, Sign Out completed and Sign In completed successfully.
+- With account connectivity unavailable but inside the saved 72-hour validation window, captured one protected photo on disposable work order `TREE TRIM 3 - 2026-09-19`.
+- The offline photo remained protected locally, reached WAITING/Ready to upload, and produced its prepared copy.
+- After connectivity was restored, the app resumed the authorized path and the exact selected photo uploaded to Drive.
+- Device UI confirmed: `Batch finished: 1 of 1 selected photo confirmed in Drive.`
+- The resulting photo row was marked `Uploaded` under the same exact work order.
 
-Still required before merge:
-- verify one protected capture while account connectivity is unavailable but the saved validation is still inside the 72-hour grace window;
-- restore connectivity and confirm automatic account revalidation;
-- with Drive available, perform one safe disposable upload to the stored exact destination and confirm the normal protected-original / queue cleanup behavior.
+Samsung reality gate: **PASS**.
 
-The exact 72-hour boundary itself remains an automated test claim; no three-day wait is required.
+The exact 72-hour boundary, clock rollback, revocation, and session-generation race remain deterministic automated claims; no three-day wait or live revocation test was required.
 
 ## Smallest physical Samsung gate
 
@@ -65,6 +67,6 @@ Use the exact internal artifact from CI 875 and a disposable work order under th
 
 The exact 72-hour boundary, clock rollback, revocation, and session-generation race are deterministic automated claims. No real three-day wait or live revocation experiment is required. If provider state becomes uncertain, stop the affected remote path and preserve evidence.
 
-## Merge stop
+## Merge authorization
 
-Operator Level 3 merge approval was given on 2026-09-25, but merge remains gated on the still-required Samsung offline-grace capture → online revalidation → safe upload checks above. Approval does not waive required safety gates. After those checks pass, refresh exact PR diff/evidence and merge PR #72 without requesting duplicate approval unless scope changes.
+All required Phase 12E automated and proportional Samsung gates passed. Operator Level 3 merge approval was given on 2026-09-25. PR #72 may be merged after final PR metadata/evidence refresh and confirmation that the exact final branch head is green.
