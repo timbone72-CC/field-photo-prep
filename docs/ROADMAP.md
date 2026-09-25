@@ -674,11 +674,17 @@ Permanent records:
 - `docs/PHASE_12D_ANDROID_AUTH_SESSION_2026-09-24.md`
 - `docs/PHASE_12D_ANDROID_AUTH_SESSION_IMPACT_2026-09-24.md`
 
+Current final runtime evidence:
+- exact runtime head `df02a34981e601d3009875edc8fe154e2a23c936`;
+- Android CI `36122577021`: **PASS**;
+- Supabase internal + production callback URLs: configured;
+- normal Samsung sign-in + ACTIVE OWNER validation: **PASS**;
+- Samsung Recheck Account + restart persistence: **PASS**;
+- existing Drive/workspace smoke: **PASS**;
+- final session-sequencing hardening: **PASS automated**.
+
 Completion still requires:
-- Android CI;
-- Supabase redirect allowlist configuration;
-- physical internal-build recovery/sign-in/restart gate;
-- existing Drive workflow smoke;
+- install the exact final hardening APK and run one fresh Samsung recovery-link → password-update → fresh-sign-in → restart/recheck path;
 - final Level 3 operator merge approval.
 
 ### Later Phase 12 slices
