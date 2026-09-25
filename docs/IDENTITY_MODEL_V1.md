@@ -402,17 +402,30 @@ A copied support status should exclude by default:
 14. A new device must deliberately establish its own Drive Binding rather than restoring another device's provider identity.
 15. Identity implementation must preserve the existing photo-protection, destination, retry, reconciliation, and cleanup contracts.
 
-## Deferred implementation choices
+## Settled Phase 12B authentication choices
 
-This model does not yet choose:
-- authentication/backend vendor;
-- authentication/sign-in provider and implementation;
-- token/session duration;
-- offline revalidation duration;
-- invitation delivery mechanism;
-- account recovery mechanism;
+The governing authentication architecture is:
+
+`docs/PHASE_12B_SUPABASE_AUTH_ARCHITECTURE_2026-09-24.md`
+
+Settled for original FPP v1:
+- Supabase is the identity/account backend;
+- original FPP uses a **dedicated Supabase project separate from Field Photo Prep Team**;
+- Supabase Auth email/password is the initial sign-in method;
+- v1 is invitation-only after controlled first-Owner bootstrap;
+- `auth.users.id` is the permanent FPP User ID;
+- FPP Organization/Membership/Invitation data is separate from Team;
+- authorization uses RLS-backed FPP Membership records, not email or Team claims;
+- Android auth/session material is encrypted using Keystore-backed local storage;
+- a previously validated ACTIVE Membership may continue same-Organization offline work for up to 72 hours;
+- password recovery uses Supabase Auth;
+- Android SAF remains a separate Drive authorization boundary;
+- no customer job/photo data is mirrored into Supabase.
+
+Still deferred:
 - organization-close UX;
 - release/distribution channel;
-- subscription/licensing model.
+- subscription/licensing;
+- any later Google/social sign-in option.
 
-Those decisions must be designed and recorded under Phase 12 before implementation reaches them.
+Those remaining choices must be recorded before implementation reaches them.
