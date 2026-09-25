@@ -37,3 +37,16 @@ This pass does not:
 Every moved requirement must remain represented either in the universal testing contract or in exactly one routed feature pack.
 
 The history archive exists for provenance, not as a current rule source.
+
+
+## Verification evidence
+
+Initial complete Markdown-only PR head `3de935686953397d60f34217c3099cc0b90554bf`:
+- Governance Check run `36197926570`: **PASS**
+- Android CI run `36197926478`: **PASS**
+- documentation-only verification step: **PASS**
+- Java setup: skipped
+- Gradle setup/tests/build: skipped
+- APK signer/KVM/emulator/artifact steps: skipped
+
+This proves the repository keeps the stable Android CI check while avoiding expensive runtime work for an all-Markdown pull request.
