@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
@@ -108,7 +109,7 @@ final class SupabaseAuthClient {
             throw new AuthException("Could not prepare recovery request.", e);
         }
         String path = "/auth/v1/recover?redirect_to="
-                + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
+                + encode(redirectUri);
         requestObject("POST", path, body, null);
     }
 
@@ -130,7 +131,7 @@ final class SupabaseAuthClient {
 
     AuthSessionState validateMembership(AuthTokens tokens) throws IOException {
         UserIdentity user;
-        if (tokens.userId() == null || tokens.userId().isBlank()) {
+        if (tokens.userId() == null || tokens.userId().trim().isEmpty()) {
             user = getUser(tokens.accessToken());
         } else {
             user = new UserIdentity(tokens.userId(), tokens.email());
@@ -218,7 +219,7 @@ final class SupabaseAuthClient {
 
     private UserIdentity parseUser(JSONObject response) throws AuthException {
         String id = response.optString("id", "");
-        if (id.isBlank()) {
+        if (id.trim().isEmpty()) {
             throw new AuthException("Supabase returned an invalid user identity.");
         }
         return new UserIdentity(id, response.optString("email", ""));
@@ -339,7 +340,11 @@ final class SupabaseAuthClient {
         return null;
     }
 
-    private static String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    private static String encode(String value) throws AuthException {
+        try {
+            return URLEncoder.encode(value, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new AuthException("UTF-8 is unavailable.", e);
+        }
     }
 }
