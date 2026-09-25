@@ -47,6 +47,7 @@ final class RuntimeAuthorizationManager {
     private String observedMembershipId;
     private long monotonicValidatedAtSeconds = -1L;
     private long anchoredValidationWallSeconds = -1L;
+    private long sessionGeneration;
 
     RuntimeAuthorizationManager(
             SessionStore sessionStore,
@@ -63,6 +64,45 @@ final class RuntimeAuthorizationManager {
         synchronized (lock) {
             AuthSessionState stored = sessionStore.load();
             return evaluateStoredLocked(stored);
+        }
+    }
+
+    AuthSessionState storedSession() {
+        synchronized (lock) {
+            return sessionStore.load();
+        }
+    }
+
+    void replaceAuthenticatedSession(AuthSessionState state) throws Exception {
+        Objects.requireNonNull(state, "state");
+        synchronized (lock) {
+            sessionGeneration++;
+            sessionStore.save(state);
+            inFlight = null;
+            if (state.isActiveOwnerOrMember()
+                    && state.lastMembershipValidatedAtEpochSeconds() > 0L) {
+                anchoredValidationWallSeconds =
+                        state.lastMembershipValidatedAtEpochSeconds();
+                monotonicValidatedAtSeconds = clock.monotonicEpochSeconds();
+                setObservationLocked(
+                        state,
+                        RuntimeAuthorizationPolicy.Observation.active(
+                                state.userId(),
+                                state.organizationId(),
+                                state.membershipId(),
+                                state.role()));
+            } else {
+                clearObservationLocked();
+            }
+        }
+    }
+
+    void clearAuthenticatedSession() {
+        synchronized (lock) {
+            sessionGeneration++;
+            sessionStore.clear();
+            inFlight = null;
+            clearObservationLocked();
         }
     }
 
@@ -87,9 +127,12 @@ final class RuntimeAuthorizationManager {
     }
 
     private AuthorizationDecision revalidateInternal() {
-        AuthSessionState stored = sessionStore.load();
-        if (stored == null) {
-            synchronized (lock) {
+        final AuthSessionState stored;
+        final long generationAtStart;
+        synchronized (lock) {
+            stored = sessionStore.load();
+            generationAtStart = sessionGeneration;
+            if (stored == null) {
                 clearObservationLocked();
                 return evaluateStoredLocked(null);
             }
@@ -129,7 +172,7 @@ final class RuntimeAuthorizationManager {
             }
         }
 
-        if (!sameSessionVersion(sessionStore.load(), stored)) {
+        if (!isCurrentSession(generationAtStart, stored)) {
             return currentDecision();
         }
 
@@ -189,11 +232,15 @@ final class RuntimeAuthorizationManager {
             }
         }
 
-        if (!sameSessionVersion(sessionStore.load(), rotated)) {
+        if (!isCurrentSession(generationAtStart, rotated)) {
             return currentDecision();
         }
 
         synchronized (lock) {
+            if (sessionGeneration != generationAtStart
+                    || !sameSessionVersion(sessionStore.load(), rotated)) {
+                return evaluateStoredLocked(sessionStore.load());
+            }
             switch (validation.kind()) {
                 case ACTIVE:
                     AuthSessionState active = validation.activeState();
@@ -262,6 +309,15 @@ final class RuntimeAuthorizationManager {
                             RuntimeAuthorizationPolicy.Observation.noMembership());
                     return evaluateStoredLocked(noMembership);
             }
+        }
+    }
+
+    private boolean isCurrentSession(
+            long expectedGeneration,
+            AuthSessionState expectedState) {
+        synchronized (lock) {
+            return sessionGeneration == expectedGeneration
+                    && sameSessionVersion(sessionStore.load(), expectedState);
         }
     }
 
