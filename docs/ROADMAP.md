@@ -499,66 +499,61 @@ Default order:
 
 A later step may move earlier only when field evidence makes it more urgent and the change remains independently testable.
 
-## Phase 11 — Multi-Company Field Workflow — IN PROGRESS
+## Phase 11 — Multi-Company Field Workflow — COMPLETE
 
 Goal:
 support multiple client/company Drive folders without forcing the operator through Android's folder picker every time and without weakening exact destination identity.
 
-### Phase 11A — Multi-company foundation — IN PROGRESS
+### Phase 11A — Multi-company foundation — COMPLETE
 
-Field basis:
-- the business now has more than one active client/company;
-- HNP and Tresmolino are intentionally separated in Drive;
-- the current app persists one company folder as its master, so switching clients requires replacing that Drive selection;
-- the operator needs to add, edit, and switch companies inside FPP.
+Delivered and validated:
+- one operator-approved SAF workspace tree;
+- direct company discovery under that workspace;
+- exact selected company provider identity persisted separately from workspace identity;
+- Add Company / Edit Company / company switching inside FPP;
+- authoritative-enough exact-name duplicate/collision protection;
+- properties and work orders scoped to the exact selected company;
+- queued-photo work-order destinations remain immutable across company switching;
+- legacy single-company state retained as a rollback/migration source;
+- no company deletion/move, automatic sharing change, second upload path, or queued destination rewrite.
 
-Approved hierarchy:
+Completion evidence:
+- final tested runtime head `ed1990742d403f466151d9399a423a8fdaabbe69`;
+- Android CI run `35419341385`: PASS;
+- disposable real Android + Google Drive provider gate: PASS;
+- company add/discovery/rename/switch: PASS;
+- real immutable-destination upload while another company was active: PASS;
+- restart/workspace persistence: PASS;
+- hardened transient work-order draft isolation: PASS;
+- success-banner phone verification: PASS;
+- PR #57 merged at `66aeed51fc7065f4f18e06677e3931daf4f3977f`;
+- post-merge live `Photos` workspace verification proved HNP ↔ Tresmolino switching without another Android folder-picker change.
 
-**field-work workspace → company → property/address → dated work order → photos**
+Permanent record:
+`docs/PHASE_11A_MULTI_COMPANY_FOUNDATION_2026-09-18.md`
 
-Plan:
-- keep one operator-approved SAF workspace tree;
-- discover direct company folders from Drive;
-- persist exact selected company provider identity separately from the workspace;
-- add **Switch Company**, **Add Company**, and **Edit Company** inside FPP;
-- create companies only under the exact workspace after authoritative-enough duplicate checking;
-- edit/rename only the exact selected company provider ID and block exact-name collisions;
-- scope property discovery/creation to the selected company;
-- keep existing work-order/photo destination IDs immutable across company switching;
-- retain the legacy single-company preference state as a rollback/migration source until the broader workspace path is proven;
-- require a safe disposable Android + Google Drive fixture before merge approval.
+### Phase 11B — Clear Company Switcher — COMPLETE
 
-Protected behavior:
-- no company deletion or move;
-- no automatic sharing change;
-- no second upload path;
-- no queued-photo destination rewrite;
-- no weakening of provider freshness, duplicate prevention, retry, reconciliation, or protected-original rules.
-
-Completion gate:
-- focused company/workspace/persistence tests pass;
-- complete Android CI passes once on the final runtime head;
-- disposable real-device Google Drive gate proves workspace persistence, company add/reuse/rename/switch, company-scoped properties, restart behavior, and one immutable-destination photo upload;
-- explicit Level 3 operator approval is given immediately before merge.
-
-## Phase 11B — Clear Company Switcher — IN PROGRESS
-
-Field basis:
-- multi-company switching works safely, but the routine switch action is hidden under the Home overflow menu;
-- switching companies is a frequent field action and should be visible without hunting through secondary controls.
-
-Approved behavior:
-- Home shows the current company with a small **▼** selector affordance when a multi-company workspace is connected;
-- tapping the company-name area opens the same existing company chooser;
-- no separate Switch button, company tabs, permanent search bar, or extra company-management screen;
-- overflow keeps lower-frequency **Add Company**, **Edit Company**, and **Change Workspace** actions;
+Delivered and validated:
+- Home shows current company with a compact ▼ selector affordance in multi-company workspace mode;
+- tapping the company-name area opens the existing company chooser;
+- no separate Switch button, company tabs, permanent search bar, or extra management screen;
+- Add Company / Edit Company / Change Workspace remain under overflow;
 - legacy single-company mode hides the selector affordance;
-- no Drive identity, persistence, upload, queue, or permission behavior changes.
+- no Drive identity, persistence, upload, queue, or permission behavior changed.
 
-Completion gate:
-- focused Home company-selector regression passes;
-- complete Android CI passes on the exact final runtime head;
-- proportional phone smoke confirms HNP ↔ Tresmolino can be switched from the compact Home selector.
+Completion evidence:
+- final tested runtime head `3555e5135d659ef887060b5efbe7e3c5e86912ed`;
+- Android CI run `35436040473`: PASS;
+- proportional phone review completed;
+- one stale/empty startup property read was corrected through existing Refresh with no evidence of data loss or wrong company identity;
+- operator accepted the refreshed behavior and approved merge;
+- PR #59 merged at `8e9ce51749e3f5919023f5dfc9a98a089ba4f8ed`.
+
+Permanent record:
+`docs/PHASE_11B_COMPANY_SWITCHER_2026-09-18.md`
+
+The prior Phase 11 `IN PROGRESS` labels were stale documentation and were corrected by the 2026-09-24 source-of-truth reconciliation.
 
 ## Phase 12 — User Identity & Release Readiness — DESIGNING
 
@@ -567,11 +562,16 @@ add durable FPP User/Organization identity and release-readiness controls withou
 
 Governing design:
 - `docs/IDENTITY_MODEL_V1.md`;
-- `docs/PHASE_12_IDENTITY_MODEL_IMPACT_2026-09-21.md`.
+- `docs/PHASE_12_IDENTITY_MODEL_IMPACT_2026-09-21.md`;
+- `docs/SOURCE_OF_TRUTH_RECONCILIATION_2026-09-24.md`.
 
 Current status:
 - Identity Model v1 is the settled Phase 12A design;
+- operator explicitly approved/reconfirmed that model on 2026-09-24;
 - no Phase 12 runtime identity/authentication implementation has started;
+- authentication/backend technology is **not yet selected** for original FPP;
+- Team's Supabase backend is not an original-FPP backend decision;
+- PR #62 was closed unmerged after the source-of-truth audit;
 - current personal-Drive production remains valid;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
 
@@ -592,21 +592,33 @@ Approved model:
 - sign-out/revocation/account closure never automatically delete protected photos or Drive business records;
 - identity backend remains small and does not duplicate property/work-order/photo data.
 
-Deferred to the next recorded design slice:
+Still undecided and reserved for Phase 12B:
 - authentication/backend provider;
-- Continue with Google implementation;
+- sign-in method/implementation;
 - session/token storage;
 - exact offline revalidation/grace policy;
 - invitation delivery/acceptance mechanics;
 - account recovery;
 - organization-close UX.
 
-No implementation may select those choices silently; record the decision before building the dependent behavior.
+Do not infer those choices from Team, an earlier OAuth proposal, the Google account used for Drive, or another project.
 
-### Phase 12B+ — Authentication and release-readiness slices — NOT YET DESIGNED
+### Phase 12B — Authentication architecture — NOT YET DESIGNED
 
-Expected later areas, to be split and governed as decisions are settled:
-- authentication architecture and first-run/new-device flow;
+Required next design scope:
+- select the original-FPP identity/backend approach;
+- select sign-in method;
+- define session storage and offline validation behavior;
+- define invitation and recovery behavior;
+- preserve the Android SAF Drive boundary;
+- keep customer addresses, work orders, photos, Drive IDs, and SAF URIs out of the identity backend unless a separately approved requirement proves otherwise.
+
+No Phase 12B runtime implementation begins until that design is recorded and governed.
+
+### Later Phase 12 release-readiness slices
+
+Expected later areas:
+- first-run/new-device flow;
 - account/Drive mismatch protection;
 - App Status & Diagnostics;
 - safe recovery guidance;
@@ -614,7 +626,7 @@ Expected later areas, to be split and governed as decisions are settled:
 - clean-install/another-user reality gate;
 - account/privacy/release closeout.
 
-The sequence and exact subphase labels remain provisional until each design is recorded. Settled Phase 12A identity rules must not drift while later slices are designed.
+Settled Phase 12A decisions must not drift while later slices are designed.
 
 ## Phase development staging rule
 
