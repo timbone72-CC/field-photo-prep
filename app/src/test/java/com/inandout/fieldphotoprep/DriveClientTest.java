@@ -4,6 +4,7 @@ import android.provider.DocumentsContract;
 
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -11,8 +12,54 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public final class DriveClientTest {
+    @Test
+    public void deniedAuthorizationStopsFolderCreateBeforeProviderCall() throws Exception {
+        DriveClient client = new DriveClient(deniedGuard());
+
+        try {
+            client.createFolder(null, null, "parent", "New Folder");
+            fail("Expected authorization denial");
+        } catch (IOException error) {
+            assertTrue(error.getMessage().contains("revoked"));
+        }
+    }
+
+    @Test
+    public void deniedAuthorizationStopsFolderRenameBeforeProviderCall() throws Exception {
+        DriveClient client = new DriveClient(deniedGuard());
+
+        try {
+            client.renameFolder(null, null, "folder", "Renamed Folder");
+            fail("Expected authorization denial");
+        } catch (IOException error) {
+            assertTrue(error.getMessage().contains("revoked"));
+        }
+    }
+
+    @Test
+    public void deniedAuthorizationStopsFolderDeleteBeforeProviderCall() throws Exception {
+        DriveClient client = new DriveClient(deniedGuard());
+
+        try {
+            client.deleteDocument(null, null, "child");
+            fail("Expected authorization denial");
+        } catch (IOException error) {
+            assertTrue(error.getMessage().contains("revoked"));
+        }
+    }
+
+    private static AuthorizationActionGuard deniedGuard() {
+        return new AuthorizationActionGuard(() -> new AuthorizationDecision(
+                AuthorizationDecision.State.REVOKED,
+                "user-1",
+                "org-1",
+                "OWNER",
+                0L));
+    }
+
     @Test
     public void directoryMimeTypeIsAccepted() {
         assertTrue(DriveClient.isFolderMimeType(DocumentsContract.Document.MIME_TYPE_DIR));
