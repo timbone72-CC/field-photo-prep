@@ -8,14 +8,20 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
 import java.util.List;
+import java.util.Map;
 
 final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
     private final LayoutInflater inflater;
+    private final Map<String, Integer> protectedPhotoCountsByWorkOrderId;
     private String selectedId;
 
-    WorkOrderListAdapter(Context context, List<DriveFolder> folders) {
+    WorkOrderListAdapter(
+            Context context,
+            List<DriveFolder> folders,
+            Map<String, Integer> protectedPhotoCountsByWorkOrderId) {
         super(context, R.layout.row_work_order, folders);
         inflater = LayoutInflater.from(context);
+        this.protectedPhotoCountsByWorkOrderId = protectedPhotoCountsByWorkOrderId;
     }
 
     void setSelectedId(String selectedId) {
@@ -32,10 +38,12 @@ final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
         TextView title = row.findViewById(R.id.work_order_row_title);
         TextView date = row.findViewById(R.id.work_order_row_date);
         TextView state = row.findViewById(R.id.work_order_row_state);
+        TextView photoCount = row.findViewById(R.id.work_order_row_photo_count);
         if (folder == null) {
             title.setText("");
             date.setText("");
             state.setVisibility(View.GONE);
+            photoCount.setVisibility(View.GONE);
             return row;
         }
         String name = PropertyDisplayName.readableFolderName(folder.name());
@@ -61,6 +69,17 @@ final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
         boolean selected = selectedId != null && selectedId.equals(folder.id());
         row.setBackgroundResource(selected ? R.drawable.bg_concept_selected : R.drawable.bg_concept_card);
         state.setVisibility(selected ? View.VISIBLE : View.GONE);
+
+        int count = protectedPhotoCountsByWorkOrderId == null
+                ? 0
+                : protectedPhotoCountsByWorkOrderId.getOrDefault(folder.id(), 0);
+        if (count > 0) {
+            photoCount.setText(count + (count == 1 ? " photo" : " photos"));
+            photoCount.setVisibility(View.VISIBLE);
+        } else {
+            photoCount.setText("");
+            photoCount.setVisibility(View.GONE);
+        }
         return row;
     }
 }
