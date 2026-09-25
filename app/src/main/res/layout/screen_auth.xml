@@ -79,6 +79,14 @@
             android:text="Forgot Password" />
 
         <Button
+            android:id="@+id/auth_manage_members"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Manage Members"
+            android:visibility="gone" />
+
+        <Button
             android:id="@+id/auth_close"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
