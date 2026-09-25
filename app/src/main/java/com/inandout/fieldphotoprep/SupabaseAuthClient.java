@@ -186,8 +186,8 @@ final class SupabaseAuthClient {
             String accessToken,
             String refreshToken,
             long expiresAtEpochSeconds) throws IOException {
-        if (accessToken == null || accessToken.isBlank()
-                || refreshToken == null || refreshToken.isBlank()) {
+        if (accessToken == null || accessToken.trim().isEmpty()
+                || refreshToken == null || refreshToken.trim().isEmpty()) {
             throw new AuthException("The authentication link did not contain a complete session.");
         }
         UserIdentity user = getUser(accessToken);
@@ -230,7 +230,7 @@ final class SupabaseAuthClient {
             JSONObject body,
             String accessToken) throws IOException {
         String response = request(method, path, body, accessToken);
-        if (response == null || response.isBlank()) {
+        if (response == null || response.trim().isEmpty()) {
             return new JSONObject();
         }
         try {
@@ -267,7 +267,7 @@ final class SupabaseAuthClient {
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setRequestProperty("apikey", AuthConfig.publishableKey());
             connection.setRequestProperty("Accept", "application/json");
-            if (accessToken != null && !accessToken.isBlank()) {
+            if (accessToken != null && !accessToken.trim().isEmpty()) {
                 connection.setRequestProperty("Authorization", "Bearer " + accessToken);
             }
             if (body != null) {
@@ -312,7 +312,7 @@ final class SupabaseAuthClient {
 
     private static String safeErrorMessage(int code, String response) {
         String message = null;
-        if (response != null && !response.isBlank()) {
+        if (response != null && !response.trim().isEmpty()) {
             try {
                 JSONObject json = new JSONObject(response);
                 message = firstNonBlank(
@@ -324,7 +324,7 @@ final class SupabaseAuthClient {
                 // Do not expose an arbitrary raw server response.
             }
         }
-        if (message == null || message.isBlank()) {
+        if (message == null || message.trim().isEmpty()) {
             message = "Authentication request failed (" + code + ").";
         }
         return message;
@@ -332,7 +332,7 @@ final class SupabaseAuthClient {
 
     private static String firstNonBlank(String... values) {
         for (String value : values) {
-            if (value != null && !value.isBlank()) {
+            if (value != null && !value.trim().isEmpty()) {
                 return value;
             }
         }
