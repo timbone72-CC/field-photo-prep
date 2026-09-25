@@ -60,6 +60,42 @@ public final class PhotoBatchUploadRunnerTest {
     }
 
     @Test
+    public void authorityLossAfterFirstConfirmedPhotoStopsRemainingBatch() {
+        PhotoBatchUploadRunner runner = new PhotoBatchUploadRunner();
+        List<String> seen = new ArrayList<>();
+        AtomicInteger authorizationChecks = new AtomicInteger();
+
+        AuthorizationActionGuard guard = new AuthorizationActionGuard(() -> {
+            int check = authorizationChecks.incrementAndGet();
+            return new AuthorizationDecision(
+                    check == 1
+                            ? AuthorizationDecision.State.VALIDATED
+                            : AuthorizationDecision.State.REVOKED,
+                    "user-1",
+                    "org-1",
+                    "OWNER",
+                    0L);
+        });
+
+        PhotoBatchUploadRunner.BatchResult result = runner.run(
+                List.of("a", "b", "c", "d"),
+                photoId -> {
+                    seen.add(photoId);
+                    guard.requireDriveMutation();
+                    return PhotoBatchUploadRunner.AttemptResult.confirmed(true);
+                });
+
+        assertEquals(List.of("a", "b"), seen);
+        assertEquals(2, result.attemptedCount());
+        assertEquals(1, result.confirmedCount());
+        assertEquals(2, result.unattemptedCount());
+        assertTrue(result.stoppedEarly());
+        assertEquals("b", result.stoppedPhotoId());
+        assertEquals(PhotoBatchUploadRunner.Outcome.STOP_UNVERIFIED, result.stopOutcome());
+        assertTrue(result.stopDetail().contains("revoked"));
+    }
+
+    @Test
     public void uncertainResultStopsBeforeAnyLaterRemoteAttempt() {
         PhotoBatchUploadRunner runner = new PhotoBatchUploadRunner();
         List<String> seen = new ArrayList<>();
