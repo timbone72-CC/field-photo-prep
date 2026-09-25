@@ -50,7 +50,7 @@ public final class PhotoUploadCoordinator {
                 photoPreparer,
                 driveUploader,
                 null,
-                AuthorizationActionGuard.permissiveForTests());
+                Objects.requireNonNull(driveUploader, "driveUploader").authorizationGuard());
     }
 
     public PhotoUploadCoordinator(
@@ -63,7 +63,7 @@ public final class PhotoUploadCoordinator {
                 photoPreparer,
                 driveUploader,
                 driveReconciler,
-                AuthorizationActionGuard.permissiveForTests());
+                Objects.requireNonNull(driveUploader, "driveUploader").authorizationGuard());
     }
 
     PhotoUploadCoordinator(
