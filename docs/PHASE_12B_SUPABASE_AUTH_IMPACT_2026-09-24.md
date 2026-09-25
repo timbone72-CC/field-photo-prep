@@ -16,7 +16,7 @@ Reconcile the existing decision into normal FPP:
 
 - Supabase is the FPP identity/account backend.
 - Reuse existing project `Field Photo Prep Team` (`vyocaujuwrivoqynvitm`).
-- Reuse Supabase Auth users and the existing business Organization identity.
+- Reuse Supabase Auth users and preserve the already-established business Organization UUID. The missing Organization row will be restored with that exact UUID in Phase 12C.
 - Add FPP-specific Membership/Invitation tables only.
 - Do not use Team work-order/photo operational data in normal FPP.
 - Initial FPP login is Supabase email/password.
@@ -46,13 +46,21 @@ The separate `timbone72-CC/field-photo-prep-team` repo already proves:
 - trusted invitation Edge Function exists;
 - service-role credentials are kept server-side.
 
-The existing Supabase project was restored from INACTIVE on 2026-09-24 so it can be inspected/reused. Database writes were not performed as part of this design record.
+The existing Supabase project was restored from INACTIVE on 2026-09-24 and inspected.
+
+Verified live state:
+- all existing public Team operational tables are empty;
+- two Supabase Auth users exist;
+- both reference Organization UUID `494154a6-2a7a-4c98-a0a8-2143443fec0e`;
+- the corresponding `public.organizations` row is missing.
+
+Database writes were not performed as part of this design record.
 
 ## Required data
 
 Future normal FPP identity implementation requires:
 - `auth.users.id` as User identity;
-- existing `public.organizations.id` as Organization identity;
+- Organization UUID `494154a6-2a7a-4c98-a0a8-2143443fec0e`, restored into `public.organizations` during the controlled Phase 12C bootstrap;
 - FPP Membership UUID, role, status;
 - FPP Invitation UUID/status;
 - local encrypted Supabase access/refresh session;
@@ -80,7 +88,7 @@ Known server revocation overrides cached active state once learned.
 - one Membership per `(organization_id,user_id)`;
 - repeated invitation acceptance must not create duplicate Membership;
 - existing exact Supabase Auth user may be linked to an FPP invitation rather than duplicated;
-- the existing In And Out Organization row is reused.
+- the already-established In And Out Organization UUID is preserved; the missing row is restored with that exact UUID rather than generating another Organization identity.
 
 ## Security boundaries
 
