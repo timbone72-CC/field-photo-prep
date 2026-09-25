@@ -21,6 +21,7 @@ final class ProtectedWorkGuard {
         private final int cleanupPendingCount;
         private final int unreadableCount;
         private final Map<String, Integer> addressCounts;
+        private final Map<String, Integer> workOrderCounts;
 
         Result(
                 int blockingCount,
@@ -28,7 +29,8 @@ final class ProtectedWorkGuard {
                 int queuedCount,
                 int cleanupPendingCount,
                 int unreadableCount,
-                Map<String, Integer> addressCounts) {
+                Map<String, Integer> addressCounts,
+                Map<String, Integer> workOrderCounts) {
             this.blockingCount = blockingCount;
             this.capturingCount = capturingCount;
             this.queuedCount = queuedCount;
@@ -36,6 +38,8 @@ final class ProtectedWorkGuard {
             this.unreadableCount = unreadableCount;
             this.addressCounts = Collections.unmodifiableMap(
                     new HashMap<>(Objects.requireNonNull(addressCounts, "addressCounts")));
+            this.workOrderCounts = Collections.unmodifiableMap(
+                    new HashMap<>(Objects.requireNonNull(workOrderCounts, "workOrderCounts")));
         }
 
         boolean blocksSignOut() {
@@ -65,6 +69,10 @@ final class ProtectedWorkGuard {
         Map<String, Integer> addressCounts() {
             return addressCounts;
         }
+
+        Map<String, Integer> workOrderCounts() {
+            return workOrderCounts;
+        }
     }
 
     private final PendingPhotoStore photoStore;
@@ -83,6 +91,7 @@ final class ProtectedWorkGuard {
         int cleanupPending = 0;
         int unreadable = scan.corruptMetadataFiles().size();
         Map<String, Integer> addressCounts = new HashMap<>();
+        Map<String, Integer> workOrderCounts = new HashMap<>();
 
         for (PendingPhotoRecord record : scan.records()) {
             switch (record.state()) {
@@ -90,6 +99,8 @@ final class ProtectedWorkGuard {
                     if (hasNonEmptyProtectedOriginal(record)) {
                         capturing++;
                         increment(addressCounts, record.addressId());
+                    increment(workOrderCounts, record.workOrderId());
+                        increment(workOrderCounts, record.workOrderId());
                     }
                     break;
                 case WAITING:
@@ -98,11 +109,14 @@ final class ProtectedWorkGuard {
                 case UNCERTAIN:
                     queued++;
                     increment(addressCounts, record.addressId());
+                    increment(workOrderCounts, record.workOrderId());
                     break;
                 case UPLOADED:
                     if (hasAnyLocalCopy(record)) {
                         cleanupPending++;
                         increment(addressCounts, record.addressId());
+                    increment(workOrderCounts, record.workOrderId());
+                        increment(workOrderCounts, record.workOrderId());
                     }
                     break;
                 default:
@@ -117,7 +131,8 @@ final class ProtectedWorkGuard {
                 queued,
                 cleanupPending,
                 unreadable,
-                addressCounts);
+                addressCounts,
+                workOrderCounts);
     }
 
     private static void increment(Map<String, Integer> counts, String addressId) {
