@@ -143,6 +143,10 @@ final class RuntimeAuthorizationManager {
             refreshed = backend.refreshSession(stored.refreshToken());
         } catch (SupabaseAuthClient.AuthException error) {
             synchronized (lock) {
+                if (sessionGeneration != generationAtStart
+                        || !sameSessionVersion(sessionStore.load(), stored)) {
+                    return evaluateStoredLocked(sessionStore.load());
+                }
                 if (error.isAuthenticationRejected()) {
                     failClosedPersistentlyLocked(stored);
                     clearObservationLocked();
@@ -165,6 +169,10 @@ final class RuntimeAuthorizationManager {
             }
         } catch (IOException error) {
             synchronized (lock) {
+                if (sessionGeneration != generationAtStart
+                        || !sameSessionVersion(sessionStore.load(), stored)) {
+                    return evaluateStoredLocked(sessionStore.load());
+                }
                 setObservationLocked(
                         stored,
                         RuntimeAuthorizationPolicy.Observation.indeterminate());
@@ -172,26 +180,26 @@ final class RuntimeAuthorizationManager {
             }
         }
 
-        if (!isCurrentSession(generationAtStart, stored)) {
-            return currentDecision();
-        }
-
         AuthSessionState rotated = stored.withSessionTokens(
                 refreshed.accessToken(),
                 refreshed.refreshToken(),
                 refreshed.expiresAtEpochSeconds());
-        try {
-            sessionStore.save(rotated);
-        } catch (Exception persistenceError) {
-            synchronized (lock) {
-                clearObservationLocked();
+        synchronized (lock) {
+            if (sessionGeneration != generationAtStart
+                    || !sameSessionVersion(sessionStore.load(), stored)) {
+                return evaluateStoredLocked(sessionStore.load());
             }
-            return new AuthorizationDecision(
-                    AuthorizationDecision.State.RECHECK_REQUIRED,
-                    stored.userId(),
-                    stored.organizationId(),
-                    stored.role(),
-                    0L);
+            try {
+                sessionStore.save(rotated);
+            } catch (Exception persistenceError) {
+                clearObservationLocked();
+                return new AuthorizationDecision(
+                        AuthorizationDecision.State.RECHECK_REQUIRED,
+                        stored.userId(),
+                        stored.organizationId(),
+                        stored.role(),
+                        0L);
+            }
         }
 
         final long validatedAt = clock.wallEpochSeconds();
@@ -203,6 +211,10 @@ final class RuntimeAuthorizationManager {
                     validatedAt);
         } catch (SupabaseAuthClient.AuthException error) {
             synchronized (lock) {
+                if (sessionGeneration != generationAtStart
+                        || !sameSessionVersion(sessionStore.load(), rotated)) {
+                    return evaluateStoredLocked(sessionStore.load());
+                }
                 if (error.isAuthenticationRejected()) {
                     failClosedPersistentlyLocked(rotated);
                     clearObservationLocked();
@@ -225,6 +237,10 @@ final class RuntimeAuthorizationManager {
             }
         } catch (IOException error) {
             synchronized (lock) {
+                if (sessionGeneration != generationAtStart
+                        || !sameSessionVersion(sessionStore.load(), rotated)) {
+                    return evaluateStoredLocked(sessionStore.load());
+                }
                 setObservationLocked(
                         rotated,
                         RuntimeAuthorizationPolicy.Observation.indeterminate());
