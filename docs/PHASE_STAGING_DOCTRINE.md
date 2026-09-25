@@ -1,5 +1,7 @@
 # Field Photo Prep Phase Staging Doctrine
 
+> **Routing scope:** Staging philosophy for deciding how far development can proceed before a genuine physical-device or external reality gate. Some examples are historical to earlier phases; apply the permanent staging principles to current work and use the current phase build-state/design for phase-specific status.
+
 Date adopted: 2026-09-10
 
 Status: **GOVERNED PROJECT OPERATING RULE**
