@@ -208,7 +208,7 @@ public final class MemberAdminActivity extends Activity {
 
     private void handlePossibleCurrentMembershipChange(
             AuthSessionState prior,
-            String changedMembershipId) {
+            String changedMembershipId) throws IOException {
         if (!prior.membershipId().equals(changedMembershipId)) {
             reloadAfterMutation(prior, "Member updated.");
             return;
