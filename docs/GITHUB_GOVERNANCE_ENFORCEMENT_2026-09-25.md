@@ -58,7 +58,7 @@ Workflow-changing head `78860e9e08c7d95d29b268fb1ed4f8e7d8c2d8ae`:
 - instrumented image tests/internal launch smoke: PASS;
 - artifact packaging: PASS.
 
-This evidence record itself is Markdown-only and is used to prove that the next Android CI run takes the lightweight documentation path while keeping the same required `test` check.
+Because this PR also changes workflow YAML, every head in this PR correctly requires the full Android pipeline. The lightweight documentation path must be proven on the next separate PR whose complete diff is Markdown-only; do not claim that gate from this workflow-changing PR.
 
 ## Branch-protection target after this check exists
 
