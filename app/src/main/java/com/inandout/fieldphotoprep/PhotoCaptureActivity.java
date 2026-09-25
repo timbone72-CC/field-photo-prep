@@ -50,6 +50,7 @@ public final class PhotoCaptureActivity extends Activity {
     private FolderPrefs folderPrefs;
     private PendingPhotoStore photoStore;
     private PhotoPreparer photoPreparer;
+    private AuthorizationActionGuard authorizationGuard;
     private DriveFolder address;
     private DriveFolder workOrder;
     private String pendingCaptureId;
@@ -87,6 +88,8 @@ public final class PhotoCaptureActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
         folderPrefs = new FolderPrefs(this);
         photoStore = new PendingPhotoStore(new File(getFilesDir(), "pending_photos"));
         photoPreparer = new PhotoPreparer(new File(getFilesDir(), "prepared_photos"));
@@ -124,6 +127,16 @@ public final class PhotoCaptureActivity extends Activity {
         } else if (UPLOAD_GATE.isBusy()) {
             showPhotoStatus("A Drive upload, selected batch, or reconciliation check is already running. Wait for its queue result.");
             renderSelectedPhoto();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        RuntimeAuthorizationManager manager = app.authorizationManager();
+        if (manager != null) {
+            manager.revalidateAsync();
         }
     }
 
@@ -260,6 +273,7 @@ private void buildUi() {
 
         PendingPhotoRecord record;
         try {
+            authorizationGuard.requireNewCapture();
             record = photoStore.beginCapture(address, workOrder);
         } catch (Exception error) {
             showError("Could not protect a local photo before opening the camera", error);
@@ -1030,11 +1044,13 @@ private File thumbnailSource(PendingPhotoRecord record) {
         try {
             DrivePhotoUploader uploader = new DrivePhotoUploader(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri());
+                    folderPrefs.getMasterTreeUri(),
+                    authorizationGuard);
             PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                     photoStore,
                     photoPreparer,
-                    uploader);
+                    uploader,
+                    authorizationGuard);
             PhotoBatchUploadRunner runner = new PhotoBatchUploadRunner();
             final int[] position = {0};
             batchResult = runner.run(photoIds, photoId -> {
@@ -1489,7 +1505,8 @@ private File thumbnailSource(PendingPhotoRecord record) {
         try {
             DrivePhotoUploader uploader = new DrivePhotoUploader(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri());
+                    folderPrefs.getMasterTreeUri(),
+                    authorizationGuard);
             PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                     photoStore,
                     photoPreparer,
@@ -1599,7 +1616,8 @@ private File thumbnailSource(PendingPhotoRecord record) {
         try {
             DrivePhotoUploader uploader = new DrivePhotoUploader(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri());
+                    folderPrefs.getMasterTreeUri(),
+                    authorizationGuard);
             DrivePhotoReconciler reconciler = new DrivePhotoReconciler(
                     getContentResolver(),
                     folderPrefs.getMasterTreeUri());
@@ -1607,7 +1625,8 @@ private File thumbnailSource(PendingPhotoRecord record) {
                     photoStore,
                     photoPreparer,
                     uploader,
-                    reconciler);
+                    reconciler,
+                    authorizationGuard);
             reconciliation = coordinator.reconcileUncertain(photoId);
             if (reconciliation.record().state() == PendingPhotoRecord.State.UPLOADED) {
                 try {
@@ -1728,7 +1747,8 @@ private File thumbnailSource(PendingPhotoRecord record) {
         try {
             DrivePhotoUploader uploader = new DrivePhotoUploader(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri());
+                    folderPrefs.getMasterTreeUri(),
+                    authorizationGuard);
             DrivePhotoReconciler reconciler = new DrivePhotoReconciler(
                     getContentResolver(),
                     folderPrefs.getMasterTreeUri());
