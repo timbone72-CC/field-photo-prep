@@ -8,7 +8,7 @@ This is the durable handoff point. Use the current branch and CI results rather 
 
 - Base: main `0e1104db2c2d6026a427bfa7b5baa9213b2fac25`.
 - Branch: `phase-12e/runtime-authorization-enforcement`.
-- Draft PR: #72. Do not merge or modify main.
+- PR: #72. Operator Level 3 merge approval recorded 2026-09-25.
 - Exact automated-tested runtime head: `ff8403edec07e4b60bb23e17eccd3af08c66ad2c`.
 - Level 3: final operator approval is required before merge.
 
@@ -32,14 +32,24 @@ The old remaining-work list naming session replacement and Sign Out UI was stale
 - Samsung device check on 2026-09-25: PASS — protected-photo counts appeared beside the correct property/work order, and Sign Out followed by Sign In completed successfully.
 - Local workspace lacks Gradle/Android SDK; use exact-head GitHub CI evidence. Do not report a local focused run that was not performed.
 
+## Device reality gate
+
+Samsung reality gate: PASS on 2026-09-25.
+
+Verified on device:
+- protected-photo counts beside the correct property and exact work order;
+- blocked Sign Out while protected work existed;
+- allowed Sign Out after protected work was resolved;
+- successful Sign In after Sign Out;
+- offline-grace protected capture on disposable work order `TREE TRIM 3 - 2026-09-19`;
+- local WAITING/Ready-to-upload preservation and prepared copy;
+- restored-connectivity safe upload;
+- Drive confirmation: 1 of 1 selected photo confirmed, with the row marked Uploaded under the same work order.
+
 ## Current lower-level bypass inventory
 
 Direct provider mutations in production are `DriveClient.createFolder`, `renameFolder`, `deleteDocument`, and `DrivePhotoUploader.create`; each has a required guard. `PhotoUploadCoordinator.upload` checks before queue transition. Production constructor call sites inject the central guard. Capture reservations originate in `PhotoCaptureActivity.beginCameraCapture` and `CameraCaptureActivity.reserveCaptureIfNeeded`; both are guarded before a new reservation, and each shutter rechecks. `DrivePhotoReconciler` queries provider state and does not mutate it. Existing focused tests deny Drive folder mutations before provider calls, photo creation before provider calls, and upload before queue state changes; the guard test observes authority loss before a second camera shutter and next Drive attempt. These claims are source-audit and fake-provider/JVM evidence, not physical device proof.
 
 ## Exact next action
 
-1. Complete any remaining proportional Samsung checks in `docs/PHASE_12E_COMPLETION_2026-09-25.md`; the protected-photo location UI and Sign Out → Sign In round trip are already device-PASS.
-2. Record any remaining device PASS/BLOCKED/FAIL result and fix only an actual defect on this branch.
-3. After the remaining physical gate passes, refresh PR #72 changed files and exact evidence, then stop before merge for the operator's Level 3 approval. No branch result or CI result authorizes merging by itself.
-
-When a gate fails, stop that affected path and preserve photos, queue state, and the prior working APK. Use a bounded fix on this branch; do not expand Phase 12 scope.
+Refresh PR #72 metadata and exact final-head CI evidence, then merge PR #72 under the operator's recorded Level 3 approval. Do not expand Phase 12 scope during merge finalization.
