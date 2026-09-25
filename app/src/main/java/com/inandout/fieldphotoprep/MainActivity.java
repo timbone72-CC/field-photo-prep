@@ -649,6 +649,7 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder created = driveClient.createFolder(
                         getContentResolver(), treeUri, workspace.id(), requestedName);
                 List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
@@ -763,6 +764,7 @@ private void buildLegacyWorkOrderUi() {
                     }
                 }
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder renamed = driveClient.renameFolder(
                         getContentResolver(), treeUri, companyId, requestedName);
                 if (!companyId.equals(renamed.id())) {
@@ -969,6 +971,7 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder created = driveClient.createFolder(
                         getContentResolver(), treeUri, masterId, requestedName);
                 List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
@@ -1225,6 +1228,7 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder created = driveClient.createFolder(
                         getContentResolver(), treeUri, addressId, requestedName);
                 List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
@@ -1373,10 +1377,12 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 PendingPhotoStore photoStore = new PendingPhotoStore(
                         new File(getFilesDir(), "pending_photos"));
                 photoStore.prepareCaptureSequenceResetForReuse(candidateId, requestedName);
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder renameResult = driveClient.renameFolder(
                         getContentResolver(), treeUri, candidateId, requestedName);
                 if (!candidateId.equals(renameResult.id())) {
@@ -1641,6 +1647,7 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 PendingPhotoStore photoStore = new PendingPhotoStore(
                         new File(getFilesDir(), "pending_photos"));
                 photoStore.prepareCaptureSequenceResetForReuse(candidateId, requestedName);
@@ -1672,7 +1679,8 @@ private void buildLegacyWorkOrderUi() {
                                 + " child item" + (afterDelete.count() == 1 ? "" : "s") + ".");
                     }
 
-                    DriveFolder renameResult = driveClient.renameFolder(
+                    authorizationGuard.requireDriveMutation();
+                DriveFolder renameResult = driveClient.renameFolder(
                             getContentResolver(), treeUri, candidateId, requestedName);
                     if (!candidateId.equals(renameResult.id())) {
                         throw new IOException("Drive rename changed the folder identity.");
