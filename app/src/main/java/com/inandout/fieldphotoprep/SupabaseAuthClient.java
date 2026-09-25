@@ -50,7 +50,9 @@ final class SupabaseAuthClient {
         }
 
         boolean isTemporaryServerFailure() {
-            return statusCode >= 500 && statusCode <= 599;
+            return statusCode == 408
+                    || statusCode == 429
+                    || (statusCode >= 500 && statusCode <= 599);
         }
     }
 
