@@ -12,7 +12,7 @@ android {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 34
+        versionCode 35
         versionName '0.27-auth-session-foundation'
 
         buildConfigField 'String', 'SUPABASE_URL', '"https://vtyiktvqhbgabawotkrj.supabase.co"'
