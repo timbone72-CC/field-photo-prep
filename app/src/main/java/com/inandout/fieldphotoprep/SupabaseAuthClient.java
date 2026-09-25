@@ -15,6 +15,9 @@ import java.net.URLEncoder;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 final class SupabaseAuthClient {
     static final class AuthException extends IOException {
@@ -94,6 +97,99 @@ final class SupabaseAuthClient {
 
         String id() { return id; }
         String email() { return email; }
+    }
+
+    static final class AdminMember {
+        private final String membershipId;
+        private final String userId;
+        private final String email;
+        private final String role;
+        private final String status;
+
+        AdminMember(String membershipId, String userId, String email, String role, String status) {
+            this.membershipId = membershipId;
+            this.userId = userId;
+            this.email = email == null ? "" : email;
+            this.role = role;
+            this.status = status;
+        }
+
+        String membershipId() { return membershipId; }
+        String userId() { return userId; }
+        String email() { return email; }
+        String role() { return role; }
+        String status() { return status; }
+    }
+
+    static final class AdminInvitation {
+        private final String invitationId;
+        private final String email;
+        private final String intendedRole;
+        private final String status;
+        private final String expiresAt;
+        private final String deliveryStatus;
+        private final int deliveryAttemptCount;
+        private final String lastDeliveryAt;
+
+        AdminInvitation(
+                String invitationId,
+                String email,
+                String intendedRole,
+                String status,
+                String expiresAt,
+                String deliveryStatus,
+                int deliveryAttemptCount,
+                String lastDeliveryAt) {
+            this.invitationId = invitationId;
+            this.email = email == null ? "" : email;
+            this.intendedRole = intendedRole;
+            this.status = status;
+            this.expiresAt = expiresAt == null ? "" : expiresAt;
+            this.deliveryStatus = deliveryStatus == null ? "" : deliveryStatus;
+            this.deliveryAttemptCount = deliveryAttemptCount;
+            this.lastDeliveryAt = lastDeliveryAt == null ? "" : lastDeliveryAt;
+        }
+
+        String invitationId() { return invitationId; }
+        String email() { return email; }
+        String intendedRole() { return intendedRole; }
+        String status() { return status; }
+        String expiresAt() { return expiresAt; }
+        String deliveryStatus() { return deliveryStatus; }
+        int deliveryAttemptCount() { return deliveryAttemptCount; }
+        String lastDeliveryAt() { return lastDeliveryAt; }
+    }
+
+    static final class AdminResult {
+        private final String outcome;
+        private final String invitationId;
+        private final String membershipId;
+        private final String role;
+        private final String status;
+
+        AdminResult(JSONObject response) {
+            this.outcome = response.optString("outcome", "");
+            this.invitationId = response.optString("invitation_id", "");
+            this.membershipId = response.optString("membership_id", "");
+            this.role = response.optString("role", response.optString("intended_role", ""));
+            this.status = response.optString("status", "");
+        }
+
+        String outcome() { return outcome; }
+        String invitationId() { return invitationId; }
+        String membershipId() { return membershipId; }
+        String role() { return role; }
+        String status() { return status; }
+
+        boolean succeeded() {
+            return "SENT".equals(outcome)
+                    || "RESENT".equals(outcome)
+                    || "UPDATED".equals(outcome)
+                    || "UNCHANGED".equals(outcome)
+                    || "CANCELLED".equals(outcome)
+                    || "REVOKED".equals(outcome)
+                    || "ACTIVE".equals(outcome);
+        }
     }
 
     static final class StoredMembershipValidation {
@@ -232,6 +328,158 @@ final class SupabaseAuthClient {
             default:
                 throw new AuthException("The Field Photo Prep invitation could not be accepted.");
         }
+    }
+
+    List<AdminMember> listAdminMembers(
+            String accessToken,
+            String organizationId) throws IOException {
+        JSONObject body = rpcBody("p_organization_id", organizationId);
+        JSONArray response = requestArray(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_list_members",
+                body,
+                accessToken);
+        List<AdminMember> result = new ArrayList<>();
+        try {
+            for (int i = 0; i < response.length(); i++) {
+                JSONObject row = response.getJSONObject(i);
+                result.add(new AdminMember(
+                        row.getString("membership_id"),
+                        row.getString("user_id"),
+                        row.optString("email", ""),
+                        row.getString("role"),
+                        row.getString("status")));
+            }
+        } catch (JSONException e) {
+            throw new AuthException("Field Photo Prep member data was incomplete.", e);
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    List<AdminInvitation> listAdminInvitations(
+            String accessToken,
+            String organizationId) throws IOException {
+        JSONObject body = rpcBody("p_organization_id", organizationId);
+        JSONArray response = requestArray(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_list_invitations",
+                body,
+                accessToken);
+        List<AdminInvitation> result = new ArrayList<>();
+        try {
+            for (int i = 0; i < response.length(); i++) {
+                JSONObject row = response.getJSONObject(i);
+                result.add(new AdminInvitation(
+                        row.getString("invitation_id"),
+                        row.optString("email", ""),
+                        row.getString("intended_role"),
+                        row.getString("status"),
+                        row.optString("expires_at", ""),
+                        row.optString("delivery_status", ""),
+                        row.optInt("delivery_attempt_count", 0),
+                        row.optString("last_delivery_at", "")));
+            }
+        } catch (JSONException e) {
+            throw new AuthException("Field Photo Prep invitation data was incomplete.", e);
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    AdminResult sendOwnerInvitation(
+            String accessToken,
+            String organizationId,
+            String email,
+            String intendedRole,
+            String redirectUri) throws IOException {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("organization_id", organizationId);
+            body.put("email", email == null ? "" : email.trim().toLowerCase());
+            body.put("intended_role", intendedRole);
+            body.put("redirect_uri", redirectUri);
+        } catch (JSONException e) {
+            throw new AuthException("Could not prepare invitation request.", e);
+        }
+        JSONObject response = requestObject(
+                "POST",
+                "/functions/v1/fpp-owner-invite",
+                body,
+                accessToken);
+        return new AdminResult(response);
+    }
+
+    AdminResult updateInvitationRole(
+            String accessToken,
+            String organizationId,
+            String invitationId,
+            String intendedRole) throws IOException {
+        JSONObject body = rpcBody(
+                "p_organization_id", organizationId,
+                "p_invitation_id", invitationId,
+                "p_intended_role", intendedRole);
+        return new AdminResult(requestObject(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_update_invitation_role",
+                body,
+                accessToken));
+    }
+
+    AdminResult cancelInvitation(
+            String accessToken,
+            String organizationId,
+            String invitationId) throws IOException {
+        JSONObject body = rpcBody(
+                "p_organization_id", organizationId,
+                "p_invitation_id", invitationId);
+        return new AdminResult(requestObject(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_cancel_invitation",
+                body,
+                accessToken));
+    }
+
+    AdminResult changeMembershipRole(
+            String accessToken,
+            String organizationId,
+            String membershipId,
+            String role) throws IOException {
+        JSONObject body = rpcBody(
+                "p_organization_id", organizationId,
+                "p_membership_id", membershipId,
+                "p_role", role);
+        return new AdminResult(requestObject(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_change_membership_role",
+                body,
+                accessToken));
+    }
+
+    AdminResult revokeMembership(
+            String accessToken,
+            String organizationId,
+            String membershipId) throws IOException {
+        JSONObject body = rpcBody(
+                "p_organization_id", organizationId,
+                "p_membership_id", membershipId);
+        return new AdminResult(requestObject(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_revoke_membership",
+                body,
+                accessToken));
+    }
+
+    AdminResult reactivateMembership(
+            String accessToken,
+            String organizationId,
+            String membershipId) throws IOException {
+        JSONObject body = rpcBody(
+                "p_organization_id", organizationId,
+                "p_membership_id", membershipId);
+        return new AdminResult(requestObject(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_reactivate_membership",
+                body,
+                accessToken));
     }
 
     AuthSessionState validateMembership(AuthTokens tokens) throws IOException {
@@ -395,6 +643,21 @@ final class SupabaseAuthClient {
         return new AuthTokens(accessToken, refreshToken, expiry, user.id(), user.email());
     }
 
+    private static JSONObject rpcBody(String... keyValues) throws AuthException {
+        if (keyValues.length % 2 != 0) {
+            throw new AuthException("Could not prepare Field Photo Prep server request.");
+        }
+        JSONObject body = new JSONObject();
+        try {
+            for (int i = 0; i < keyValues.length; i += 2) {
+                body.put(keyValues[i], keyValues[i + 1]);
+            }
+            return body;
+        } catch (JSONException e) {
+            throw new AuthException("Could not prepare Field Photo Prep server request.", e);
+        }
+    }
+
     private AuthTokens parseTokens(JSONObject response) throws AuthException {
         try {
             String accessToken = response.getString("access_token");
@@ -516,7 +779,8 @@ final class SupabaseAuthClient {
                         json.optString("msg", null),
                         json.optString("message", null),
                         json.optString("error_description", null),
-                        json.optString("error", null));
+                        json.optString("error", null),
+                        json.optString("outcome", null));
             } catch (JSONException ignored) {
                 // Do not expose an arbitrary raw server response.
             }
