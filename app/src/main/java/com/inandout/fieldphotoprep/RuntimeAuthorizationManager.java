@@ -87,17 +87,19 @@ final class RuntimeAuthorizationManager {
     }
 
     private AuthorizationDecision revalidateInternal() {
-        synchronized (lock) {
-            AuthSessionState stored = sessionStore.load();
-            if (stored == null) {
+        AuthSessionState stored = sessionStore.load();
+        if (stored == null) {
+            synchronized (lock) {
                 clearObservationLocked();
                 return evaluateStoredLocked(null);
             }
+        }
 
-            final SupabaseAuthClient.AuthTokens refreshed;
-            try {
-                refreshed = backend.refreshSession(stored.refreshToken());
-            } catch (SupabaseAuthClient.AuthException error) {
+        final SupabaseAuthClient.AuthTokens refreshed;
+        try {
+            refreshed = backend.refreshSession(stored.refreshToken());
+        } catch (SupabaseAuthClient.AuthException error) {
+            synchronized (lock) {
                 if (error.isAuthenticationRejected()) {
                     failClosedPersistentlyLocked(stored);
                     clearObservationLocked();
@@ -117,37 +119,47 @@ final class RuntimeAuthorizationManager {
                 failClosedPersistentlyLocked(stored);
                 clearObservationLocked();
                 return evaluateStoredLocked(sessionStore.load());
-            } catch (IOException error) {
+            }
+        } catch (IOException error) {
+            synchronized (lock) {
                 setObservationLocked(
                         stored,
                         RuntimeAuthorizationPolicy.Observation.indeterminate());
                 return evaluateStoredLocked(stored);
             }
+        }
 
-            AuthSessionState rotated = stored.withSessionTokens(
-                    refreshed.accessToken(),
-                    refreshed.refreshToken(),
-                    refreshed.expiresAtEpochSeconds());
-            try {
-                sessionStore.save(rotated);
-            } catch (Exception persistenceError) {
+        if (!sameSessionVersion(sessionStore.load(), stored)) {
+            return currentDecision();
+        }
+
+        AuthSessionState rotated = stored.withSessionTokens(
+                refreshed.accessToken(),
+                refreshed.refreshToken(),
+                refreshed.expiresAtEpochSeconds());
+        try {
+            sessionStore.save(rotated);
+        } catch (Exception persistenceError) {
+            synchronized (lock) {
                 clearObservationLocked();
-                return new AuthorizationDecision(
-                        AuthorizationDecision.State.RECHECK_REQUIRED,
-                        stored.userId(),
-                        stored.organizationId(),
-                        stored.role(),
-                        0L);
             }
+            return new AuthorizationDecision(
+                    AuthorizationDecision.State.RECHECK_REQUIRED,
+                    stored.userId(),
+                    stored.organizationId(),
+                    stored.role(),
+                    0L);
+        }
 
-            final long validatedAt = clock.wallEpochSeconds();
-            final SupabaseAuthClient.StoredMembershipValidation validation;
-            try {
-                validation = backend.validateStoredMembership(
-                        refreshed,
-                        rotated,
-                        validatedAt);
-            } catch (SupabaseAuthClient.AuthException error) {
+        final long validatedAt = clock.wallEpochSeconds();
+        final SupabaseAuthClient.StoredMembershipValidation validation;
+        try {
+            validation = backend.validateStoredMembership(
+                    refreshed,
+                    rotated,
+                    validatedAt);
+        } catch (SupabaseAuthClient.AuthException error) {
+            synchronized (lock) {
                 if (error.isAuthenticationRejected()) {
                     failClosedPersistentlyLocked(rotated);
                     clearObservationLocked();
@@ -167,13 +179,21 @@ final class RuntimeAuthorizationManager {
                 failClosedPersistentlyLocked(rotated);
                 clearObservationLocked();
                 return evaluateStoredLocked(sessionStore.load());
-            } catch (IOException error) {
+            }
+        } catch (IOException error) {
+            synchronized (lock) {
                 setObservationLocked(
                         rotated,
                         RuntimeAuthorizationPolicy.Observation.indeterminate());
                 return evaluateStoredLocked(rotated);
             }
+        }
 
+        if (!sameSessionVersion(sessionStore.load(), rotated)) {
+            return currentDecision();
+        }
+
+        synchronized (lock) {
             switch (validation.kind()) {
                 case ACTIVE:
                     AuthSessionState active = validation.activeState();
@@ -245,6 +265,17 @@ final class RuntimeAuthorizationManager {
         }
     }
 
+    private static boolean sameSessionVersion(
+            AuthSessionState current,
+            AuthSessionState expected) {
+        return current != null
+                && expected != null
+                && current.userId().equals(expected.userId())
+                && current.organizationId().equals(expected.organizationId())
+                && current.membershipId().equals(expected.membershipId())
+                && current.refreshToken().equals(expected.refreshToken());
+    }
+
     private AuthorizationDecision evaluateStoredLocked(AuthSessionState stored) {
         if (stored == null) {
             clearObservationLocked();
@@ -261,7 +292,7 @@ final class RuntimeAuthorizationManager {
 
         if (observation != null
                 && observation == lastObservation
-                && lastObservation.kind == RuntimeAuthorizationPolicy.ObservationKind.AUTHORITATIVE_ACTIVE
+                && lastObservation.kind() == RuntimeAuthorizationPolicy.ObservationKind.AUTHORITATIVE_ACTIVE
                 && monotonicElapsed != null
                 && monotonicElapsed >= RuntimeAuthorizationPolicy.GRACE_SECONDS) {
             observation = RuntimeAuthorizationPolicy.Observation.none();
