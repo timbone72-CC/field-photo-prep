@@ -8,12 +8,22 @@ android {
     namespace 'com.inandout.fieldphotoprep'
     compileSdk 36
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
         targetSdk 36
-        versionCode 34
-        versionName '0.26.1-company-selector'
+        versionCode 36
+        versionName '0.27.1-auth-session-hardening'
+
+        buildConfigField 'String', 'SUPABASE_URL', '"https://vtyiktvqhbgabawotkrj.supabase.co"'
+        buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_QXGedlj5wCmMpV2HncZp9A_kfgLzuAQ"'
+        buildConfigField 'String', 'AUTH_REDIRECT_SCHEME', '"com.inandout.fieldphotoprep"'
+        buildConfigField 'String', 'AUTH_REDIRECT_HOST', '"auth-callback"'
+        manifestPlaceholders = [authRedirectScheme: 'com.inandout.fieldphotoprep']
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -32,6 +42,8 @@ android {
             applicationIdSuffix '.internal'
             versionNameSuffix '-internal'
             signingConfig signingConfigs.stableTest
+            buildConfigField 'String', 'AUTH_REDIRECT_SCHEME', '"com.inandout.fieldphotoprep.internal"'
+            manifestPlaceholders = [authRedirectScheme: 'com.inandout.fieldphotoprep.internal']
         }
     }
 

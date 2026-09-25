@@ -56,6 +56,8 @@ public final class HomeDriveOptionsInstrumentedTest {
                     awaitText(instrumentation, "Edit Company").isEmpty());
             assertFalse("Company options must expose Change Workspace",
                     awaitText(instrumentation, "Change Workspace").isEmpty());
+            assertFalse("Home overflow must expose Account without adding a Settings screen",
+                    awaitText(instrumentation, "Account").isEmpty());
             assertTrue("Company options must not invent a Settings surface",
                     findText(instrumentation, "Settings").isEmpty());
 

@@ -650,12 +650,57 @@ Merge evidence:
 
 No Android runtime auth work is included in Phase 12C.
 
+### Phase 12D — Android auth/session foundation — IN PROGRESS
+
+Scope:
+- package-specific Android auth callback URIs;
+- dedicated AuthActivity rather than exposing auth callbacks through MainActivity;
+- email/password sign-in;
+- password recovery → Android deep link → password update;
+- narrow Java HTTPS Supabase client using the publishable key only;
+- exact Auth User → ACTIVE Membership → Organization validation;
+- Android Keystore/AES-GCM encrypted session persistence;
+- Account entry in the existing Home overflow;
+- no hard startup gate yet.
+
+Redirects:
+- internal: `com.inandout.fieldphotoprep.internal://auth-callback`
+- production: `com.inandout.fieldphotoprep://auth-callback`
+
+Reason for staging before enforcement:
+the first auth-enabled build must prove recovery/sign-in/session restoration on the physical field phone before authentication can safely gate the existing Drive/photo workflow.
+
+Permanent records:
+- `docs/PHASE_12D_ANDROID_AUTH_SESSION_2026-09-24.md`
+- `docs/PHASE_12D_ANDROID_AUTH_SESSION_IMPACT_2026-09-24.md`
+
+Current final runtime evidence:
+- exact runtime head `df02a34981e601d3009875edc8fe154e2a23c936`;
+- Android CI `36122577021`: **PASS**;
+- Supabase internal + production callback URLs: configured;
+- normal Samsung sign-in + ACTIVE OWNER validation: **PASS**;
+- Samsung Recheck Account + restart persistence: **PASS**;
+- existing Drive/workspace smoke: **PASS**;
+- final session-sequencing hardening: **PASS automated**.
+
+Final Samsung hardening gate:
+- exact final APK install: **PASS**;
+- fresh recovery link opens Field Photo Prep Internal: **PASS**;
+- password update + fresh normal sign-in: **PASS**;
+- ACTIVE OWNER Membership/Organization validation: **PASS**;
+- restart session restore: **PASS**;
+- Recheck Account refresh/revalidation: **PASS**;
+- prior Drive/workspace smoke: **PASS / reused valid evidence**.
+
+Phase 12D is ready for its final Level 3 decision.
+
+Completion still requires:
+- explicit operator pre-merge approval for PR #67.
+
 ### Later Phase 12 slices
 
-After 12C:
-- narrow Java Supabase Auth/session client;
-- Keystore-backed local session persistence;
-- startup/offline/revocation/sign-out gate;
+After 12D:
+- startup/offline/revocation/sign-out enforcement using the proven 72-hour policy;
 - invitation/member administration;
 - first-run/new-device flow;
 - account/Drive mismatch protection;

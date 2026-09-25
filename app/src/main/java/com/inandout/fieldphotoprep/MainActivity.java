@@ -268,15 +268,15 @@ private void openSavedPhotosFromHome() {
 
         final CharSequence[] items;
         if (!folderPrefs.hasWorkspace()) {
-            items = new CharSequence[]{"Set Up Companies"};
+            items = new CharSequence[]{"Set Up Companies", "Account"};
         } else if (folderPrefs.getCurrentCompany() == null) {
-            items = new CharSequence[]{"Choose Company", "Add Company", "Change Workspace"};
+            items = new CharSequence[]{"Choose Company", "Add Company", "Change Workspace", "Account"};
         } else {
-            items = new CharSequence[]{"Add Company", "Edit Company", "Change Workspace"};
+            items = new CharSequence[]{"Add Company", "Edit Company", "Change Workspace", "Account"};
         }
 
         new AlertDialog.Builder(this)
-                .setTitle("Company & Drive")
+                .setTitle("App & Drive")
                 .setItems(items, (dialog, which) -> {
                     String action = items[which].toString();
                     switch (action) {
@@ -289,6 +289,9 @@ private void openSavedPhotosFromHome() {
                             break;
                         case "Edit Company":
                             showEditCompanyDialog();
+                            break;
+                        case "Account":
+                            startActivity(new Intent(this, AuthActivity.class));
                             break;
                         case "Set Up Companies":
                         case "Change Workspace":
