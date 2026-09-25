@@ -160,6 +160,10 @@ final class SupabaseAuthClient {
         return parseTokens(response);
     }
 
+    void signOut(String accessToken) throws IOException {
+        requestObject("POST", "/auth/v1/logout", null, accessToken);
+    }
+
     void requestPasswordRecovery(String email, String redirectUri) throws IOException {
         JSONObject body = new JSONObject();
         try {
