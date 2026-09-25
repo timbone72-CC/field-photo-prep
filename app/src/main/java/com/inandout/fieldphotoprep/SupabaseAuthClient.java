@@ -41,8 +41,12 @@ final class SupabaseAuthClient {
             return statusCode;
         }
 
-        boolean isAuthenticationRejected() {
+        boolean isRefreshCredentialRejected() {
             return statusCode == 400 || statusCode == 401;
+        }
+
+        boolean isUnauthorized() {
+            return statusCode == 401;
         }
 
         boolean isTemporaryServerFailure() {
