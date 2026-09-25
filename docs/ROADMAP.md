@@ -650,12 +650,41 @@ Merge evidence:
 
 No Android runtime auth work is included in Phase 12C.
 
+### Phase 12D — Android auth/session foundation — IN PROGRESS
+
+Scope:
+- package-specific Android auth callback URIs;
+- dedicated AuthActivity rather than exposing auth callbacks through MainActivity;
+- email/password sign-in;
+- password recovery → Android deep link → password update;
+- narrow Java HTTPS Supabase client using the publishable key only;
+- exact Auth User → ACTIVE Membership → Organization validation;
+- Android Keystore/AES-GCM encrypted session persistence;
+- Account entry in the existing Home overflow;
+- no hard startup gate yet.
+
+Redirects:
+- internal: `com.inandout.fieldphotoprep.internal://auth-callback`
+- production: `com.inandout.fieldphotoprep://auth-callback`
+
+Reason for staging before enforcement:
+the first auth-enabled build must prove recovery/sign-in/session restoration on the physical field phone before authentication can safely gate the existing Drive/photo workflow.
+
+Permanent records:
+- `docs/PHASE_12D_ANDROID_AUTH_SESSION_2026-09-24.md`
+- `docs/PHASE_12D_ANDROID_AUTH_SESSION_IMPACT_2026-09-24.md`
+
+Completion still requires:
+- Android CI;
+- Supabase redirect allowlist configuration;
+- physical internal-build recovery/sign-in/restart gate;
+- existing Drive workflow smoke;
+- final Level 3 operator merge approval.
+
 ### Later Phase 12 slices
 
-After 12C:
-- narrow Java Supabase Auth/session client;
-- Keystore-backed local session persistence;
-- startup/offline/revocation/sign-out gate;
+After 12D:
+- startup/offline/revocation/sign-out enforcement using the proven 72-hour policy;
 - invitation/member administration;
 - first-run/new-device flow;
 - account/Drive mismatch protection;
