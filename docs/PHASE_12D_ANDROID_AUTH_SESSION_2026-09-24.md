@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **IMPLEMENTATION IN PROGRESS — DEVICE GATE PENDING**
+Status: **AUTOMATED GATE PASSED — SUPABASE REDIRECT + DEVICE GATE PENDING**
 
 ## Purpose
 
@@ -243,3 +243,32 @@ Before broad/public distribution, revisit verified Android App Links under the r
 - physical recovery/sign-in/restart phone gate passes;
 - existing field workflow smoke passes;
 - final Level 3 operator merge approval is recorded.
+
+
+## Automated CI evidence
+
+Android CI run: `36086075764`
+
+- attempt 1:
+  - unit tests: PASS
+  - internal debug build: PASS
+  - stable test signer verification: PASS
+  - connected Android tests: PASS
+  - job conclusion: FAILURE only because the emulator went offline during the final rendered-screen script after successful instrumentation
+- attempt 2, same code/head:
+  - **PASS**
+  - run conclusion: **SUCCESS**
+
+Exact tested branch head at the automated gate:
+`59ed1759f6f38fed00fe7b6e348350ae87014ac3`
+
+No runtime change was made to turn the first failed run green; rerunning the same head passed, confirming an emulator/ADB infrastructure flake rather than an app regression.
+
+Internal test APK artifact:
+`field-photo-prep-internal-apk`
+
+Next gate:
+1. allowlist the exact internal and production callback URIs in Supabase Auth;
+2. install the internal APK on the Samsung field phone;
+3. run recovery → app deep link → password update → ACTIVE OWNER validation → restart session restore;
+4. smoke the existing Drive workflow.
