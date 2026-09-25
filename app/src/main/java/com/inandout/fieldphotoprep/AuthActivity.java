@@ -35,6 +35,7 @@ public final class AuthActivity extends Activity {
     private ProgressBar progress;
     private Button primary;
     private Button secondary;
+    private Button manageMembers;
     private Button close;
 
     private Mode mode = Mode.LOGIN;
@@ -73,6 +74,7 @@ public final class AuthActivity extends Activity {
         progress = findViewById(R.id.auth_progress);
         primary = findViewById(R.id.auth_primary);
         secondary = findViewById(R.id.auth_secondary);
+        manageMembers = findViewById(R.id.auth_manage_members);
         close = findViewById(R.id.auth_close);
         close.setOnClickListener(v -> finish());
     }
@@ -145,6 +147,7 @@ public final class AuthActivity extends Activity {
         status.setText(message == null
                 ? "Sign in to your Field Photo Prep organization."
                 : message);
+        manageMembers.setVisibility(View.GONE);
         email.setVisibility(View.VISIBLE);
         password.setVisibility(View.VISIBLE);
         confirmPassword.setVisibility(View.GONE);
@@ -161,6 +164,7 @@ public final class AuthActivity extends Activity {
 
     private void showRecoveryRequest() {
         mode = Mode.RECOVERY_REQUEST;
+        manageMembers.setVisibility(View.GONE);
         title.setText("Reset Password");
         status.setText("Enter the account email. The reset email will open this Field Photo Prep build.");
         email.setVisibility(View.VISIBLE);
@@ -177,6 +181,7 @@ public final class AuthActivity extends Activity {
 
     private void showPasswordSetup(String message) {
         mode = Mode.PASSWORD_SETUP;
+        manageMembers.setVisibility(View.GONE);
         title.setText("Set Password");
         status.setText(message);
         email.setVisibility(View.GONE);
@@ -237,6 +242,12 @@ public final class AuthActivity extends Activity {
         primary.setVisibility(View.VISIBLE);
         primary.setOnClickListener(v -> recheckStoredSession(state));
         secondary.setOnClickListener(v -> signOutSafely(state));
+
+        AuthorizationDecision current = authorizationManager.currentDecision();
+        boolean mayAdmin = current.allowsMemberAdministration();
+        manageMembers.setVisibility(mayAdmin ? View.VISIBLE : View.GONE);
+        manageMembers.setOnClickListener(v ->
+                startActivity(new Intent(this, MemberAdminActivity.class)));
         setBusy(false);
     }
 
@@ -512,6 +523,7 @@ public final class AuthActivity extends Activity {
         progress.setVisibility(busy ? View.VISIBLE : View.GONE);
         primary.setEnabled(!busy);
         secondary.setEnabled(!busy);
+        manageMembers.setEnabled(!busy);
         email.setEnabled(!busy);
         password.setEnabled(!busy);
         confirmPassword.setEnabled(!busy);
