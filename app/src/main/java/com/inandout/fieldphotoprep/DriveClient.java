@@ -12,6 +12,14 @@ import java.util.Collections;
 import java.util.List;
 
 public final class DriveClient {
+    private final AuthorizationActionGuard authorizationGuard;
+
+    DriveClient(AuthorizationActionGuard authorizationGuard) {
+        this.authorizationGuard = java.util.Objects.requireNonNull(
+                authorizationGuard,
+                "authorizationGuard");
+    }
+
     private static final String[] PROJECTION = {
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -186,6 +194,7 @@ public final class DriveClient {
         if (displayName == null || displayName.isBlank()) {
             throw new IOException("Folder name is required.");
         }
+        authorizationGuard.requireDriveMutation();
         Uri parentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, parentDocumentId);
         Uri createdUri = DocumentsContract.createDocument(
                 resolver,
@@ -206,6 +215,7 @@ public final class DriveClient {
             ContentResolver resolver,
             Uri treeUri,
             String documentId) throws IOException {
+        authorizationGuard.requireDriveMutation();
         Uri documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId);
         if (!DocumentsContract.deleteDocument(resolver, documentUri)) {
             throw new IOException("Drive did not confirm child-item deletion.");
@@ -220,6 +230,7 @@ public final class DriveClient {
         if (newDisplayName == null || newDisplayName.isBlank()) {
             throw new IOException("Folder name is required.");
         }
+        authorizationGuard.requireDriveMutation();
         Uri folderUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, folderDocumentId);
         Uri renamedUri = DocumentsContract.renameDocument(resolver, folderUri, newDisplayName);
         if (renamedUri == null) {

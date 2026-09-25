@@ -25,6 +25,40 @@ public final class PhotoUploadCoordinatorTest {
     public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
+    public void revokedAuthorizationStopsBeforeQueueUploadAttempt() throws Exception {
+        Fixture fixture = fixture(ID1);
+        AuthorizationActionGuard guard = new AuthorizationActionGuard(() ->
+                new AuthorizationDecision(
+                        AuthorizationDecision.State.REVOKED,
+                        "user-1",
+                        "org-1",
+                        "OWNER",
+                        0L));
+        DrivePhotoUploader uploader = new DrivePhotoUploader(
+                fixture.provider,
+                millis -> { },
+                guard);
+        PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
+                fixture.store,
+                fixture.preparer,
+                uploader,
+                guard);
+
+        try {
+            coordinator.upload(ID1);
+            fail("Expected authorization denial");
+        } catch (IOException error) {
+            assertTrue(error.getMessage().contains("revoked"));
+        }
+
+        PendingPhotoRecord unchanged = fixture.store.getById(ID1);
+        assertEquals(PendingPhotoRecord.State.WAITING, unchanged.state());
+        assertEquals(0, unchanged.uploadAttemptCount());
+        assertFalse(fixture.provider.createCalled);
+        assertFalse(fixture.provider.writeCalled);
+    }
+
+    @Test
     public void confirmedDriveResultPersistsProvisionalBeforeWriteThenPromotesIdentity()
             throws Exception {
         Fixture fixture = fixture(ID1);
@@ -233,7 +267,7 @@ public final class PhotoUploadCoordinatorTest {
         PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                 store,
                 preparer,
-                new DrivePhotoUploader(provider));
+                new DrivePhotoUploader(provider, TestAuthorization.allowedGuard()));
 
         try {
             coordinator.upload(first.id());
@@ -269,7 +303,7 @@ public final class PhotoUploadCoordinatorTest {
         PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                 store,
                 preparer,
-                new DrivePhotoUploader(provider));
+                new DrivePhotoUploader(provider, TestAuthorization.allowedGuard()));
         return new Fixture(pendingRoot, store, preparer, waiting, provider, coordinator);
     }
 

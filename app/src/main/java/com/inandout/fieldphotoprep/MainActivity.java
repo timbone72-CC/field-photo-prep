@@ -35,7 +35,9 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -48,10 +50,13 @@ public final class MainActivity extends Activity {
     }
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final DriveClient driveClient = new DriveClient();
+    private DriveClient driveClient;
+    private AuthorizationActionGuard authorizationGuard;
     private final List<DriveFolder> companyFolders = new ArrayList<>();
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
+    private final Map<String, Integer> protectedPhotoCountByAddressId = new HashMap<>();
+    private final Map<String, Integer> protectedPhotoCountByWorkOrderId = new HashMap<>();
 
     private FolderPrefs folderPrefs;
     private Screen screen = Screen.ADDRESSES;
@@ -110,6 +115,9 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
+        driveClient = new DriveClient(authorizationGuard);
         folderPrefs = new FolderPrefs(this);
         buildUi();
         showAddressScreen(false);
@@ -128,6 +136,17 @@ public final class MainActivity extends Activity {
         } else {
             showHomeInlineMessage("Drive access expired. Reconnect the workspace.");
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        RuntimeAuthorizationManager manager = app.authorizationManager();
+        if (manager != null) {
+            manager.revalidateAsync();
+        }
+        refreshProtectedPhotoCounts();
     }
 
     @Override
@@ -206,7 +225,10 @@ private void buildHomeUi() {
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
     homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
 
-    adapter = new PropertyListAdapter(this, propertyFolders);
+    adapter = new PropertyListAdapter(
+            this,
+            propertyFolders,
+            protectedPhotoCountByAddressId);
     folderList.setAdapter(adapter);
     folderList.setOnItemClickListener((parent, view, position, id) -> {
         if (screen != Screen.ADDRESSES || busy || position < 0 || position >= propertyFolders.size()) {
@@ -328,7 +350,10 @@ private void buildLegacyWorkOrderUi() {
     legacyRoot.findViewById(R.id.nav_work_orders).setSelected(true);
 
     workOrderControls = (LinearLayout) workOrderScroll.getChildAt(0);
-    workOrderAdapter = new WorkOrderListAdapter(this, workOrderFolders);
+    workOrderAdapter = new WorkOrderListAdapter(
+            this,
+            workOrderFolders,
+            protectedPhotoCountByWorkOrderId);
     workOrderList.setAdapter(workOrderAdapter);
     workOrderList.setOnItemClickListener((parent, view, position, id) -> {
         if (busy || position < 0 || position >= workOrderFolders.size()) {
@@ -635,6 +660,7 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder created = driveClient.createFolder(
                         getContentResolver(), treeUri, workspace.id(), requestedName);
                 List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
@@ -749,6 +775,7 @@ private void buildLegacyWorkOrderUi() {
                     }
                 }
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder renamed = driveClient.renameFolder(
                         getContentResolver(), treeUri, companyId, requestedName);
                 if (!companyId.equals(renamed.id())) {
@@ -955,6 +982,7 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder created = driveClient.createFolder(
                         getContentResolver(), treeUri, masterId, requestedName);
                 List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
@@ -1211,6 +1239,7 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder created = driveClient.createFolder(
                         getContentResolver(), treeUri, addressId, requestedName);
                 List<DriveFolder> afterCreate = driveClient.listFoldersFresh(
@@ -1359,10 +1388,12 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 PendingPhotoStore photoStore = new PendingPhotoStore(
                         new File(getFilesDir(), "pending_photos"));
                 photoStore.prepareCaptureSequenceResetForReuse(candidateId, requestedName);
 
+                authorizationGuard.requireDriveMutation();
                 DriveFolder renameResult = driveClient.renameFolder(
                         getContentResolver(), treeUri, candidateId, requestedName);
                 if (!candidateId.equals(renameResult.id())) {
@@ -1627,6 +1658,7 @@ private void buildLegacyWorkOrderUi() {
                     return;
                 }
 
+                authorizationGuard.requireDriveMutation();
                 PendingPhotoStore photoStore = new PendingPhotoStore(
                         new File(getFilesDir(), "pending_photos"));
                 photoStore.prepareCaptureSequenceResetForReuse(candidateId, requestedName);
@@ -1658,7 +1690,8 @@ private void buildLegacyWorkOrderUi() {
                                 + " child item" + (afterDelete.count() == 1 ? "" : "s") + ".");
                     }
 
-                    DriveFolder renameResult = driveClient.renameFolder(
+                    authorizationGuard.requireDriveMutation();
+                DriveFolder renameResult = driveClient.renameFolder(
                             getContentResolver(), treeUri, candidateId, requestedName);
                     if (!candidateId.equals(renameResult.id())) {
                         throw new IOException("Drive rename changed the folder identity.");
@@ -1766,6 +1799,36 @@ private void buildLegacyWorkOrderUi() {
         renderCurrentWorkOrder();
     }
 
+
+    private void refreshProtectedPhotoCounts() {
+        executor.execute(() -> {
+            final Map<String, Integer> counts;
+            final Map<String, Integer> workOrderCounts;
+            try {
+                PendingPhotoStore store = new PendingPhotoStore(
+                        new File(getFilesDir(), "pending_photos"));
+                PhotoPreparer preparer = new PhotoPreparer(
+                        new File(getFilesDir(), "prepared_photos"));
+                ProtectedWorkGuard.Result protectedWork =
+                        new ProtectedWorkGuard(store, preparer).inspect();
+                counts = new HashMap<>(protectedWork.addressCounts());
+                workOrderCounts = new HashMap<>(protectedWork.workOrderCounts());
+            } catch (Exception error) {
+                return;
+            }
+
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                protectedPhotoCountByAddressId.clear();
+                protectedPhotoCountByAddressId.putAll(counts);
+                protectedPhotoCountByWorkOrderId.clear();
+                protectedPhotoCountByWorkOrderId.putAll(workOrderCounts);
+                notifyFolderAdapters();
+            });
+        });
+    }
 
     private void notifyFolderAdapters() {
         if (adapter != null) {

@@ -26,7 +26,10 @@ public final class DrivePhotoUploaderVerificationRetryTest {
         File prepared = prepared("prepared-photo");
         SettlingProvider provider = new SettlingProvider(prepared.length());
         provider.verificationReadFailuresRemaining = 2;
-        DrivePhotoUploader uploader = new DrivePhotoUploader(provider, millis -> { });
+        DrivePhotoUploader uploader = new DrivePhotoUploader(
+                provider,
+                millis -> { },
+                TestAuthorization.allowedGuard());
 
         DrivePhotoUploader.UploadResult result = upload(uploader, prepared);
 
@@ -39,7 +42,10 @@ public final class DrivePhotoUploaderVerificationRetryTest {
         File prepared = prepared("prepared-photo");
         SettlingProvider provider = new SettlingProvider(prepared.length());
         provider.staleSizesRemaining = 2;
-        DrivePhotoUploader uploader = new DrivePhotoUploader(provider, millis -> { });
+        DrivePhotoUploader uploader = new DrivePhotoUploader(
+                provider,
+                millis -> { },
+                TestAuthorization.allowedGuard());
 
         DrivePhotoUploader.UploadResult result = upload(uploader, prepared);
 
@@ -52,7 +58,10 @@ public final class DrivePhotoUploaderVerificationRetryTest {
         File prepared = prepared("prepared-photo");
         SettlingProvider provider = new SettlingProvider(prepared.length());
         provider.verificationReadFailuresRemaining = DrivePhotoUploader.VERIFY_MAX_ATTEMPTS + 2;
-        DrivePhotoUploader uploader = new DrivePhotoUploader(provider, millis -> { });
+        DrivePhotoUploader uploader = new DrivePhotoUploader(
+                provider,
+                millis -> { },
+                TestAuthorization.allowedGuard());
 
         try {
             upload(uploader, prepared);
@@ -70,7 +79,10 @@ public final class DrivePhotoUploaderVerificationRetryTest {
         File prepared = prepared("prepared-photo");
         SettlingProvider provider = new SettlingProvider(prepared.length());
         provider.returnWrongMimeType = true;
-        DrivePhotoUploader uploader = new DrivePhotoUploader(provider, millis -> { });
+        DrivePhotoUploader uploader = new DrivePhotoUploader(
+                provider,
+                millis -> { },
+                TestAuthorization.allowedGuard());
 
         try {
             upload(uploader, prepared);

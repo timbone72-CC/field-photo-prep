@@ -10,8 +10,8 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import java.io.File;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,7 +26,7 @@ public final class AuthActivity extends Activity {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final SupabaseAuthClient authClient = new SupabaseAuthClient();
 
-    private SecureAuthStore authStore;
+    private RuntimeAuthorizationManager authorizationManager;
     private TextView title;
     private TextView status;
     private EditText email;
@@ -43,7 +43,8 @@ public final class AuthActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        authStore = new SecureAuthStore(this);
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        authorizationManager = app.authorizationManager();
         setContentView(R.layout.screen_auth);
         bindViews();
         handleIntent(getIntent());
@@ -78,11 +79,12 @@ public final class AuthActivity extends Activity {
     private void handleIntent(Intent intent) {
         String data = intent == null ? null : intent.getDataString();
         if (data == null || data.trim().isEmpty()) {
-            AuthSessionState state = authStore.load();
-            if (state != null && state.isActiveOwnerOrMember()) {
-                showConnected(state, "Account session is stored on this phone.");
-            } else {
+            AuthSessionState state = authorizationManager.storedSession();
+            if (state == null) {
                 showLogin(null);
+            } else {
+                AuthorizationDecision decision = authorizationManager.currentDecision();
+                showConnected(state, storedSessionMessage(decision));
             }
             return;
         }
@@ -182,6 +184,30 @@ public final class AuthActivity extends Activity {
         setBusy(false);
     }
 
+    private String storedSessionMessage(AuthorizationDecision decision) {
+        switch (decision.state()) {
+            case VALIDATED:
+                return "Account is active.";
+            case GRACE:
+                return "Account validation is temporarily offline. "
+                        + "Field work remains available inside the current grace window.";
+            case REVOKED:
+                return "This membership is revoked. Existing protected work was kept.";
+            case NO_MEMBERSHIP:
+                return "This account does not currently have an active usable membership. "
+                        + "Existing protected work was kept.";
+            case RECHECK_REQUIRED:
+                return "Account recheck is required before new field work or Drive writes. "
+                        + "Existing protected work was kept.";
+            case SIGN_IN_REQUIRED:
+                return "Sign in again before new field work or Drive writes. "
+                        + "Existing protected work was kept.";
+            case DRIVE_DISCONNECTED:
+            default:
+                return "The account session is stored, but field work is currently restricted.";
+        }
+    }
+
     private void showConnected(AuthSessionState state, String message) {
         mode = Mode.CONNECTED;
         title.setText("Account Connected");
@@ -196,9 +222,11 @@ public final class AuthActivity extends Activity {
         password.setVisibility(View.GONE);
         confirmPassword.setVisibility(View.GONE);
         primary.setText("Recheck Account");
-        secondary.setVisibility(View.GONE);
+        secondary.setText("Sign Out");
+        secondary.setVisibility(View.VISIBLE);
         primary.setVisibility(View.VISIBLE);
         primary.setOnClickListener(v -> recheckStoredSession(state));
+        secondary.setOnClickListener(v -> signOutSafely(state));
         setBusy(false);
     }
 
@@ -218,9 +246,9 @@ public final class AuthActivity extends Activity {
                         emailValue,
                         passwordValue);
                 AuthSessionState state = authClient.validateMembership(tokens);
-                authStore.save(state);
+                replaceAuthenticatedSessionSafely(state);
                 runOnUiThread(() -> showConnected(state, "Signed in successfully."));
-            } catch (IOException | GeneralSecurityException e) {
+            } catch (Exception e) {
                 runOnUiThread(() -> {
                     setBusy(false);
                     status.setText("Sign in failed: " + e.getMessage());
@@ -286,12 +314,12 @@ public final class AuthActivity extends Activity {
                         tokens.email(),
                         first);
                 AuthSessionState state = authClient.validateMembership(signedIn);
-                authStore.save(state);
+                replaceAuthenticatedSessionSafely(state);
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = null;
                     showConnected(state, "Password updated and account verified.");
                 });
-            } catch (IOException | GeneralSecurityException e) {
+            } catch (Exception e) {
                 boolean changed = passwordUpdated;
                 runOnUiThread(() -> {
                     if (changed) {
@@ -311,28 +339,140 @@ public final class AuthActivity extends Activity {
     private void recheckStoredSession(AuthSessionState stored) {
         setBusy(true);
         status.setText("Checking account…");
+        authorizationManager.revalidateAsync().whenComplete((decision, error) ->
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+                    if (error != null || decision == null) {
+                        setBusy(false);
+                        status.setText(
+                                "Could not recheck the account. Stored field data was not changed.");
+                        return;
+                    }
+
+                    AuthSessionState current = authorizationManager.storedSession();
+                    if (current == null
+                            || decision.state() == AuthorizationDecision.State.SIGN_IN_REQUIRED) {
+                        showLogin("Sign in again to continue Field Photo Prep work.");
+                        return;
+                    }
+
+                    switch (decision.state()) {
+                        case VALIDATED:
+                            showConnected(current, "Account is active.");
+                            break;
+                        case GRACE:
+                            showConnected(
+                                    current,
+                                    "The account service could not be reached. "
+                                            + "Existing validation is still inside the offline grace window.");
+                            break;
+                        case REVOKED:
+                            showConnected(
+                                    current,
+                                    "This membership is revoked. Existing protected work was kept.");
+                            break;
+                        case NO_MEMBERSHIP:
+                            showConnected(
+                                    current,
+                                    "This account does not currently have an active usable membership. "
+                                            + "Existing protected work was kept.");
+                            break;
+                        case RECHECK_REQUIRED:
+                        case DRIVE_DISCONNECTED:
+                        default:
+                            showConnected(
+                                    current,
+                                    "Account recheck is required before new field work or Drive writes.");
+                            break;
+                    }
+                }));
+    }
+
+    private void replaceAuthenticatedSessionSafely(AuthSessionState state)
+            throws Exception {
+        AuthSessionState previous = authorizationManager.storedSession();
+        ProtectedWorkGuard.Result protectedWork = null;
+
+        if (previous == null) {
+            protectedWork = inspectProtectedWork();
+            if (protectedWork.blocksSignOut()) {
+                throw new IOException(
+                        "Protected local work exists, but its previous Field Photo Prep identity "
+                                + "is unavailable. The work was kept read-only and cannot be "
+                                + "attached to a new account automatically.");
+            }
+        } else if (!previous.userId().equals(state.userId())
+                || !previous.organizationId().equals(state.organizationId())) {
+            protectedWork = inspectProtectedWork();
+            if (protectedWork.blocksSignOut()) {
+                throw new IOException(
+                        "Protected work still belongs to the previously validated account. "
+                                + "Resolve that work before switching Field Photo Prep identity.");
+            }
+        }
+        authorizationManager.replaceAuthenticatedSession(state);
+    }
+
+    private void signOutSafely(AuthSessionState state) {
+        setBusy(true);
+        status.setText("Checking protected work before sign out…");
         executor.execute(() -> {
+            final ProtectedWorkGuard.Result protectedWork;
             try {
-                SupabaseAuthClient.AuthTokens refreshed = authClient.refreshSession(stored.refreshToken());
-
-                AuthSessionState rotated = stored.withSessionTokens(
-                        refreshed.accessToken(),
-                        refreshed.refreshToken(),
-                        refreshed.expiresAtEpochSeconds());
-                authStore.save(rotated);
-
-                AuthSessionState state = authClient.validateMembership(refreshed);
-                authStore.save(state);
-                runOnUiThread(() -> showConnected(state, "Account is active."));
-            } catch (IOException | GeneralSecurityException e) {
+                protectedWork = inspectProtectedWork();
+            } catch (IOException error) {
                 runOnUiThread(() -> {
                     setBusy(false);
                     status.setText(
-                            "Could not recheck the account. Stored field data was not changed.\n\n"
-                                    + e.getMessage());
+                            "Sign out was not changed because protected local work could not be verified safely.");
                 });
+                return;
+            }
+
+            if (protectedWork.blocksSignOut()) {
+                runOnUiThread(() -> {
+                    setBusy(false);
+                    status.setText(
+                            "Sign out is blocked while "
+                                    + protectedWork.blockingCount()
+                                    + " protected photo"
+                                    + (protectedWork.blockingCount() == 1 ? "" : "s")
+                                    + " still need capture, upload, reconciliation, or confirmed cleanup. "
+                                    + "Existing photos were not changed.");
+                });
+                return;
+            }
+
+            if (!authorizationManager.clearAuthenticatedSessionIfCurrent(state)) {
+                runOnUiThread(() -> {
+                    setBusy(false);
+                    status.setText("The account changed during sign out. Review the current account and try again.");
+                });
+                return;
+            }
+            String accessToken = state.accessToken();
+            runOnUiThread(() -> showLogin(
+                    "Signed out. The Drive workspace and local field data were left unchanged."));
+
+            if (accessToken != null && !accessToken.isBlank()) {
+                try {
+                    authClient.signOut(accessToken);
+                } catch (IOException ignored) {
+                    // Local sign-out is authoritative for this phone. A transient server failure
+                    // must not restore the cleared local session.
+                }
             }
         });
+    }
+
+    private ProtectedWorkGuard.Result inspectProtectedWork() throws IOException {
+        PendingPhotoStore store = new PendingPhotoStore(
+                new File(getFilesDir(), "pending_photos"));
+        PhotoPreparer preparer = new PhotoPreparer(
+                new File(getFilesDir(), "prepared_photos"));
+        return new ProtectedWorkGuard(store, preparer).inspect();
     }
 
     private void setBusy(boolean busy) {

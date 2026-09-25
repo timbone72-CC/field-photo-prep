@@ -7,16 +7,27 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
     private final LayoutInflater inflater;
     private final List<DriveFolder> folders;
+    private final Map<String, Integer> protectedPhotoCountsByAddressId;
 
     PropertyListAdapter(Context context, List<DriveFolder> folders) {
+        this(context, folders, Collections.emptyMap());
+    }
+
+    PropertyListAdapter(
+            Context context,
+            List<DriveFolder> folders,
+            Map<String, Integer> protectedPhotoCountsByAddressId) {
         super(context, R.layout.row_home_property, folders);
         this.inflater = LayoutInflater.from(context);
         this.folders = folders;
+        this.protectedPhotoCountsByAddressId = protectedPhotoCountsByAddressId;
     }
 
     @Override
@@ -28,10 +39,12 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
 
         TextView name = row.findViewById(R.id.property_name);
         TextView disambiguator = row.findViewById(R.id.property_disambiguator);
+        TextView photoCount = row.findViewById(R.id.property_photo_count);
         DriveFolder folder = getItem(position);
         if (folder == null) {
             name.setText("");
             disambiguator.setVisibility(View.GONE);
+            photoCount.setVisibility(View.GONE);
             return row;
         }
 
@@ -48,6 +61,17 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
         } else {
             disambiguator.setText("");
             disambiguator.setVisibility(View.GONE);
+        }
+
+        int count = protectedPhotoCountsByAddressId == null
+                ? 0
+                : protectedPhotoCountsByAddressId.getOrDefault(folder.id(), 0);
+        if (count > 0) {
+            photoCount.setText(count + (count == 1 ? " photo" : " photos"));
+            photoCount.setVisibility(View.VISIBLE);
+        } else {
+            photoCount.setText("");
+            photoCount.setVisibility(View.GONE);
         }
         return row;
     }

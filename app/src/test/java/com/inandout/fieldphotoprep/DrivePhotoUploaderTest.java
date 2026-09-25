@@ -35,10 +35,38 @@ public final class DrivePhotoUploaderTest {
     }
 
     @Test
+    public void revokedAuthorizationStopsBeforeRemotePhotoCreate() throws Exception {
+        File prepared = prepared("prepared-jpeg-bytes");
+        FakeProvider provider = new FakeProvider();
+        AuthorizationActionGuard guard = new AuthorizationActionGuard(() ->
+                new AuthorizationDecision(
+                        AuthorizationDecision.State.REVOKED,
+                        "user-1",
+                        "org-1",
+                        "OWNER",
+                        0L));
+        DrivePhotoUploader uploader = new DrivePhotoUploader(
+                provider,
+                millis -> { },
+                guard);
+
+        try {
+            uploader.create(uploadingRecord(), prepared);
+            fail("Expected authorization denial");
+        } catch (DrivePhotoUploader.UploadException error) {
+            assertFalse(error.remoteStateUncertain());
+            assertTrue(error.getMessage().contains("revoked"));
+        }
+
+        assertFalse(provider.createCalled);
+        assertFalse(provider.writeCalled);
+    }
+
+    @Test
     public void createUsesExactStoredWorkOrderAndDoesNotWriteBytes() throws Exception {
         File prepared = prepared("prepared-jpeg-bytes");
         FakeProvider provider = new FakeProvider();
-        DrivePhotoUploader uploader = new DrivePhotoUploader(provider);
+        DrivePhotoUploader uploader = new DrivePhotoUploader(provider, TestAuthorization.allowedGuard());
 
         DrivePhotoUploader.CreatedUpload created = uploader.create(uploadingRecord(), prepared);
 
@@ -53,7 +81,7 @@ public final class DrivePhotoUploaderTest {
     public void writeAndVerifyRequiresPersistedMatchingProvisionalIdentity() throws Exception {
         File prepared = prepared("prepared-jpeg-bytes");
         FakeProvider provider = new FakeProvider();
-        DrivePhotoUploader uploader = new DrivePhotoUploader(provider);
+        DrivePhotoUploader uploader = new DrivePhotoUploader(provider, TestAuthorization.allowedGuard());
         PendingPhotoRecord uploading = uploadingRecord();
         DrivePhotoUploader.CreatedUpload created = uploader.create(uploading, prepared);
 
@@ -92,7 +120,7 @@ public final class DrivePhotoUploaderTest {
         provider.failDestinationRead = true;
 
         try {
-            new DrivePhotoUploader(provider).create(uploadingRecord(), prepared("bytes"));
+            new DrivePhotoUploader(provider, TestAuthorization.allowedGuard()).create(uploadingRecord(), prepared("bytes"));
             fail("Expected upload failure");
         } catch (DrivePhotoUploader.UploadException error) {
             assertFalse(error.remoteStateUncertain());
@@ -107,7 +135,7 @@ public final class DrivePhotoUploaderTest {
         provider.destinationMimeType = "image/jpeg";
 
         try {
-            new DrivePhotoUploader(provider).create(uploadingRecord(), prepared("bytes"));
+            new DrivePhotoUploader(provider, TestAuthorization.allowedGuard()).create(uploadingRecord(), prepared("bytes"));
             fail("Expected upload failure");
         } catch (DrivePhotoUploader.UploadException error) {
             assertFalse(error.remoteStateUncertain());
@@ -122,7 +150,7 @@ public final class DrivePhotoUploaderTest {
         provider.failCreate = true;
 
         try {
-            new DrivePhotoUploader(provider).create(uploadingRecord(), prepared("prepared-photo"));
+            new DrivePhotoUploader(provider, TestAuthorization.allowedGuard()).create(uploadingRecord(), prepared("prepared-photo"));
             fail("Expected uncertain upload result");
         } catch (DrivePhotoUploader.UploadException error) {
             assertTrue(error.remoteStateUncertain());
@@ -163,7 +191,7 @@ public final class DrivePhotoUploaderTest {
     @Test
     public void changedPreparedFileAfterCreateStopsBeforeWriter() throws Exception {
         FakeProvider provider = new FakeProvider();
-        DrivePhotoUploader uploader = new DrivePhotoUploader(provider);
+        DrivePhotoUploader uploader = new DrivePhotoUploader(provider, TestAuthorization.allowedGuard());
         File prepared = prepared("first-size");
         PendingPhotoRecord uploading = uploadingRecord();
         DrivePhotoUploader.CreatedUpload created = uploader.create(uploading, prepared);
@@ -181,7 +209,7 @@ public final class DrivePhotoUploaderTest {
     }
 
     private void assertWriteStageUncertain(FakeProvider provider) throws Exception {
-        DrivePhotoUploader uploader = new DrivePhotoUploader(provider);
+        DrivePhotoUploader uploader = new DrivePhotoUploader(provider, TestAuthorization.allowedGuard());
         File prepared = prepared("prepared-photo");
         PendingPhotoRecord uploading = uploadingRecord();
         DrivePhotoUploader.CreatedUpload created = uploader.create(uploading, prepared);

@@ -104,6 +104,7 @@ public final class CameraCaptureActivity extends ComponentActivity {
     private boolean sessionBlocked;
     private boolean updatingZoomSlider;
     private boolean zoomSliderTracking;
+    private AuthorizationActionGuard authorizationGuard;
 
     private final Runnable hideZoomSliderRunnable = () -> {
         if (!zoomSliderTracking && zoomSliderPanel != null) {
@@ -115,6 +116,8 @@ public final class CameraCaptureActivity extends ComponentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
         photoStore = new PendingPhotoStore(new File(getFilesDir(), "pending_photos"));
         initialCaptureId = getIntent().getStringExtra(EXTRA_CAPTURE_ID);
 
@@ -187,6 +190,27 @@ public final class CameraCaptureActivity extends ComponentActivity {
             statusText.setText("Camera permission is required to take field photos.");
             requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        RuntimeAuthorizationManager manager = app.authorizationManager();
+        if (manager == null) {
+            return;
+        }
+        manager.revalidateAsync().thenAccept(decision -> runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed() || shutterButton == null) {
+                return;
+            }
+            if (!decision.allowsNewCapture() && !captureInProgress) {
+                statusText.setText(
+                        "Account access needs to be rechecked before another photo. "
+                                + "The current protected photos were kept.");
+            }
+            updateControlState();
+        }));
     }
 
     @Override
@@ -1231,9 +1255,11 @@ public final class CameraCaptureActivity extends ComponentActivity {
         }
 
         try {
+            authorizationGuard.requireNewCapture();
             reserveCaptureIfNeeded();
         } catch (Exception error) {
             statusText.setText("Could not reserve the next protected photo: " + safeMessage(error));
+            updateControlState();
             return;
         }
 
@@ -1474,7 +1500,8 @@ public final class CameraCaptureActivity extends ComponentActivity {
                 cameraReady
                         && !captureInProgress
                         && !sessionBlocked
-                        && !torchChangeInProgress);
+                        && !torchChangeInProgress
+                        && authorizationAllowsCapture());
         shutterButton.setAlpha(shutterButton.isEnabled() ? 1f : 0.45f);
         doneButton.setEnabled(!captureInProgress && !torchChangeInProgress);
         doneButton.setAlpha(doneButton.isEnabled() ? 1f : 0.45f);
@@ -1503,6 +1530,10 @@ public final class CameraCaptureActivity extends ComponentActivity {
 
         updateLightingUi();
         updateZoomUi();
+    }
+
+    private boolean authorizationAllowsCapture() {
+        return authorizationGuard != null && authorizationGuard.allowsNewCapture();
     }
 
     @Override

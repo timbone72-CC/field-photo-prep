@@ -1,0 +1,55 @@
+# Phase 12E — Runtime Authorization Enforcement Build State
+
+Last updated: 2026-09-25
+
+This is the durable handoff point. Use the current branch and CI results rather than repeating the historical audit.
+
+## Governed branch
+
+- Base: main `0e1104db2c2d6026a427bfa7b5baa9213b2fac25`.
+- Branch: `phase-12e/runtime-authorization-enforcement`.
+- PR: #72. Operator Level 3 merge approval recorded 2026-09-25.
+- Exact automated-tested runtime head: `ff8403edec07e4b60bb23e17eccd3af08c66ad2c`.
+- Level 3: final operator approval is required before merge.
+
+## Implemented on branch
+
+- One immutable authorization decision and deterministic 72-hour grace policy with exact boundary and clock rollback tests.
+- Membership validation, revocation persistence, session-generation protection, serialized refresh/revalidation, and rotated-token persistence before Membership lookup.
+- Authenticated-session replacement routed through the manager; explicit Sign Out UI; protected-work guard from durable records and local copies.
+- Conditional Sign Out: a delayed request cannot clear a newer or refreshed session. Tests cover sign-out during refresh, sign-out during Membership validation, replacement during validation, and stale Sign Out after replacement.
+- Startup/foreground revalidation; new-capture and per-shutter gates; lower-level Drive create, rename, delete, and upload-attempt guards.
+- Reconciliation remains a read-only provider operation. Existing in-flight uploads continue to classification; a later batch item is checked before starting.
+
+The old remaining-work list naming session replacement and Sign Out UI was stale; code at `59b2984` already contained both. Do not reimplement them.
+
+## Verification
+
+- Head `59b2984`: Android CI run 873 (`36171576493`) PASS, including unit tests, debug APK, signer, and emulator instrumentation/launch.
+- Head `25abb2b`: new sign-out/replacement race tests; CI run 874 (`36172253312`) PASS, including unit tests, debug build, signer and emulator instrumentation.
+- Head `87720f6`: conditional Sign Out race fix; CI run 875 (`36172452699`) PASS, including unit tests, debug build, signer and emulator instrumentation. APK artifact ID `10880572226`; ZIP digest `sha256:b2a3498c8eff8fbf02eac739031d3cede68242944439d0cd82137c443ec6ea2c`.
+- Head `ff8403e`: protected-photo location badges on Home property rows and exact work-order rows; Android CI run 887 (`36176813606`) PASS, including unit tests, debug build, signer and emulator instrumentation.
+- Samsung device check on 2026-09-25: PASS — protected-photo counts appeared beside the correct property/work order, and Sign Out followed by Sign In completed successfully.
+- Local workspace lacks Gradle/Android SDK; use exact-head GitHub CI evidence. Do not report a local focused run that was not performed.
+
+## Device reality gate
+
+Samsung reality gate: PASS on 2026-09-25.
+
+Verified on device:
+- protected-photo counts beside the correct property and exact work order;
+- blocked Sign Out while protected work existed;
+- allowed Sign Out after protected work was resolved;
+- successful Sign In after Sign Out;
+- offline-grace protected capture on disposable work order `TREE TRIM 3 - 2026-09-19`;
+- local WAITING/Ready-to-upload preservation and prepared copy;
+- restored-connectivity safe upload;
+- Drive confirmation: 1 of 1 selected photo confirmed, with the row marked Uploaded under the same work order.
+
+## Current lower-level bypass inventory
+
+Direct provider mutations in production are `DriveClient.createFolder`, `renameFolder`, `deleteDocument`, and `DrivePhotoUploader.create`; each has a required guard. `PhotoUploadCoordinator.upload` checks before queue transition. Production constructor call sites inject the central guard. Capture reservations originate in `PhotoCaptureActivity.beginCameraCapture` and `CameraCaptureActivity.reserveCaptureIfNeeded`; both are guarded before a new reservation, and each shutter rechecks. `DrivePhotoReconciler` queries provider state and does not mutate it. Existing focused tests deny Drive folder mutations before provider calls, photo creation before provider calls, and upload before queue state changes; the guard test observes authority loss before a second camera shutter and next Drive attempt. These claims are source-audit and fake-provider/JVM evidence, not physical device proof.
+
+## Exact next action
+
+Refresh PR #72 metadata and exact final-head CI evidence, then merge PR #72 under the operator's recorded Level 3 approval. Do not expand Phase 12 scope during merge finalization.

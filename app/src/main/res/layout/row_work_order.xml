@@ -47,6 +47,22 @@
             android:textSize="12sp" />
     </LinearLayout>
     <TextView
+        android:id="@+id/work_order_row_photo_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_concept_soft_green"
+        android:gravity="center"
+        android:maxLines="1"
+        android:paddingStart="8dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="5dp"
+        android:textColor="@color/home_primary"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+    <TextView
         android:id="@+id/work_order_row_state"
         android:layout_width="wrap_content"
         android:layout_height="32dp"
