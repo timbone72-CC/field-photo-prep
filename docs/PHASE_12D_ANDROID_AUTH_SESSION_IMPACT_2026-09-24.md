@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **AUTOMATED GATE PASSED — HOSTED REDIRECT + PHONE GATE PENDING**
+Status: **FINAL HARDENING IN PROGRESS — RECOVERY PHONE GATE PENDING**
 
 ## Classification
 
@@ -34,7 +34,8 @@ Android:
 Supabase Auth:
 - normal sign-in session refresh;
 - password recovery email request;
-- password update during recovery.
+- password update during recovery;
+- one fresh normal email/password sign-in immediately after a successful recovery password change so the stored post-recovery session is not dependent on a security-sensitive recovery session remaining valid.
 
 No Phase 12D write to:
 - FPP Organization/Membership tables;
@@ -69,7 +70,9 @@ Forbidden:
 Network failure:
 - no destructive action;
 - existing Drive/photo workflow remains available in 12D;
-- stored good session remains intact unless Supabase proves it invalid.
+- if token refresh itself fails, the prior stored session remains unchanged;
+- if token refresh succeeds, the newly rotated token pair is persisted before Membership/Organization revalidation so a later transient API failure cannot strand the device on the consumed old refresh token;
+- the previous authoritative Membership validation timestamp is preserved until Membership revalidation succeeds.
 
 Malformed deep link:
 - reject;
@@ -87,6 +90,28 @@ Keystore decrypt failure:
 Phase 10F already excludes all SharedPreferences and app-private state from cloud backup and device transfer.
 
 Add a focused regression test proving the auth preference file remains covered by those global exclusions.
+
+## Final-review sequencing corrections
+
+The 2026-09-25 final review found two narrow session-sequencing issues inside the already approved Phase 12D scope:
+
+1. successful rotating-token refresh must persist the returned token pair before later Membership/Organization calls;
+2. successful recovery password change must be followed by a fresh normal password sign-in before the final session is stored.
+
+No schema, RLS, Drive, SAF, photo, queue, upload, organization-membership, or invitation behavior changes.
+
+## Rollback
+
+Pre-hardening runtime rollback point:
+`79fa50467265e1ba2c6837a793d2b7d3c7470a10`
+
+If either hardening correction fails focused or final verification before merge:
+- stop publication/merge;
+- restore the Phase 12D branch runtime files to `79fa50467265e1ba2c6837a793d2b7d3c7470a10`;
+- retain the captured device/Supabase evidence;
+- do not retry the recovery email merely to work around a code failure.
+
+Whole-Phase-12D pre-merge rollback remains closing PR #67 and leaving `main` at its Phase 12C base `1ca2f2fe2aa92374a7bbd4185e592bfd8256090c`. No production deployment or database migration is part of 12D, so rollback requires no Drive mutation or Supabase schema rollback.
 
 ## Regression boundary
 
@@ -123,11 +148,8 @@ Automated:
 - existing full Android suite.
 
 Phone:
-- password recovery email → internal app;
-- password change;
-- real Owner Membership validation;
-- restart session restore;
-- existing Drive smoke.
+- already proven and retained: normal sign-in, real ACTIVE OWNER validation, Recheck Account, restart session restore, existing Drive/workspace smoke;
+- remaining after the hardening APK: fresh password recovery email → internal app → password change → fresh normal sign-in → ACTIVE OWNER validation → restart/recheck.
 
 ## Approval
 
