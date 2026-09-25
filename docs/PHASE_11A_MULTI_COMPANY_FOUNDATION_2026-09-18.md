@@ -1,6 +1,6 @@
 # Phase 11A Multi-Company Foundation Impact Record — 2026-09-18
 
-Status: **IN PROGRESS — Level 3**
+Status: **COMPLETE — Level 3**
 
 ## User-facing problem
 
@@ -166,7 +166,19 @@ This change must not weaken:
 - provider freshness fail-closed behavior;
 - account/provider choice remaining in Android's system picker.
 
-## Approval state
+## Completion evidence
 
-Implementation is authorized by the operator's request to add/edit companies after reading the contracts.
-Because this is Level 3, **explicit operator approval is still required immediately before merge** after automated and safe-device evidence is available.
+- final tested runtime head: `ed1990742d403f466151d9399a423a8fdaabbe69`
+- Android CI run `35419341385`: PASS
+- real Android + Google Drive provider gate: PASS
+- company discovery/add/rename/switch: PASS
+- selected-company property/work-order scoping: PASS
+- queued-photo immutable destination across company switch: PASS
+- real upload to original stored work-order while another company was active: PASS
+- restart/workspace persistence: PASS
+- transient work-order draft isolation after company/property change: PASS
+- semantic success-banner spot-check: PASS
+- PR #57 merged to main at `66aeed51fc7065f4f18e06677e3931daf4f3977f`
+- post-merge live workspace verification proved HNP ↔ Tresmolino switching under the shared `Photos` workspace
+
+The prior `IN PROGRESS` label was stale documentation and is corrected by the 2026-09-24 source-of-truth reconciliation.
