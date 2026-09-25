@@ -58,6 +58,7 @@ public final class ProtectedWorkGuardTest {
         assertTrue(result.blocksSignOut());
         assertEquals(PendingPhotoRecord.State.WAITING, waiting.state());
         assertEquals(1, result.queuedCount());
+        assertEquals(1, result.addressCounts().get(address().id()).intValue());
     }
 
     @Test
