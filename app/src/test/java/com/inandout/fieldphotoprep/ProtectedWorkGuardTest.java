@@ -110,6 +110,41 @@ public final class ProtectedWorkGuardTest {
     }
 
     @Test
+    public void oldUploadedOccurrenceWithLocalCopyStillBlocksAfterReuseHidesItFromUiScan()
+            throws Exception {
+        Fixture fixture = fixture();
+        PendingPhotoRecord uploaded = createUploaded(fixture);
+
+        fixture.store.prepareCaptureSequenceResetForReuse(
+                uploaded.workOrderId(),
+                "Inspection - 2026-10-02");
+        fixture.store.completeCaptureSequenceResetForReuse(
+                uploaded.workOrderId(),
+                "Inspection - 2026-10-02");
+
+        assertEquals(0, fixture.store.scan().records().size());
+
+        ProtectedWorkGuard.Result result = fixture.guard.inspect();
+
+        assertTrue(result.blocksSignOut());
+        assertEquals(1, result.cleanupPendingCount());
+    }
+
+    @Test
+    public void corruptPhotoMetadataFailsClosedForSignOut() throws Exception {
+        Fixture fixture = fixture();
+        File corrupt = new File(
+                fixture.pendingRoot,
+                "photo-11111111-1111-4111-8111-111111111111.properties");
+        writeBytes(corrupt);
+
+        ProtectedWorkGuard.Result result = fixture.guard.inspect();
+
+        assertTrue(result.blocksSignOut());
+        assertEquals(1, result.unreadableCount());
+    }
+
+    @Test
     public void uploadedPhotoWithPreparedCopyStillPresentBlocksCleanup() throws Exception {
         Fixture fixture = fixture();
         PendingPhotoRecord uploaded = createUploaded(fixture);
@@ -126,7 +161,11 @@ public final class ProtectedWorkGuardTest {
         File root = temporaryFolder.newFolder();
         PendingPhotoStore store = new PendingPhotoStore(new File(root, "pending"));
         PhotoPreparer preparer = new PhotoPreparer(new File(root, "prepared"));
-        return new Fixture(store, preparer, new ProtectedWorkGuard(store, preparer));
+        return new Fixture(
+                new File(root, "pending"),
+                store,
+                preparer,
+                new ProtectedWorkGuard(store, preparer));
     }
 
     private PendingPhotoRecord createWaiting(Fixture fixture) throws Exception {
@@ -162,14 +201,17 @@ public final class ProtectedWorkGuardTest {
     }
 
     private static final class Fixture {
+        private final File pendingRoot;
         private final PendingPhotoStore store;
         private final PhotoPreparer preparer;
         private final ProtectedWorkGuard guard;
 
         private Fixture(
+                File pendingRoot,
                 PendingPhotoStore store,
                 PhotoPreparer preparer,
                 ProtectedWorkGuard guard) {
+            this.pendingRoot = pendingRoot;
             this.store = store;
             this.preparer = preparer;
             this.guard = guard;
