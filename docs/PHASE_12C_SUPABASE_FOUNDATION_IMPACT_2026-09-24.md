@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **BACKEND IMPLEMENTATION COMPLETE — FINAL LEVEL 3 MERGE APPROVAL PENDING**
+Status: **COMPLETE — MERGED**
 
 ## User-facing problem
 
@@ -265,13 +265,14 @@ Verification results:
 - duplicate Membership constraint: PASS;
 - duplicate pending Invitation constraint: PASS;
 - disposable fixtures rolled back fully;
-- security advisor: 0 lints;
+- database/RLS security advisor before real Auth bootstrap: 0 lints;
+- final Auth advisor: one known Pro-only leaked-password-protection warning on the Free plan;
 - performance advisor: no missing-FK-index findings after the second migration.
 
 Permanent evidence:
 `docs/PHASE_12C_SUPABASE_VERIFICATION_2026-09-24.md`
 
-The remaining implementation gate is the first real FPP Owner bootstrap. No owner email has been selected in audited original-FPP history, so that identity must not be guessed.
+The rollback-only fixture phase completed before the real Owner bootstrap; no disposable identities remained.
 
 
 ## First Owner identity selection — 2026-09-24
@@ -304,4 +305,4 @@ Hosted exact-scope test:
 
 The initial invite exposed a default `localhost:3000` redirect. That redirect issue belongs to the following Android Auth/session/invitation-flow slice and does not invalidate the Phase 12C backend identity/RLS proof.
 
-Final Phase 12C Level 3 merge approval is now the remaining gate.
+Phase 12C received explicit Level 3 operator approval on 2026-09-24 and PR #65 merged at `c76ce157627dd1a0247786f35eb2fb0eba105938`.

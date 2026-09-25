@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **BACKEND COMPLETE — FINAL LEVEL 3 MERGE APPROVAL PENDING**
+Status: **COMPLETE — MERGED**
 
 ## Scope
 
@@ -106,19 +106,15 @@ Hosted authorization tests passed:
 - anon read denial;
 - direct authenticated mutation denial.
 
-Security advisor: **0 lints**.
+Pre-bootstrap database/RLS security advisor: **0 lints**.
 
-Current persistent rows after rollback-only tests:
-- Organizations: 0
-- Memberships: 0
+The rollback-only fixture stage returned persistent rows to zero before the real bootstrap. Final production counts after bootstrap are:
+- Organizations: 1
+- Memberships: 1
 - Invitations: 0
-- Auth users: 0
+- Auth users: 1
 
-Next genuine gate:
-- select the real first-Owner login email;
-- create that user through supported Supabase Auth;
-- bootstrap the real Organization + ACTIVE OWNER Membership;
-- verify exact Owner scope.
+Final Auth advisor has one known non-blocking warning: leaked-password protection is disabled because Supabase documents that feature as Pro-only on the current Free project.
 
 
 ## First Owner identity selection — 2026-09-24
@@ -168,3 +164,11 @@ The initial hosted Supabase invite link redirected to `localhost:3000`, exposing
 Despite that broken landing page, Supabase created and confirmed the real Auth user successfully.
 
 Before future invitation/password-recovery UX is called ready, the Android auth slice must configure and test a deliberate FPP redirect/deep-link path rather than relying on Supabase's default localhost Site URL.
+
+
+## Merge closeout
+
+- explicit Level 3 operator approval: **2026-09-24**
+- PR #65 merge commit: `c76ce157627dd1a0247786f35eb2fb0eba105938`
+- Phase 12C status: **COMPLETE**
+- next governed work: Android authentication/session integration, including replacing the default `localhost:3000` redirect with an FPP mobile redirect/deep-link.
