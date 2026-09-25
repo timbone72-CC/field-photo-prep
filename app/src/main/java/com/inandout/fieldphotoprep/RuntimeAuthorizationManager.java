@@ -147,7 +147,7 @@ final class RuntimeAuthorizationManager {
                         || !sameSessionVersion(sessionStore.load(), stored)) {
                     return evaluateStoredLocked(sessionStore.load());
                 }
-                if (error.isAuthenticationRejected()) {
+                if (error.isRefreshCredentialRejected()) {
                     failClosedPersistentlyLocked(stored);
                     clearObservationLocked();
                     return new AuthorizationDecision(
@@ -215,7 +215,7 @@ final class RuntimeAuthorizationManager {
                         || !sameSessionVersion(sessionStore.load(), rotated)) {
                     return evaluateStoredLocked(sessionStore.load());
                 }
-                if (error.isAuthenticationRejected()) {
+                if (error.isUnauthorized()) {
                     failClosedPersistentlyLocked(rotated);
                     clearObservationLocked();
                     return new AuthorizationDecision(
