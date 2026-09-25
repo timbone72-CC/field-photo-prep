@@ -148,18 +148,48 @@ public final class DrivePhotoUploader {
 
     private final ProviderOps provider;
     private final Sleeper sleeper;
+    private final AuthorizationActionGuard authorizationGuard;
 
-    public DrivePhotoUploader(ContentResolver resolver, Uri treeUri) {
-        this(new AndroidProviderOps(resolver, treeUri), DrivePhotoUploader::sleepNormally);
+    DrivePhotoUploader(ContentResolver resolver, Uri treeUri) {
+        this(
+                new AndroidProviderOps(resolver, treeUri),
+                DrivePhotoUploader::sleepNormally,
+                AuthorizationActionGuard.permissiveForTests());
+    }
+
+    DrivePhotoUploader(
+            ContentResolver resolver,
+            Uri treeUri,
+            AuthorizationActionGuard authorizationGuard) {
+        this(
+                new AndroidProviderOps(resolver, treeUri),
+                DrivePhotoUploader::sleepNormally,
+                authorizationGuard);
     }
 
     DrivePhotoUploader(ProviderOps provider) {
-        this(provider, millis -> { });
+        this(
+                provider,
+                millis -> { },
+                AuthorizationActionGuard.permissiveForTests());
     }
 
     DrivePhotoUploader(ProviderOps provider, Sleeper sleeper) {
+        this(
+                provider,
+                sleeper,
+                AuthorizationActionGuard.permissiveForTests());
+    }
+
+    DrivePhotoUploader(
+            ProviderOps provider,
+            Sleeper sleeper,
+            AuthorizationActionGuard authorizationGuard) {
         this.provider = Objects.requireNonNull(provider, "provider");
         this.sleeper = Objects.requireNonNull(sleeper, "sleeper");
+        this.authorizationGuard = Objects.requireNonNull(
+                authorizationGuard,
+                "authorizationGuard");
     }
 
     /**
@@ -193,6 +223,12 @@ public final class DrivePhotoUploader {
             throw safeFailure(
                     "The exact stored work-order destination is no longer a folder. No Drive file was created.",
                     null);
+        }
+
+        try {
+            authorizationGuard.requireDriveMutation();
+        } catch (IOException denied) {
+            throw safeFailure(denied.getMessage(), denied);
         }
 
         final RemoteDocument created;
