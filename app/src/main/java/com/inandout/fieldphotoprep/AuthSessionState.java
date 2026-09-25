@@ -56,7 +56,7 @@ final class AuthSessionState {
     }
 
     private static String require(String value, String name) {
-        if (value == null || value.isBlank()) {
+        if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(name + " is required");
         }
         return value;
