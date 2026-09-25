@@ -34,6 +34,19 @@ The check does not claim to prove:
 
 Those remain governed by repository rules and operator process.
 
+## CI cost control
+
+The existing Android CI now treats a pull request as documentation-only only when every changed path ends in `.md`.
+
+For Markdown-only PRs:
+- checkout and scope detection still run;
+- the Android CI status still completes successfully;
+- Gradle, APK build/signing, KVM, emulator, and artifact upload steps are skipped.
+
+Any non-Markdown change runs the full Android pipeline. Pushes to governed runtime branches continue to run the full pipeline.
+
+This preserves one stable Android CI check name while avoiding expensive runtime verification for documentation-only changes.
+
 ## Branch-protection target after this check exists
 
 For `main`, the recommended GitHub protection is:
