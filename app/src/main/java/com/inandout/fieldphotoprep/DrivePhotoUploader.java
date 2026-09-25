@@ -150,13 +150,6 @@ public final class DrivePhotoUploader {
     private final Sleeper sleeper;
     private final AuthorizationActionGuard authorizationGuard;
 
-    DrivePhotoUploader(ContentResolver resolver, Uri treeUri) {
-        this(
-                new AndroidProviderOps(resolver, treeUri),
-                DrivePhotoUploader::sleepNormally,
-                AuthorizationActionGuard.permissiveForTests());
-    }
-
     DrivePhotoUploader(
             ContentResolver resolver,
             Uri treeUri,
@@ -167,18 +160,10 @@ public final class DrivePhotoUploader {
                 authorizationGuard);
     }
 
-    DrivePhotoUploader(ProviderOps provider) {
-        this(
-                provider,
-                millis -> { },
-                AuthorizationActionGuard.permissiveForTests());
-    }
-
-    DrivePhotoUploader(ProviderOps provider, Sleeper sleeper) {
-        this(
-                provider,
-                sleeper,
-                AuthorizationActionGuard.permissiveForTests());
+    DrivePhotoUploader(
+            ProviderOps provider,
+            AuthorizationActionGuard authorizationGuard) {
+        this(provider, millis -> { }, authorizationGuard);
     }
 
     DrivePhotoUploader(
@@ -190,6 +175,10 @@ public final class DrivePhotoUploader {
         this.authorizationGuard = Objects.requireNonNull(
                 authorizationGuard,
                 "authorizationGuard");
+    }
+
+    AuthorizationActionGuard authorizationGuard() {
+        return authorizationGuard;
     }
 
     /**
