@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **IN PROGRESS — DEDICATED PROJECT CREATED; SCHEMA NOT YET APPLIED**
+Status: **IN PROGRESS — HOSTED SCHEMA/RLS VERIFIED; FIRST OWNER BOOTSTRAP PENDING**
 
 ## User-facing problem
 
@@ -246,3 +246,29 @@ External rollback before first real bootstrap:
 Phase 12C implementation may be developed and tested on its dedicated branch/environment under the approved roadmap.
 
 Final Level 3 merge still requires explicit operator pre-merge approval after exact schema/RLS evidence is available.
+
+
+## Hosted verification evidence
+
+Applied migrations:
+- `20260925012939_phase_12c_identity_foundation`
+- `20260925013000_phase_12c_invitation_fk_indexes`
+
+Verification results:
+- all three FPP identity tables have RLS enabled;
+- authenticated role has SELECT only;
+- anon has no SELECT;
+- authenticated role has no direct identity mutation privileges;
+- Member cross-Organization isolation: PASS;
+- Owner same-Organization Membership/Invitation read: PASS;
+- Member Invitation read: DENIED as designed;
+- duplicate Membership constraint: PASS;
+- duplicate pending Invitation constraint: PASS;
+- disposable fixtures rolled back fully;
+- security advisor: 0 lints;
+- performance advisor: no missing-FK-index findings after the second migration.
+
+Permanent evidence:
+`docs/PHASE_12C_SUPABASE_VERIFICATION_2026-09-24.md`
+
+The remaining implementation gate is the first real FPP Owner bootstrap. No owner email has been selected in audited original-FPP history, so that identity must not be guessed.
