@@ -555,7 +555,7 @@ Permanent record:
 
 The prior Phase 11 `IN PROGRESS` labels were stale documentation and were corrected by the 2026-09-24 source-of-truth reconciliation.
 
-## Phase 12 — User Identity & Release Readiness — MASTER PLAN APPROVED / 12E NEXT
+## Phase 12 — User Identity & Release Readiness — 12E COMPLETE / 12F IN PROGRESS
 
 Goal:
 add durable FPP User/Organization identity and release-readiness controls without conflating FPP sign-in with Google Drive authorization or turning FPP into a second job/photo database.
@@ -573,6 +573,8 @@ Current status:
 - Phase 12B dedicated Supabase authentication architecture is approved and merged;
 - Phase 12C dedicated Supabase backend foundation is complete and merged;
 - Phase 12D Android auth/session foundation is complete and merged;
+- Phase 12E runtime authorization enforcement is complete, Samsung-validated, and merged through the governed Level 3 gate;
+- Phase 12F Owner/member administration and invitation lifecycle is active on PR #74; superseded PR #73 is closed and must not be used as a continuation point;
 - current personal-Drive production remains valid and unchanged;
 - Team remains a separate product/backend;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
@@ -699,25 +701,46 @@ Phase 12D completion:
 
 Phase 12D is **COMPLETE**.
 
-### Phase 12E — Runtime authorization enforcement — AUTOMATED PASS / SAMSUNG GATE PENDING
+### Phase 12E — Runtime authorization enforcement — COMPLETE
 
-Implement the actual startup/resume authorization gate using the proven 12D session layer:
-- automatic online Membership revalidation;
-- 72-hour same-Organization offline grace;
-- grace reset after successful validation;
-- no real-time 72-hour wait in testing — boundary logic uses deterministic clock-based tests;
-- authoritative REVOKED overrides remaining grace immediately;
-- after grace expiry, protected work remains safe but new capture and new Drive mutations wait for successful revalidation;
-- safe sign-out remains blocked while unresolved/protected work would be stranded.
+Delivered and validated:
+- centralized runtime authorization decision consuming the encrypted 12D session;
+- automatic authoritative Membership/Organization revalidation;
+- exact 72-hour same-Organization offline grace with deterministic boundary/clock-rollback tests;
+- successful validation resets grace;
+- authoritative revocation overrides grace;
+- new capture and new Drive mutations fail closed when authorization requires recheck/sign-in/revocation handling;
+- protected originals and reconciliation evidence remain preserved;
+- sign-out is blocked while unresolved/protected work would be stranded;
+- Home/work-order presentation shows protected-photo counts beside the affected job so unresolved work is locatable rather than only showing a global count.
 
-### Phase 12F — Owner/member administration — PLANNED
+Evidence:
+- Phase 12E merged to `main` at `31bfaaffa012cadf2da0c9c31c6da64967d9d24f`;
+- post-merge Android CI passed;
+- Samsung online/offline-within-grace/revalidation, capture/preparation, exact Drive upload, protected-work sign-out block, and sign-out/sign-in gates passed;
+- explicit Level 3 merge approval recorded.
 
-- OWNER/MEMBER administration only;
-- invite, cancel, role change, revoke/reactivate;
-- idempotent duplicate protection;
-- last-active-Owner protection;
-- privileged mutations remain server-side;
-- Android never receives a service-role key.
+### Phase 12F — Owner/member administration — IN PROGRESS
+
+Canonical implementation:
+- draft PR #74, `phase-12f/membership-invitation-lifecycle`;
+- superseded draft PR #73 is closed and not merged;
+- live Phase 12F Supabase migration history has been reconciled into PR #74 source control;
+- deployed `fpp-owner-invite` Edge Function source has been rechecked as an exact text match to PR #74;
+- core Owner authorization, Organization isolation, invitation idempotency/acceptance, cancellation/expiry, and concurrent last-Owner hosted tests pass;
+- last runtime/backend implementation checkpoint `a0f12f75d08d596a5bfc53169e879a31fbb392dd` passed Android CI run `36190542857`.
+
+Still required before completion:
+- invitation delivery-failure/retry evidence through the Edge Function;
+- one real disposable invitation email/deep-link acceptance;
+- final backend RLS/grant/catalog/advisor snapshot;
+- focused Android Owner-admin/invitation verification and final regression;
+- smallest required Samsung reality gate;
+- explicit Level 3 operator merge approval.
+
+Durable handoff:
+- `docs/PHASE_12F_BUILD_STATE.md`
+- `docs/PHASE_12F_BACKEND_VERIFICATION_2026-09-25.md`
 
 ### Phase 12G — First-run/new-device flow — PLANNED
 
@@ -782,7 +805,7 @@ Final source-of-truth, security, privacy, RLS, backup, diagnostics-data-boundary
 
 Default remaining sequence:
 
-**12E → 12F → 12G → 12H → 12I → 12J → 12K → 12L → 12M**
+**12F → 12H → 12G → 12I → 12J → 12K → 12L → 12M**
 
 Safe design work may overlap where recorded in the master plan, but multiple runtime branches must not independently take ownership of startup/auth/Drive-binding state.
 
