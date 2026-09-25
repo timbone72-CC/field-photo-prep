@@ -618,17 +618,26 @@ Completion gate for 12B design:
 - explicit Level 3 operator pre-merge approval recorded;
 - no runtime/schema implementation begins before merge.
 
-### Phase 12C — Dedicated FPP Supabase foundation — NEXT AFTER 12B MERGE
+### Phase 12C — Dedicated FPP Supabase foundation — IN PROGRESS
 
-Planned scope:
-1. create the dedicated original-FPP Supabase project;
-2. add the minimum Organization/Membership/Invitation schema;
-3. add explicit Data API grants and RLS;
-4. create controlled first-Owner bootstrap;
-5. prove wrong-user/wrong-Organization denial and invitation idempotency;
-6. keep Team and customer job/photo data untouched.
+Completed:
+1. dedicated original-FPP Supabase project created: `Field Photo Prep`, ref `vtyiktvqhbgabawotkrj`;
+2. minimum Organization/Membership/Invitation schema applied;
+3. explicit Data API grants + RLS applied and verified;
+4. wrong-user/wrong-Organization hosted isolation tests passed;
+5. Owner-vs-Member invitation visibility tests passed;
+6. duplicate Membership and pending-Invitation protections passed;
+7. security advisor reports 0 lints;
+8. disposable test identities rolled back to zero persistent rows;
+9. Team remains separate and untouched.
 
-No Android runtime auth work is required to begin the backend/RLS proof.
+Remaining:
+- create the first real FPP Auth Owner through the supported Supabase Auth path;
+- bootstrap In And Out Cleaner Inspections LLC + ACTIVE OWNER Membership;
+- verify exact Owner scope;
+- obtain final Level 3 pre-merge approval.
+
+No Android runtime auth work is included in Phase 12C.
 
 ### Later Phase 12 slices
 
