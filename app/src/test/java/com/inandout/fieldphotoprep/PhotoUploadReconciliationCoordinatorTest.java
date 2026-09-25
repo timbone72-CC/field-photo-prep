@@ -49,7 +49,7 @@ public final class PhotoUploadReconciliationCoordinatorTest {
         PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                 fixture.store,
                 fixture.preparer,
-                new DrivePhotoUploader(fixture.uploadProvider),
+                new DrivePhotoUploader(fixture.uploadProvider, TestAuthorization.allowedGuard()),
                 new DrivePhotoReconciler(reconcileProvider));
 
         PhotoUploadCoordinator.ReconciliationResult result = coordinator.reconcileUncertain(PHOTO_ID);
@@ -76,7 +76,7 @@ public final class PhotoUploadReconciliationCoordinatorTest {
         PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                 fixture.store,
                 fixture.preparer,
-                new DrivePhotoUploader(fixture.uploadProvider),
+                new DrivePhotoUploader(fixture.uploadProvider, TestAuthorization.allowedGuard()),
                 new DrivePhotoReconciler(reconcileProvider));
 
         PhotoUploadCoordinator.ReconciliationResult result = coordinator.reconcileUncertain(PHOTO_ID);
@@ -106,7 +106,7 @@ public final class PhotoUploadReconciliationCoordinatorTest {
         PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                 fixture.store,
                 fixture.preparer,
-                new DrivePhotoUploader(fixture.uploadProvider),
+                new DrivePhotoUploader(fixture.uploadProvider, TestAuthorization.allowedGuard()),
                 new DrivePhotoReconciler(reconcileProvider));
 
         PhotoUploadCoordinator.ReconciliationResult result = coordinator.reconcileUncertain(PHOTO_ID);
@@ -139,7 +139,7 @@ public final class PhotoUploadReconciliationCoordinatorTest {
         PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                 fixture.store,
                 fixture.preparer,
-                new DrivePhotoUploader(fixture.uploadProvider),
+                new DrivePhotoUploader(fixture.uploadProvider, TestAuthorization.allowedGuard()),
                 new DrivePhotoReconciler(reconcileProvider));
 
         coordinator.reconcileUncertain(PHOTO_ID);
