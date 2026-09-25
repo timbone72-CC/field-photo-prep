@@ -484,8 +484,16 @@ public final class PendingPhotoStore {
     }
 
     public ScanResult scan() throws IOException {
+        return scanInternal(true);
+    }
+
+    ScanResult scanAllPersistedRecordsForProtection() throws IOException {
+        return scanInternal(false);
+    }
+
+    private ScanResult scanInternal(boolean activeOccurrenceOnly) throws IOException {
         ensureRoot();
-        Properties ledger = readCaptureSequenceLedger();
+        Properties ledger = activeOccurrenceOnly ? readCaptureSequenceLedger() : null;
         List<PendingPhotoRecord> allRecords = new ArrayList<>();
         List<String> corrupt = new ArrayList<>();
 
@@ -512,7 +520,7 @@ public final class PendingPhotoStore {
         List<String> unusableQueued = new ArrayList<>();
         List<String> uncertain = new ArrayList<>();
         for (PendingPhotoRecord record : allRecords) {
-            if (!retainInActiveOccurrence(record, ledger)) {
+            if (activeOccurrenceOnly && !retainInActiveOccurrence(record, ledger)) {
                 continue;
             }
             records.add(record);
