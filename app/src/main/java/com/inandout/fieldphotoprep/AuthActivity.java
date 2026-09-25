@@ -393,10 +393,19 @@ public final class AuthActivity extends Activity {
     private void replaceAuthenticatedSessionSafely(AuthSessionState state)
             throws Exception {
         AuthSessionState previous = authorizationManager.storedSession();
-        if (previous != null
-                && (!previous.userId().equals(state.userId())
-                || !previous.organizationId().equals(state.organizationId()))) {
-            ProtectedWorkGuard.Result protectedWork = inspectProtectedWork();
+        ProtectedWorkGuard.Result protectedWork = null;
+
+        if (previous == null) {
+            protectedWork = inspectProtectedWork();
+            if (protectedWork.blocksSignOut()) {
+                throw new IOException(
+                        "Protected local work exists, but its previous Field Photo Prep identity "
+                                + "is unavailable. The work was kept read-only and cannot be "
+                                + "attached to a new account automatically.");
+            }
+        } else if (!previous.userId().equals(state.userId())
+                || !previous.organizationId().equals(state.organizationId())) {
+            protectedWork = inspectProtectedWork();
             if (protectedWork.blocksSignOut()) {
                 throw new IOException(
                         "Protected work still belongs to the previously validated account. "
