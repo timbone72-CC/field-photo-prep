@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **FINAL AUTOMATED GATE PASSED — RECOVERY PHONE GATE PENDING**
+Status: **DEVICE GATE PASSED — FINAL LEVEL 3 MERGE APPROVAL PENDING**
 
 ## Classification
 
@@ -187,4 +187,23 @@ The final runtime diff is limited to:
 
 No Drive, SAF, photo, queue, upload, reconciliation, cleanup, database schema, RLS, or Team runtime surface changed.
 
-Remaining Level 3 completion evidence is only the exact final APK recovery device path and explicit operator pre-merge approval.
+## Final device-gate evidence
+
+The exact final hardening APK was installed on Samsung SM-G996U / Android 15 and the recovery path passed:
+
+- fresh recovery email → **Field Photo Prep Internal** deep link: PASS;
+- password update: PASS;
+- fresh normal password sign-in after update: PASS;
+- ACTIVE OWNER Membership + exact Organization validation: PASS;
+- close/reopen encrypted session restore: PASS;
+- Recheck Account refresh + Membership/Organization validation: PASS;
+- prior existing Drive/workspace smoke remains valid and was not repeated because the hardening changed no Drive/SAF runtime surface.
+
+Live Supabase evidence confirmed the final recheck with:
+- refresh-token exchange: HTTP 200;
+- ACTIVE Membership read: HTTP 200;
+- exact Organization read: HTTP 200.
+
+**Device gate classification: PASS.**
+
+The only remaining Level 3 completion requirement is explicit operator pre-merge approval for PR #67.
