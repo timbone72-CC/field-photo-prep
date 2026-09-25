@@ -35,7 +35,9 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -53,6 +55,7 @@ public final class MainActivity extends Activity {
     private final List<DriveFolder> companyFolders = new ArrayList<>();
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
+    private final Map<String, Integer> protectedPhotoCountByAddressId = new HashMap<>();
 
     private FolderPrefs folderPrefs;
     private Screen screen = Screen.ADDRESSES;
@@ -142,6 +145,7 @@ public final class MainActivity extends Activity {
         if (manager != null) {
             manager.revalidateAsync();
         }
+        refreshProtectedPhotoCounts();
     }
 
     @Override
@@ -220,7 +224,10 @@ private void buildHomeUi() {
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
     homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
 
-    adapter = new PropertyListAdapter(this, propertyFolders);
+    adapter = new PropertyListAdapter(
+            this,
+            propertyFolders,
+            protectedPhotoCountByAddressId);
     folderList.setAdapter(adapter);
     folderList.setOnItemClickListener((parent, view, position, id) -> {
         if (screen != Screen.ADDRESSES || busy || position < 0 || position >= propertyFolders.size()) {
@@ -1788,6 +1795,33 @@ private void buildLegacyWorkOrderUi() {
         renderCurrentWorkOrder();
     }
 
+
+    private void refreshProtectedPhotoCounts() {
+        executor.execute(() -> {
+            final Map<String, Integer> counts;
+            try {
+                PendingPhotoStore store = new PendingPhotoStore(
+                        new File(getFilesDir(), "pending_photos"));
+                PhotoPreparer preparer = new PhotoPreparer(
+                        new File(getFilesDir(), "prepared_photos"));
+                counts = new HashMap<>(
+                        new ProtectedWorkGuard(store, preparer).inspect().addressCounts());
+            } catch (Exception error) {
+                return;
+            }
+
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                protectedPhotoCountByAddressId.clear();
+                protectedPhotoCountByAddressId.putAll(counts);
+                if (adapter != null) {
+                    adapter.notifyDataSetChanged();
+                }
+            });
+        });
+    }
 
     private void notifyFolderAdapters() {
         if (adapter != null) {
