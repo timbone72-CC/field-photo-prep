@@ -1,5 +1,7 @@
 # Field Photo Prep Regression Checklist
 
+> **Routing scope:** Affected-behavior checklist. Read only the sections mapped by `RULE_INDEX.md` to the surfaces being changed; do not treat the entire checklist as mandatory for unrelated work.
+
 Use only the sections affected by the change. This checklist is not a requirement to retest every feature after every edit.
 
 ## A. App launch and folder state
