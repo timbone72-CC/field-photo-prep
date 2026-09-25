@@ -48,7 +48,8 @@ public final class MainActivity extends Activity {
     }
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final DriveClient driveClient = new DriveClient();
+    private DriveClient driveClient;
+    private AuthorizationActionGuard authorizationGuard;
     private final List<DriveFolder> companyFolders = new ArrayList<>();
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
@@ -110,6 +111,9 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
+        driveClient = new DriveClient(authorizationGuard);
         folderPrefs = new FolderPrefs(this);
         buildUi();
         showAddressScreen(false);
