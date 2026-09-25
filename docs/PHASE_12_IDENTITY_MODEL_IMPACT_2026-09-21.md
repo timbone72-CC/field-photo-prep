@@ -2,7 +2,7 @@
 
 Date: 2026-09-21
 
-Status: **DESIGN RECORDED — IMPLEMENTATION NOT STARTED — PRE-MERGE APPROVAL PENDING**
+Status: **DESIGN APPROVED — IMPLEMENTATION NOT STARTED**
 
 ## Exact user-facing problem
 
@@ -189,8 +189,12 @@ None for this documentation-only design record.
 
 Future identity implementation must preserve all existing field-flow smoke checks and add only proportional identity/account checks.
 
-## Explicit pre-merge approval status
+## Approval record
 
-**APPROVED — 2026-09-23.**
+PR #61 merged on 2026-09-23.
 
-The operator gave explicit pre-merge approval for PR #61 after review of the exact governed diff. This satisfies the Level 3 pre-merge approval gate.
+The historical repository record stated that explicit pre-merge approval was given on 2026-09-23. A 2026-09-24 cross-conversation audit could not independently substantiate that exact historical approval timing.
+
+The operator explicitly approved/reconfirmed Identity Model v1 on **2026-09-24**.
+
+This reconciliation corrects the verifiable approval record without changing the approved identity model or authorizing any Phase 12 authentication implementation.
