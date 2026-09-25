@@ -21,15 +21,6 @@ final class AuthorizationActionGuard {
         this.decisionSource = Objects.requireNonNull(decisionSource, "decisionSource");
     }
 
-    static AuthorizationActionGuard permissiveForTests() {
-        return new AuthorizationActionGuard(() -> new AuthorizationDecision(
-                AuthorizationDecision.State.VALIDATED,
-                "test-user",
-                "test-organization",
-                "OWNER",
-                0L));
-    }
-
     AuthorizationDecision currentDecision() {
         return decisionSource.currentDecision();
     }
