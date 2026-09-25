@@ -86,7 +86,8 @@ The existing detailed contracts remain authoritative for their domains:
 
 - `CONTRACT.md` — product/photo/queue behavior
 - `CHANGE_CONTROL_CONTRACT.md` — change levels, records, approval, rollback
-- `TESTING_CONTRACT.md` — test selection, final gates, failure behavior
+- `TESTING_CONTRACT.md` — universal test selection, final gates, failure behavior
+- `rules/testing/*` — feature-specific camera, upload/retry, and Drive/provider regression rules
 - `INTEGRATION_CONTRACT.md` — Google Drive / Android DocumentsProvider
 - `REGRESSION_CHECKLIST.md` — affected behavior checklist
 - `docs/PHASE_STAGING_DOCTRINE.md` — when development should stop for genuine device/external evidence
