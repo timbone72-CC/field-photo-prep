@@ -2,78 +2,43 @@
 
 Last updated: 2026-09-25
 
-This file is the durable handoff point for Phase 12E. Do not rely on chat history to determine progress.
+This is the durable handoff point. Use the current branch and CI results rather than repeating the historical audit.
 
-## Governed base
+## Governed branch
 
-- main base at start of Phase 12E runtime work:
-  - `0e1104db2c2d6026a427bfa7b5baa9213b2fac25`
-- implementation branch:
-  - `phase-12e/runtime-authorization-enforcement`
-- draft PR:
-  - `#72 Phase 12E: runtime authorization enforcement`
-- Level 3:
-  - do not merge without explicit operator approval
+- Base: main `0e1104db2c2d6026a427bfa7b5baa9213b2fac25`.
+- Branch: `phase-12e/runtime-authorization-enforcement`.
+- Draft PR: #72. Do not merge or modify main.
+- Latest runtime head when this checkpoint was written: `87720f6f660051e38eeb762497320fcfd99730f6`.
+- Level 3: final operator approval is required before merge.
 
-## Completed and committed
+## Implemented on branch
 
-- central immutable authorization decision
-- deterministic 72-hour grace policy
-- exact grace-boundary tests
-- wall-clock rollback fail-closed behavior
-- owner/member role behavior
-- authoritative revocation classification
-- persisted revocation blocks offline grace resurrection
-- protected-work sign-out guard derived from durable queue/files
-- stored-membership revalidation classifier
-- serialized/coalesced runtime authorization owner
-- rotated refresh tokens persisted before membership validation
-- startup authorization revalidation
-- foreground authorization revalidation
-- Drive folder create gate
-- Drive folder rename gate
-- Drive delete gate
-- photo upload-attempt gate before queue mutation
-- remote Drive photo-create gate
-- photo screen capture gate
-- camera shutter recheck before every new capture
-- camera shutter disabled when new capture authority is unavailable
-- stale revalidation/session-generation barrier in progress and committed
+- One immutable authorization decision and deterministic 72-hour grace policy with exact boundary and clock rollback tests.
+- Membership validation, revocation persistence, session-generation protection, serialized refresh/revalidation, and rotated-token persistence before Membership lookup.
+- Authenticated-session replacement routed through the manager; explicit Sign Out UI; protected-work guard from durable records and local copies.
+- Conditional Sign Out: a delayed request cannot clear a newer or refreshed session. Tests cover sign-out during refresh, sign-out during Membership validation, replacement during validation, and stale Sign Out after replacement.
+- Startup/foreground revalidation; new-capture and per-shutter gates; lower-level Drive create, rename, delete, and upload-attempt guards.
+- Reconciliation remains a read-only provider operation. Existing in-flight uploads continue to classification; a later batch item is checked before starting.
 
-## CI evidence already observed
+The old remaining-work list naming session replacement and Sign Out UI was stale; code at `59b2984` already contained both. Do not reimplement them.
 
-Passing snapshots:
-- central authorization policy: unit tests PASS
-- protected-work sign-out guard: unit tests PASS
-- protected-work sign-out guard: debug build PASS
-- protected-work sign-out guard: full Android CI PASS
+## Verification
 
-One superseded failure:
-- an earlier runtime-manager snapshot failed only because `Observation.kind` was private
-- that compile issue was fixed in a later commit
+- Head `59b2984`: Android CI run 873 (`36171576493`) PASS, including unit tests, debug APK, signer, and emulator instrumentation/launch.
+- Head `25abb2b`: new sign-out/replacement race tests; CI run 874 (`36172253312`) was running when this checkpoint was prepared. Its unit-test step PASS; confirm final job result.
+- Head `87720f6`: conditional Sign Out race fix; CI run 875 (`36172452699`) was running when this checkpoint was prepared. Unit tests, debug build, and signer steps PASS; confirm emulator and final job result before treating it as final verification.
+- Local workspace lacks Gradle/Android SDK; use exact-head GitHub CI evidence. Do not report a local focused run that was not performed.
 
-Do not treat superseded CI failures as current-head failures.
+## Current lower-level bypass inventory
 
-## Remaining Phase 12E runtime work
+Direct provider mutations in production are `DriveClient.createFolder`, `renameFolder`, `deleteDocument`, and `DrivePhotoUploader.create`; each has a required guard. `PhotoUploadCoordinator.upload` checks before queue transition. Production constructor call sites inject the central guard. Capture reservations originate in `PhotoCaptureActivity.beginCameraCapture` and `CameraCaptureActivity.reserveCaptureIfNeeded`; both are guarded before a new reservation, and each shutter rechecks. `DrivePhotoReconciler` queries provider state and does not mutate it. Existing focused tests deny Drive folder mutations before provider calls, photo creation before provider calls, and upload before queue state changes; the guard test observes authority loss before a second camera shutter and next Drive attempt. These claims are source-audit and fake-provider/JVM evidence, not physical device proof.
 
-1. verify latest runtime-manager/session-generation head compiles and tests
-2. wire authenticated-session replacement through the central manager
-3. add explicit Sign Out UI
-4. block Sign Out while protected work exists
-5. prove sign-out/revalidation race cannot restore an old session
-6. finish any remaining lower-level mutation bypass audit against current branch
-7. add focused gate tests for denied Drive/capture paths
-8. run full Android CI on final head
-9. collect final PR changed-file list and test evidence
-10. update Phase 12E completion documentation
-11. stop for explicit Level 3 merge approval
+## Exact next action
 
-## Working rule
+1. Confirm final CI result for run 875 and fix only a current-head failure if one occurs.
+2. Inspect PR #72 final diff and changed-file list against the governed scope; check denied capture/Drive tests and the lower-level inventory above for omissions.
+3. If no runtime fixes are needed, update the Phase 12E completion record and roadmap with exact final head/CI/artifact, then stage only the proportional Samsung offline/online/protected-work reality gate from the Phase 12 plan. Do not wait 72 real hours.
+4. Stop before merge for the operator's Level 3 approval. No branch result or CI result authorizes merging by itself.
 
-Every future Phase 12E change must:
-1. touch one bounded concern,
-2. commit immediately,
-3. let CI validate it,
-4. update this build-state file when the checkpoint materially changes.
-
-Do not restart the Phase 12E audit unless repository evidence proves this build-state file is stale or wrong.
+When a gate fails, stop that affected path and preserve photos, queue state, and the prior working APK. Use a bounded fix on this branch; do not expand Phase 12 scope.
