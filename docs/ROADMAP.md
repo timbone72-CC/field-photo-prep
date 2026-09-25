@@ -571,7 +571,7 @@ Current status:
 - Phase 12A Identity Model v1 is approved;
 - Phase 12B dedicated Supabase authentication architecture is approved and merged;
 - Phase 12C dedicated Supabase backend foundation is complete and merged;
-- Android runtime authentication/session implementation has not started;
+- Phase 12D Android auth/session foundation is complete and merged;
 - current personal-Drive production remains valid and unchanged;
 - Team remains a separate product/backend;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
@@ -650,7 +650,7 @@ Merge evidence:
 
 No Android runtime auth work is included in Phase 12C.
 
-### Phase 12D — Android auth/session foundation — IN PROGRESS
+### Phase 12D — Android auth/session foundation — COMPLETE
 
 Scope:
 - package-specific Android auth callback URIs;
@@ -692,10 +692,11 @@ Final Samsung hardening gate:
 - Recheck Account refresh/revalidation: **PASS**;
 - prior Drive/workspace smoke: **PASS / reused valid evidence**.
 
-Phase 12D is ready for its final Level 3 decision.
+Phase 12D completion:
+- explicit Level 3 operator pre-merge approval: **RECORDED 2026-09-25**;
+- PR #67 merged to `main` at `475d351b48daa8eb612cf1b0b745d7c4566dbcd5`.
 
-Completion still requires:
-- explicit operator pre-merge approval for PR #67.
+Phase 12D is **COMPLETE**.
 
 ### Later Phase 12 slices
 
