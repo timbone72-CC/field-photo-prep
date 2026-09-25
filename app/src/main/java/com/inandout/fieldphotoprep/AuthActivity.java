@@ -265,8 +265,8 @@ public final class AuthActivity extends Activity {
 
         String first = password.getText().toString();
         String second = confirmPassword.getText().toString();
-        if (first.length() < 12) {
-            status.setText("Use at least 12 characters.");
+        if (first.length() < 8) {
+            status.setText("Use at least 8 characters.");
             return;
         }
         if (!first.equals(second)) {
