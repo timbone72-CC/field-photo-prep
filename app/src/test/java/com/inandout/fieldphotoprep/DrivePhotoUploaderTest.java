@@ -35,6 +35,34 @@ public final class DrivePhotoUploaderTest {
     }
 
     @Test
+    public void revokedAuthorizationStopsBeforeRemotePhotoCreate() throws Exception {
+        File prepared = prepared("prepared-jpeg-bytes");
+        FakeProvider provider = new FakeProvider();
+        AuthorizationActionGuard guard = new AuthorizationActionGuard(() ->
+                new AuthorizationDecision(
+                        AuthorizationDecision.State.REVOKED,
+                        "user-1",
+                        "org-1",
+                        "OWNER",
+                        0L));
+        DrivePhotoUploader uploader = new DrivePhotoUploader(
+                provider,
+                millis -> { },
+                guard);
+
+        try {
+            uploader.create(uploadingRecord(), prepared);
+            fail("Expected authorization denial");
+        } catch (DrivePhotoUploader.UploadException error) {
+            assertFalse(error.remoteStateUncertain());
+            assertTrue(error.getMessage().contains("revoked"));
+        }
+
+        assertFalse(provider.createCalled);
+        assertFalse(provider.writeCalled);
+    }
+
+    @Test
     public void createUsesExactStoredWorkOrderAndDoesNotWriteBytes() throws Exception {
         File prepared = prepared("prepared-jpeg-bytes");
         FakeProvider provider = new FakeProvider();
