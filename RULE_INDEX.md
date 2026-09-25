@@ -1,6 +1,6 @@
 # Field Photo Prep — Rule Index
 
-## How to use this file
+## Use
 
 Always read:
 1. `AGENTS.md`
@@ -8,9 +8,9 @@ Always read:
 3. `PROJECT_PROFILE.md`
 4. this file
 
-Then classify the work below and read only the applicable detailed rule packs. A task may match more than one category.
+Then read only the detailed rule packs matching the work surfaces below.
 
-For every runtime change, `TESTING_CONTRACT.md` applies for universal test selection/final-gate/failure rules. Load the feature-specific packs under `rules/testing/` only when the work touches those surfaces.
+Every runtime change also uses `TESTING_CONTRACT.md` for universal test selection/final-gate/failure rules.
 
 ## Routing matrix
 
@@ -18,70 +18,28 @@ For every runtime change, `TESTING_CONTRACT.md` applies for universal test selec
 | --- | --- | --- |
 | GitHub Actions / PR governance / repository enforcement | `GOVERNANCE.md` + `CHANGE_CONTROL_CONTRACT.md` + affected workflow/config | Level 2; Level 3 if deployment/signing/runtime trust changes |
 | Documentation/status only | `CHANGE_CONTROL_CONTRACT.md` Level 1 + document being changed | Level 1 |
-| Branching, takeover, superseding work, handoff, phase closeout | `GOVERNANCE.md` + `CHANGE_CONTROL_CONTRACT.md` | Level 1–3 by underlying work |
-| Android UI/navigation/presentation | relevant `CONTRACT.md` behavior + `TESTING_CONTRACT.md` + relevant `REGRESSION_CHECKLIST.md` sections | Level 2 unless presentation-only Level 1 |
-| Camera/capture | `CONTRACT.md` photo capture + `TESTING_CONTRACT.md` + `rules/testing/CAMERA_PREPARATION.md` + Regression F/K/M | Level 2; higher if persistence/destination semantics change |
-| Photo preparation/compression/orientation | `CONTRACT.md` prepared-copy rules + `TESTING_CONTRACT.md` + `rules/testing/CAMERA_PREPARATION.md` + Regression G/K | Level 2 |
-| Protected local state/persistence | `CONTRACT.md` capture/queue/local-data rules + `TESTING_CONTRACT.md`; add `rules/testing/CAMERA_PREPARATION.md` or `rules/testing/UPLOAD_QUEUE_RETRY.md` according to the affected owner | Level 2–3 |
-| Upload queue/batch/retry/reconciliation/cleanup | `CONTRACT.md` queue/retry sections + `TESTING_CONTRACT.md` + `rules/testing/UPLOAD_QUEUE_RETRY.md` + `INTEGRATION_CONTRACT.md` upload/retry sections + Regression H/I/J/K/L | Level 3 when remote identity/retry/destruction semantics change |
-| Drive workspace/company/address/work-order folders | `CONTRACT.md` identity/Drive sections + `INTEGRATION_CONTRACT.md` + `TESTING_CONTRACT.md` + `rules/testing/DRIVE_PROVIDER.md` + Regression A–E/L/M | Level 3 for identity/create/reuse/delete/permission semantics |
-| Android SAF/DocumentsProvider permissions/provider identity | `INTEGRATION_CONTRACT.md` + `TESTING_CONTRACT.md` + `rules/testing/DRIVE_PROVIDER.md` | Level 3 |
-| Supabase/Auth/session/authorization | `docs/IDENTITY_MODEL_V1.md` + current approved identity design + relevant `CONTRACT.md` identity rules + `TESTING_CONTRACT.md` | Level 2–3 |
-| Membership/invitations/roles/RLS/RPC/Edge Functions | identity model + current approved identity design + `CHANGE_CONTROL_CONTRACT.md` Level 3 + backend-focused verification record | Level 3 |
-| Schema/migration/persisted-format changes | owning domain contract + `CHANGE_CONTROL_CONTRACT.md` Level 3 + `TESTING_CONTRACT.md` | Level 3 |
-| Signing/application ID/release/deployment | current approved release design + `CHANGE_CONTROL_CONTRACT.md` Level 3 + affected install/update tests | Level 3 |
-| Physical Android/reality gate | `TESTING_CONTRACT.md` + applicable `rules/testing/*` pack + integration/domain gate + `docs/PHASE_STAGING_DOCTRINE.md` | underlying level |
-| New phase or resumed prior work | `GOVERNANCE.md` takeover/source-of-truth rules + active build-state/impact record + applicable domain packs | underlying level |
-| Cross-project integration | both projects' profiles/contracts + explicit integration design before implementation | normally Level 3 until boundaries are proven |
-
-## Classification examples
-
-### Change a label on an account screen
-
-Surfaces:
-- Android presentation only.
-
-Load:
-- Governance/profile;
-- Level 1 change rules;
-- the affected UI behavior source.
-
-Do not load camera/Drive internals unless the change actually touches them.
-
-### Change upload retry behavior
-
-Surfaces:
-- queue;
-- remote write;
-- destination/idempotency;
-- Drive/DocumentsProvider.
-
-Load:
-- queue/retry portions of `CONTRACT.md`;
-- upload/retry portions of `INTEGRATION_CONTRACT.md`;
-- `rules/testing/UPLOAD_QUEUE_RETRY.md` and, when provider behavior is involved, `rules/testing/DRIVE_PROVIDER.md`;
-- relevant regression sections;
-- Level 3 change rules.
-
-### Continue an unfinished identity phase
-
-Surfaces:
-- governance takeover;
-- identity/auth/backend;
-- possibly Android UI.
-
-Before creating anything:
-- inspect open PRs and build-state records;
-- identify the one authoritative line;
-- inspect relevant live Supabase state;
-- continue that line unless a documented supersession is required.
-
-Then load the identity rules and applicable testing rules.
+| Branching/takeover/supersession/handoff/closeout | `GOVERNANCE.md` + `CHANGE_CONTROL_CONTRACT.md` | underlying work |
+| Android UI/navigation/presentation | relevant `CONTRACT.md` behavior + `TESTING_CONTRACT.md` + relevant regression sections | Level 2 unless truly presentation-only |
+| Camera/capture | `CONTRACT.md` capture rules + `TESTING_CONTRACT.md` + `rules/testing/CAMERA_PREPARATION.md` + Regression F/K/M | Level 2+ |
+| Photo preparation/compression/orientation | prepared-copy rules + `TESTING_CONTRACT.md` + `rules/testing/CAMERA_PREPARATION.md` + Regression G/K | Level 2 |
+| Protected local state/persistence | local-state rules + `TESTING_CONTRACT.md` + applicable camera or upload/retry testing pack | Level 2–3 |
+| Upload queue/batch/retry/reconciliation/cleanup | queue/retry rules + `TESTING_CONTRACT.md` + `rules/testing/UPLOAD_QUEUE_RETRY.md` + `INTEGRATION_CONTRACT.md` + Regression H/I/J/K/L | Level 3 when remote/retry/destructive semantics change |
+| Drive workspace/company/address/work-order folders | Drive/product rules + `INTEGRATION_CONTRACT.md` + `TESTING_CONTRACT.md` + `rules/testing/DRIVE_PROVIDER.md` + Regression A–E/L/M | Level 3 for identity/create/reuse/delete/permission semantics |
+| SAF/DocumentsProvider/provider identity | `INTEGRATION_CONTRACT.md` + `TESTING_CONTRACT.md` + `rules/testing/DRIVE_PROVIDER.md` | Level 3 |
+| Supabase/Auth/session/authorization | `docs/IDENTITY_MODEL_V1.md` + current approved identity design + relevant product rules + `TESTING_CONTRACT.md` | Level 2–3 |
+| Membership/invitations/roles/RLS/RPC/Edge Functions | identity model + current approved identity design + Level 3 change rules + backend verification record | Level 3 |
+| Schema/migration/persisted-format changes | owning domain rules + Level 3 change rules + `TESTING_CONTRACT.md` | Level 3 |
+| Signing/application ID/release/deployment | approved release design + Level 3 change rules + affected install/update tests | Level 3 |
+| Physical Android/reality gate | `TESTING_CONTRACT.md` + applicable testing pack + integration/domain gate + staging doctrine | underlying level |
+| New phase/resumed prior work | takeover/source-of-truth rules + active build-state/impact record + applicable domain packs | underlying level |
+| Cross-project integration | both projects' profiles/contracts + explicit integration design | normally Level 3 until boundaries are proven |
 
 ## Scope expansion
 
-If implementation starts touching a new row in this matrix, add that rule pack before continuing.
+If implementation begins touching another row, load that rule pack before continuing.
 
-If the newly touched surface raises the risk level, reclassify immediately.
+If the new surface raises risk, reclassify the change immediately.
 
-Do not rely on memory of a rule pack when the current work materially depends on it.
+Do not rely on memory when the repository rule source is available.
+
+Optional routing examples: `docs/GOVERNANCE_ROUTING_EXAMPLES.md`.
