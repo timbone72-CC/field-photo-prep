@@ -80,10 +80,11 @@ public final class AuthActivity extends Activity {
         String data = intent == null ? null : intent.getDataString();
         if (data == null || data.trim().isEmpty()) {
             AuthSessionState state = authorizationManager.storedSession();
-            if (state != null && state.isActiveOwnerOrMember()) {
-                showConnected(state, "Account session is stored on this phone.");
-            } else {
+            if (state == null) {
                 showLogin(null);
+            } else {
+                AuthorizationDecision decision = authorizationManager.currentDecision();
+                showConnected(state, storedSessionMessage(decision));
             }
             return;
         }
@@ -181,6 +182,30 @@ public final class AuthActivity extends Activity {
         primary.setOnClickListener(v -> setRecoveredPassword());
         secondary.setOnClickListener(v -> showLogin(null));
         setBusy(false);
+    }
+
+    private String storedSessionMessage(AuthorizationDecision decision) {
+        switch (decision.state()) {
+            case VALIDATED:
+                return "Account is active.";
+            case GRACE:
+                return "Account validation is temporarily offline. "
+                        + "Field work remains available inside the current grace window.";
+            case REVOKED:
+                return "This membership is revoked. Existing protected work was kept.";
+            case NO_MEMBERSHIP:
+                return "This account does not currently have an active usable membership. "
+                        + "Existing protected work was kept.";
+            case RECHECK_REQUIRED:
+                return "Account recheck is required before new field work or Drive writes. "
+                        + "Existing protected work was kept.";
+            case SIGN_IN_REQUIRED:
+                return "Sign in again before new field work or Drive writes. "
+                        + "Existing protected work was kept.";
+            case DRIVE_DISCONNECTED:
+            default:
+                return "The account session is stored, but field work is currently restricted.";
+        }
     }
 
     private void showConnected(AuthSessionState state, String message) {
