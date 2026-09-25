@@ -131,6 +131,26 @@ public final class RuntimeAuthorizationManagerTest {
     }
 
     @Test
+    public void delayedSignOutCannotClearAReplacedOrRefreshedSession() throws Exception {
+        AuthSessionState old = activeSession(NOW - 10L);
+        FakeStore store = new FakeStore(old);
+        FakeClock clock = new FakeClock(NOW, 100L);
+        RuntimeAuthorizationManager manager = new RuntimeAuthorizationManager(
+                store, FakeBackend.temporaryRefreshFailure(), clock, Runnable::run);
+        AuthSessionState replacement = new AuthSessionState(
+                "new-access", "new-refresh", NOW + 7200L,
+                "user-2", "new@example.com", "org-2", "New Organization",
+                "membership-2", "MEMBER", "ACTIVE", NOW);
+
+        manager.replaceAuthenticatedSession(replacement);
+
+        assertFalse(manager.clearAuthenticatedSessionIfCurrent(old));
+        assertSame(replacement, manager.storedSession());
+        assertTrue(manager.clearAuthenticatedSessionIfCurrent(replacement));
+        assertEquals(null, manager.storedSession());
+    }
+
+    @Test
     public void concurrentRevalidationRequestsAreCoalesced() {
         FakeStore store = new FakeStore(activeSession(NOW - 10L));
         FakeClock clock = new FakeClock(NOW, 100L);

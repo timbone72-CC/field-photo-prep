@@ -106,6 +106,16 @@ final class RuntimeAuthorizationManager {
         }
     }
 
+    boolean clearAuthenticatedSessionIfCurrent(AuthSessionState expected) {
+        synchronized (lock) {
+            if (!sameSessionVersion(sessionStore.load(), expected)) {
+                return false;
+            }
+            clearAuthenticatedSession();
+            return true;
+        }
+    }
+
     CompletableFuture<AuthorizationDecision> revalidateAsync() {
         synchronized (lock) {
             if (inFlight != null) {

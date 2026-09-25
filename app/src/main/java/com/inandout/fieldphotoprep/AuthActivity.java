@@ -445,8 +445,14 @@ public final class AuthActivity extends Activity {
                 return;
             }
 
-            String accessToken = state == null ? null : state.accessToken();
-            authorizationManager.clearAuthenticatedSession();
+            if (!authorizationManager.clearAuthenticatedSessionIfCurrent(state)) {
+                runOnUiThread(() -> {
+                    setBusy(false);
+                    status.setText("The account changed during sign out. Review the current account and try again.");
+                });
+                return;
+            }
+            String accessToken = state.accessToken();
             runOnUiThread(() -> showLogin(
                     "Signed out. The Drive workspace and local field data were left unchanged."));
 
