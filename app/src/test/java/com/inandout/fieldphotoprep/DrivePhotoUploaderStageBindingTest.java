@@ -44,7 +44,7 @@ public final class DrivePhotoUploaderStageBindingTest {
 
         NoWriteProvider provider = new NoWriteProvider();
         try {
-            new DrivePhotoUploader(provider).writeAndVerify(other, created, prepared);
+            new DrivePhotoUploader(provider, TestAuthorization.allowedGuard()).writeAndVerify(other, created, prepared);
             fail("Expected staged upload binding failure");
         } catch (DrivePhotoUploader.UploadException expected) {
             assertTrue(expected.remoteStateUncertain());
