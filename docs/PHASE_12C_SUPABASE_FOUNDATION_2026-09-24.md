@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **STAGED**
+Status: **IN PROGRESS — DEDICATED PROJECT CREATED**
 
 ## Scope
 
@@ -12,7 +12,7 @@ No Android authentication code is included.
 
 ## Straight-line implementation
 
-1. Create a second Supabase project named **Field Photo Prep** under the approved Supabase organization.
+1. **COMPLETE** — dedicated Supabase project created: **Field Photo Prep**, project ref `vtyiktvqhbgabawotkrj`, under **In And Out Cleaner Inspections**.
 2. Keep region aligned with the existing Team project unless cost/availability requires otherwise: `us-east-2`.
 3. Apply the reviewed FPP-only schema.
 4. Verify tables, constraints, grants, RLS, helper functions, and migration history.
@@ -69,3 +69,20 @@ Phase 12C is complete only when:
 - first real Owner bootstrap succeeds;
 - repository record is current;
 - exact pre-merge approval is given.
+
+
+## Project creation evidence — 2026-09-24
+
+- Supabase organization: **In And Out Cleaner Inspections**
+- organization ID: `zotxwywaqzhabixrnhso`
+- project: **Field Photo Prep**
+- project ref: `vtyiktvqhbgabawotkrj`
+- region: `us-east-2`
+- project status after creation: `ACTIVE_HEALTHY`
+- quoted project cost at creation: **$0/month**
+- initial public tables: **0**
+- initial migration history: **0**
+- separate Team project ref: `vyocaujuwrivoqynvitm`
+- Team status at verification: `INACTIVE`
+
+Result: the original-FPP backend now has its own clean Supabase project and Team remains separate.
