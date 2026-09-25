@@ -16,6 +16,7 @@ For every runtime change, `TESTING_CONTRACT.md` applies at least at its general 
 
 | Work surface | Required rule packs | Typical risk floor |
 | --- | --- | --- |
+| GitHub Actions / PR governance / repository enforcement | `GOVERNANCE.md` + `CHANGE_CONTROL_CONTRACT.md` + affected workflow/config | Level 2; Level 3 if deployment/signing/runtime trust changes |
 | Documentation/status only | `CHANGE_CONTROL_CONTRACT.md` Level 1 + document being changed | Level 1 |
 | Branching, takeover, superseding work, handoff, phase closeout | `GOVERNANCE.md` + `CHANGE_CONTROL_CONTRACT.md` | Level 1–3 by underlying work |
 | Android UI/navigation/presentation | relevant `CONTRACT.md` behavior + `TESTING_CONTRACT.md` + relevant `REGRESSION_CHECKLIST.md` sections | Level 2 unless presentation-only Level 1 |

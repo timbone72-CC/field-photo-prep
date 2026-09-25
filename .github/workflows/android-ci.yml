@@ -12,18 +12,71 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect runtime-impacting changes
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${EVENT_NAME}" != "pull_request" ]]; then
+            echo "runtime=true" >> "${GITHUB_OUTPUT}"
+            echo "Non-PR run: full Android verification required."
+            exit 0
+          fi
+
+          mapfile -t changed < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          printf 'Changed files:\n'
+          printf '  %s\n' "${changed[@]}"
+
+          runtime=false
+          for path in "${changed[@]}"; do
+            if [[ "${path}" != *.md ]]; then
+              runtime=true
+              break
+            fi
+          done
+
+          echo "runtime=${runtime}" >> "${GITHUB_OUTPUT}"
+          if [[ "${runtime}" == "true" ]]; then
+            echo "At least one non-Markdown file changed: full Android verification required."
+          else
+            echo "Markdown-only pull request: Android runtime verification is not required."
+          fi
+
+      - name: Documentation-only verification
+        if: steps.scope.outputs.runtime != 'true'
+        run: |
+          echo "Markdown-only change set confirmed."
+          echo "Android CI check passes without Gradle, emulator, APK, or signer work."
+
       - uses: actions/setup-java@v5
+        if: steps.scope.outputs.runtime == 'true'
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.scope.outputs.runtime == 'true'
         with:
           gradle-version: '9.6.0'
+
       - name: Unit tests
+        if: steps.scope.outputs.runtime == 'true'
         run: gradle test
+
       - name: Internal debug build
+        if: steps.scope.outputs.runtime == 'true'
         run: gradle assembleDebug
+
       - name: Verify stable test APK signer
+        if: steps.scope.outputs.runtime == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -49,12 +102,16 @@ jobs:
           if actual != expected:
               sys.exit(1)
           PY
+
       - name: Enable KVM
+        if: steps.scope.outputs.runtime == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
       - name: Instrumented image tests and internal launch smoke test
+        if: steps.scope.outputs.runtime == 'true'
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -62,14 +119,17 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: bash scripts/verify-concept3-rendered.sh
+
       - name: Upload internal APK
+        if: steps.scope.outputs.runtime == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: field-photo-prep-internal-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
       - name: Upload rendered screens and test evidence
-        if: always()
+        if: always() && steps.scope.outputs.runtime == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: concept-3-rendered-verification
