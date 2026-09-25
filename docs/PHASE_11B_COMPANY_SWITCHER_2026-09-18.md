@@ -1,6 +1,6 @@
 # Phase 11B — Clear Company Switcher — 2026-09-18
 
-Status: Level 2 implementation authorized by the operator request: "We need a clearer way to switch."
+Status: **COMPLETE — Level 2**
 
 ## User-facing problem
 
@@ -75,3 +75,16 @@ Revert this narrow UI change if the Home header becomes unusable. No Drive/photo
 - HNP/Tresmolino company chooser remains populated from Drive.
 - selecting a company still refreshes only that company's properties.
 - overflow retains Add Company / Edit Company / Change Workspace.
+
+
+## Completion evidence
+
+- final tested runtime head: `3555e5135d659ef887060b5efbe7e3c5e86912ed`
+- Android CI run `35436040473`: PASS
+- compact current-company selector rendered and opened the existing chooser on phone
+- legacy single-company behavior remained protected
+- one stale/empty startup property read was corrected through the existing Refresh action with no evidence of data loss or wrong company identity
+- operator accepted the refreshed behavior and approved merge
+- PR #59 merged to main at `8e9ce51749e3f5919023f5dfc9a98a089ba4f8ed`
+
+The prior roadmap `IN PROGRESS` label was stale documentation and is corrected by the 2026-09-24 source-of-truth reconciliation.
