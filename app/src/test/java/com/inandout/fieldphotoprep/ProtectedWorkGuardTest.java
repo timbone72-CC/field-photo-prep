@@ -59,6 +59,7 @@ public final class ProtectedWorkGuardTest {
         assertEquals(PendingPhotoRecord.State.WAITING, waiting.state());
         assertEquals(1, result.queuedCount());
         assertEquals(1, result.addressCounts().get(address().id()).intValue());
+        assertEquals(1, result.workOrderCounts().get(workOrder().id()).intValue());
     }
 
     @Test
