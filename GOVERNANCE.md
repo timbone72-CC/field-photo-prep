@@ -168,6 +168,19 @@ A phase/scope is complete only when:
 
 Do not leave the roadmap saying “NEXT” for work that has already merged.
 
+## GitHub enforcement boundary
+
+GitHub should mechanically enforce the governance facts it can observe:
+- changes to `main` arrive through pull requests;
+- required repository status checks pass;
+- force pushes and branch deletion are blocked;
+- unresolved review conversations block merge where configured;
+- pull requests carry the machine-readable classification required by the repository governance check.
+
+GitHub cannot independently understand whether an AI chose every correct rule pack, whether a live external system truly matches source, whether a workflow is semantically consistent for the operator, or whether a recorded approval was genuinely spoken by the operator when automation shares the operator's GitHub identity.
+
+Those semantic decisions remain governed here and in the applicable project rule packs. Machine enforcement supplements the contracts; it does not replace them.
+
 ## Rule precedence
 
 When project documents disagree, reconcile the conflict rather than choosing whichever instruction is convenient.
