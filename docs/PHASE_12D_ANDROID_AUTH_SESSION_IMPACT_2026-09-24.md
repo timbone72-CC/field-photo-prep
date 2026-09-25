@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **FINAL HARDENING IN PROGRESS — RECOVERY PHONE GATE PENDING**
+Status: **FINAL AUTOMATED GATE PASSED — RECOVERY PHONE GATE PENDING**
 
 ## Classification
 
@@ -158,30 +158,33 @@ Implementation/testing may continue on this branch.
 Final Level 3 merge requires explicit operator approval after exact runtime + phone evidence.
 
 
-## Automated CI evidence
+## Final automated CI evidence
 
-Android CI run: `36086075764`
+Exact final runtime head:
+`df02a34981e601d3009875edc8fe154e2a23c936`
 
-- attempt 1:
-  - unit tests: PASS
-  - internal debug build: PASS
-  - stable test signer verification: PASS
-  - connected Android tests: PASS
-  - job conclusion: FAILURE only because the emulator went offline during the final rendered-screen script after successful instrumentation
-- attempt 2, same code/head:
-  - **PASS**
-  - run conclusion: **SUCCESS**
+Android CI:
+- run: `36122577021`
+- run number: `822`
+- conclusion: **SUCCESS**
+- focused rotating-token state coverage: PASS inside unit-test step;
+- full unit suite: PASS;
+- internal debug build: PASS;
+- stable APK signer verification: PASS;
+- connected/instrumented tests and internal launch smoke: PASS.
 
-Exact tested branch head at the automated gate:
-`59ed1759f6f38fed00fe7b6e348350ae87014ac3`
+Final internal APK:
+- artifact ID: `10857473938`
+- digest: `sha256:53f49a0187bcea1abe70f1dbda6ffe289ef3632bcd1aa815d977ee7d90d63ee5`
+- versionCode: `36`
+- versionName: `0.27.1-auth-session-hardening-internal`
 
-No runtime change was made to turn the first failed run green; rerunning the same head passed, confirming an emulator/ADB infrastructure flake rather than an app regression.
+The final runtime diff is limited to:
+- token-rotation persistence sequencing;
+- post-recovery fresh sign-in sequencing;
+- one focused token-rotation identity-snapshot test;
+- version bump for unambiguous device installation.
 
-Internal test APK artifact:
-`field-photo-prep-internal-apk`
+No Drive, SAF, photo, queue, upload, reconciliation, cleanup, database schema, RLS, or Team runtime surface changed.
 
-Next gate:
-1. allowlist the exact internal and production callback URIs in Supabase Auth;
-2. install the internal APK on the Samsung field phone;
-3. run recovery → app deep link → password update → ACTIVE OWNER validation → restart session restore;
-4. smoke the existing Drive workflow.
+Remaining Level 3 completion evidence is only the exact final APK recovery device path and explicit operator pre-merge approval.
