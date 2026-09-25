@@ -47,6 +47,19 @@ Any non-Markdown change runs the full Android pipeline. Pushes to governed runti
 
 This preserves one stable Android CI check name while avoiding expensive runtime verification for documentation-only changes.
 
+## Verification evidence
+
+Workflow-changing head `78860e9e08c7d95d29b268fb1ed4f8e7d8c2d8ae`:
+- Android CI run `36196885402`: **PASS**
+- scope detector correctly selected full runtime verification because YAML workflow files changed;
+- unit tests: PASS;
+- debug build: PASS;
+- stable signer verification: PASS;
+- instrumented image tests/internal launch smoke: PASS;
+- artifact packaging: PASS.
+
+This evidence record itself is Markdown-only and is used to prove that the next Android CI run takes the lightweight documentation path while keeping the same required `test` check.
+
 ## Branch-protection target after this check exists
 
 For `main`, the recommended GitHub protection is:
