@@ -563,16 +563,16 @@ add durable FPP User/Organization identity and release-readiness controls withou
 Governing design:
 - `docs/IDENTITY_MODEL_V1.md`;
 - `docs/PHASE_12_IDENTITY_MODEL_IMPACT_2026-09-21.md`;
-- `docs/SOURCE_OF_TRUTH_RECONCILIATION_2026-09-24.md`.
+- `docs/SOURCE_OF_TRUTH_RECONCILIATION_2026-09-24.md`;
+- `docs/PHASE_12B_SUPABASE_AUTH_ARCHITECTURE_2026-09-24.md`;
+- `docs/PHASE_12B_SUPABASE_AUTH_IMPACT_2026-09-24.md`.
 
 Current status:
-- Identity Model v1 is the settled Phase 12A design;
-- operator explicitly approved/reconfirmed that model on 2026-09-24;
+- Phase 12A Identity Model v1 is approved;
+- Phase 12B dedicated Supabase authentication architecture is recorded pending Level 3 merge approval;
 - no Phase 12 runtime identity/authentication implementation has started;
-- authentication/backend technology is **not yet selected** for original FPP;
-- Team's Supabase backend is not an original-FPP backend decision;
-- PR #62 was closed unmerged after the source-of-truth audit;
-- current personal-Drive production remains valid;
+- current personal-Drive production remains valid and unchanged;
+- Team remains a separate product/backend;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
 
 ### Phase 12A — Identity model — DESIGN APPROVED / NOT IMPLEMENTED
@@ -592,32 +592,51 @@ Approved model:
 - sign-out/revocation/account closure never automatically delete protected photos or Drive business records;
 - identity backend remains small and does not duplicate property/work-order/photo data.
 
-Still undecided and reserved for Phase 12B:
-- authentication/backend provider;
-- sign-in method/implementation;
-- session/token storage;
-- exact offline revalidation/grace policy;
-- invitation delivery/acceptance mechanics;
-- account recovery;
-- organization-close UX.
+### Phase 12B — Dedicated Supabase authentication architecture — DESIGN RECORDED / NOT IMPLEMENTED
 
-Do not infer those choices from Team, an earlier OAuth proposal, the Google account used for Drive, or another project.
+Settled design:
+- Supabase is the original-FPP identity/account backend;
+- create a **dedicated original-FPP Supabase project**, separate from Field Photo Prep Team;
+- no shared Auth users, tables, keys, Edge Functions, secrets, Organization IDs, or sessions with Team;
+- initial sign-in is Supabase Auth email/password;
+- v1 is invitation-only after controlled first-Owner bootstrap;
+- `auth.users.id` is permanent FPP User identity;
+- minimum backend tables are Organizations, Memberships, and Invitations only;
+- roles remain OWNER and MEMBER;
+- exposed tables use explicit grants + RLS;
+- privileged membership/invitation/bootstrap actions remain server-side;
+- Android credentials use Keystore-backed encrypted local storage;
+- online startup/resume revalidates authoritative Membership;
+- cached ACTIVE Membership supports same-Organization field work for at most 72 hours;
+- after 72 hours without revalidation, existing protected work remains safe but new capture/remote Drive mutations wait for revalidation;
+- password recovery uses Supabase Auth;
+- Android SAF remains fully separate Drive authorization;
+- Supabase Storage/Realtime/job-photo mirror/public signup/Google social login are out of scope.
 
-### Phase 12B — Authentication architecture — NOT YET DESIGNED
+Completion gate for 12B design:
+- exact docs/contract diff reviewed;
+- explicit Level 3 operator pre-merge approval recorded;
+- no runtime/schema implementation begins before merge.
 
-Required next design scope:
-- select the original-FPP identity/backend approach;
-- select sign-in method;
-- define session storage and offline validation behavior;
-- define invitation and recovery behavior;
-- preserve the Android SAF Drive boundary;
-- keep customer addresses, work orders, photos, Drive IDs, and SAF URIs out of the identity backend unless a separately approved requirement proves otherwise.
+### Phase 12C — Dedicated FPP Supabase foundation — NEXT AFTER 12B MERGE
 
-No Phase 12B runtime implementation begins until that design is recorded and governed.
+Planned scope:
+1. create the dedicated original-FPP Supabase project;
+2. add the minimum Organization/Membership/Invitation schema;
+3. add explicit Data API grants and RLS;
+4. create controlled first-Owner bootstrap;
+5. prove wrong-user/wrong-Organization denial and invitation idempotency;
+6. keep Team and customer job/photo data untouched.
 
-### Later Phase 12 release-readiness slices
+No Android runtime auth work is required to begin the backend/RLS proof.
 
-Expected later areas:
+### Later Phase 12 slices
+
+After 12C:
+- narrow Java Supabase Auth/session client;
+- Keystore-backed local session persistence;
+- startup/offline/revocation/sign-out gate;
+- invitation/member administration;
 - first-run/new-device flow;
 - account/Drive mismatch protection;
 - App Status & Diagnostics;
@@ -626,7 +645,7 @@ Expected later areas:
 - clean-install/another-user reality gate;
 - account/privacy/release closeout.
 
-Settled Phase 12A decisions must not drift while later slices are designed.
+Settled Phase 12A/12B decisions must not drift without contradictory evidence or an explicit governed design change.
 
 ## Phase development staging rule
 
