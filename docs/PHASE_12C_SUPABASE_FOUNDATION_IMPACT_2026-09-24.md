@@ -243,9 +243,9 @@ External rollback before first real bootstrap:
 
 ## Explicit pre-merge approval
 
-Phase 12C implementation may be developed and tested on its dedicated branch/environment under the approved roadmap.
+**APPROVED by operator on 2026-09-24.**
 
-Final Level 3 merge still requires explicit operator pre-merge approval after exact schema/RLS evidence is available.
+The operator explicitly approved the exact completed Phase 12C backend implementation for merge after review of the hosted schema/RLS evidence, real Owner bootstrap, advisor state, and remaining redirect follow-up.
 
 
 ## Hosted verification evidence
