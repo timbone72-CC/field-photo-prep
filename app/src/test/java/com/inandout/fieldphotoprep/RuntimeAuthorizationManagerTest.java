@@ -349,7 +349,7 @@ public final class RuntimeAuthorizationManagerTest {
         public SupabaseAuthClient.StoredMembershipValidation validateStoredMembership(
                 SupabaseAuthClient.AuthTokens tokens,
                 AuthSessionState stored,
-                long validatedAtEpochSeconds) {
+                long validatedAtEpochSeconds) throws IOException {
             order.add((++globalSequence) + ":validate");
             if (store != null) {
                 sawRotatedTokensPersistedBeforeValidation =
