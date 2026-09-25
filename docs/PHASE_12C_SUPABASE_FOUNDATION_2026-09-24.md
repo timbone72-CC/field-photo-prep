@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **IN PROGRESS — DEDICATED PROJECT CREATED**
+Status: **IN PROGRESS — SCHEMA/RLS VERIFIED; FIRST OWNER PENDING**
 
 ## Scope
 
@@ -14,13 +14,13 @@ No Android authentication code is included.
 
 1. **COMPLETE** — dedicated Supabase project created: **Field Photo Prep**, project ref `vtyiktvqhbgabawotkrj`, under **In And Out Cleaner Inspections**.
 2. Keep region aligned with the existing Team project unless cost/availability requires otherwise: `us-east-2`.
-3. Apply the reviewed FPP-only schema.
-4. Verify tables, constraints, grants, RLS, helper functions, and migration history.
-5. Create disposable Auth/User/Organization fixtures.
-6. Prove allow/deny behavior.
-7. Run security + performance advisors.
-8. Remove disposable identity fixtures.
-9. Create the first real FPP Auth Owner identity.
+3. **COMPLETE** — applied the reviewed FPP-only schema.
+4. **COMPLETE** — verified tables, constraints, grants, RLS, helper functions, and migration history.
+5. **COMPLETE** — created disposable rollback-only Auth/User/Organization fixtures.
+6. **COMPLETE** — proved hosted allow/deny behavior.
+7. **COMPLETE** — ran security + performance advisors; security clean, only expected empty-database unused-index informational notices remain.
+8. **COMPLETE** — disposable fixtures rolled back; persistent identity row counts returned to zero.
+9. **PENDING** — create the first real FPP Auth Owner identity.
 10. Bootstrap **In And Out Cleaner Inspections LLC** + exact OWNER Membership.
 11. Verify the Owner can read exactly their Organization/Membership.
 12. Record project ref, migration identity, verification, and rollback evidence in the repository.
@@ -86,3 +86,36 @@ Phase 12C is complete only when:
 - Team status at verification: `INACTIVE`
 
 Result: the original-FPP backend now has its own clean Supabase project and Team remains separate.
+
+
+## Hosted backend verification summary
+
+Permanent evidence:
+`docs/PHASE_12C_SUPABASE_VERIFICATION_2026-09-24.md`
+
+Applied migration history:
+- `20260925012939_phase_12c_identity_foundation`
+- `20260925013000_phase_12c_invitation_fk_indexes`
+
+Hosted authorization tests passed:
+- Member cross-Organization isolation;
+- Owner same-Organization Membership/Invitation read;
+- Member Invitation denial;
+- duplicate Membership prevention;
+- duplicate pending Invitation prevention;
+- anon read denial;
+- direct authenticated mutation denial.
+
+Security advisor: **0 lints**.
+
+Current persistent rows after rollback-only tests:
+- Organizations: 0
+- Memberships: 0
+- Invitations: 0
+- Auth users: 0
+
+Next genuine gate:
+- select the real first-Owner login email;
+- create that user through supported Supabase Auth;
+- bootstrap the real Organization + ACTIVE OWNER Membership;
+- verify exact Owner scope.
