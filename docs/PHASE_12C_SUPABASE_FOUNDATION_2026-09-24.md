@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **IN PROGRESS — SCHEMA/RLS VERIFIED; FIRST OWNER PENDING**
+Status: **BACKEND COMPLETE — FINAL LEVEL 3 MERGE APPROVAL PENDING**
 
 ## Scope
 
@@ -20,11 +20,11 @@ No Android authentication code is included.
 6. **COMPLETE** — proved hosted allow/deny behavior.
 7. **COMPLETE** — ran security + performance advisors; security clean, only expected empty-database unused-index informational notices remain.
 8. **COMPLETE** — disposable fixtures rolled back; persistent identity row counts returned to zero.
-9. **PENDING** — create the first real FPP Auth Owner identity.
-10. Bootstrap **In And Out Cleaner Inspections LLC** + exact OWNER Membership.
-11. Verify the Owner can read exactly their Organization/Membership.
-12. Record project ref, migration identity, verification, and rollback evidence in the repository.
-13. Stop at the backend boundary; Android auth work begins in the next governed slice.
+9. **COMPLETE** — first real FPP Auth Owner identity created and confirmed.
+10. **COMPLETE** — bootstrapped **In And Out Cleaner Inspections LLC** + exact ACTIVE OWNER Membership.
+11. **COMPLETE** — verified the Owner can read exactly their Organization/Membership and an unrelated authenticated identity reads none.
+12. **COMPLETE** — recorded project ref, migration identity, verification, and rollback evidence in the repository.
+13. **COMPLETE** — stopped at the backend boundary; Android auth work begins in the next governed slice.
 
 ## Explicit non-goals
 
@@ -135,3 +135,36 @@ Required next action:
 - create the Auth user through Supabase's normal hosted Authentication → Users flow using the selected email and an operator-chosen password;
 - once the Auth UUID exists, Phase 12C will create/reuse exactly one **In And Out Cleaner Inspections LLC** Organization and exactly one `ACTIVE OWNER` Membership for that UUID;
 - then hosted Owner-scope verification completes the backend gate.
+
+
+## Real first-Owner bootstrap evidence
+
+Auth User:
+- email: `inandoutinspections2026@gmail.com`
+- user UUID: `789bc0d8-6f9d-4ab4-9f87-33195109a65a`
+- email confirmed: yes
+- password credential present: yes
+
+FPP Organization:
+- name: **In And Out Cleaner Inspections LLC**
+- Organization UUID: `3198253e-8d41-4419-874e-46e2d3906928`
+- status: `ACTIVE`
+
+Membership:
+- Membership UUID: `de55393f-6386-480a-9823-b6ee4d9901a0`
+- role: `OWNER`
+- status: `ACTIVE`
+
+Hosted RLS proof using the real Owner UUID:
+- visible Organizations: exactly 1;
+- visible Memberships: exactly 1;
+- visible Invitations: 0;
+- unrelated authenticated UUID: 0 Organizations / 0 Memberships / 0 Invitations.
+
+### Invite redirect evidence
+
+The initial hosted Supabase invite link redirected to `localhost:3000`, exposing the project's default development Site URL.
+
+Despite that broken landing page, Supabase created and confirmed the real Auth user successfully.
+
+Before future invitation/password-recovery UX is called ready, the Android auth slice must configure and test a deliberate FPP redirect/deep-link path rather than relying on Supabase's default localhost Site URL.
