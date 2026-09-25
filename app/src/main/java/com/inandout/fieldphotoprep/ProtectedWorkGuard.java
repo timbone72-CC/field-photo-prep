@@ -2,6 +2,9 @@ package com.inandout.fieldphotoprep;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -17,18 +20,22 @@ final class ProtectedWorkGuard {
         private final int queuedCount;
         private final int cleanupPendingCount;
         private final int unreadableCount;
+        private final Map<String, Integer> addressCounts;
 
         Result(
                 int blockingCount,
                 int capturingCount,
                 int queuedCount,
                 int cleanupPendingCount,
-                int unreadableCount) {
+                int unreadableCount,
+                Map<String, Integer> addressCounts) {
             this.blockingCount = blockingCount;
             this.capturingCount = capturingCount;
             this.queuedCount = queuedCount;
             this.cleanupPendingCount = cleanupPendingCount;
             this.unreadableCount = unreadableCount;
+            this.addressCounts = Collections.unmodifiableMap(
+                    new HashMap<>(Objects.requireNonNull(addressCounts, "addressCounts")));
         }
 
         boolean blocksSignOut() {
@@ -54,6 +61,10 @@ final class ProtectedWorkGuard {
         int unreadableCount() {
             return unreadableCount;
         }
+
+        Map<String, Integer> addressCounts() {
+            return addressCounts;
+        }
     }
 
     private final PendingPhotoStore photoStore;
@@ -71,12 +82,14 @@ final class ProtectedWorkGuard {
         int queued = 0;
         int cleanupPending = 0;
         int unreadable = scan.corruptMetadataFiles().size();
+        Map<String, Integer> addressCounts = new HashMap<>();
 
         for (PendingPhotoRecord record : scan.records()) {
             switch (record.state()) {
                 case CAPTURING:
                     if (hasNonEmptyProtectedOriginal(record)) {
                         capturing++;
+                        increment(addressCounts, record.addressId());
                     }
                     break;
                 case WAITING:
@@ -84,10 +97,12 @@ final class ProtectedWorkGuard {
                 case FAILED:
                 case UNCERTAIN:
                     queued++;
+                    increment(addressCounts, record.addressId());
                     break;
                 case UPLOADED:
                     if (hasAnyLocalCopy(record)) {
                         cleanupPending++;
+                        increment(addressCounts, record.addressId());
                     }
                     break;
                 default:
@@ -96,7 +111,17 @@ final class ProtectedWorkGuard {
         }
 
         int total = capturing + queued + cleanupPending + unreadable;
-        return new Result(total, capturing, queued, cleanupPending, unreadable);
+        return new Result(
+                total,
+                capturing,
+                queued,
+                cleanupPending,
+                unreadable,
+                addressCounts);
+    }
+
+    private static void increment(Map<String, Integer> counts, String addressId) {
+        counts.put(addressId, counts.getOrDefault(addressId, 0) + 1);
     }
 
     private boolean hasNonEmptyProtectedOriginal(PendingPhotoRecord record) throws IOException {
