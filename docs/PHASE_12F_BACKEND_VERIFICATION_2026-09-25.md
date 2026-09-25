@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 Project: `vtyiktvqhbgabawotkrj` — Field Photo Prep
-Status: backend verification in progress; core authorization/idempotency/race gates PASS
+Status: source-control reconciliation confirmed; core authorization/idempotency/race gates PASS; delivery/email gates remain
 
 ## Source-control reconciliation
 
@@ -11,6 +11,14 @@ The live project already had these applied migrations before the 12F Git branch 
 - `20260925195901_phase_12f_rpc_grant_hardening`
 
 The branch now source-controls reconstructed versions of both applied migration files and the deployed `fpp-owner-invite` Edge Function.
+
+Recheck on 2026-09-25:
+- live migration history still contains the exact two Phase 12F versions above;
+- deployed `fpp-owner-invite` is ACTIVE version 1 with JWT verification enabled;
+- deployed `index.ts` text is an exact match to PR #74 source;
+- current advisor output remains limited to the already-recorded audit-table/RPC/password warnings and informational performance findings.
+
+The last runtime/backend implementation checkpoint before documentation-only cleanup is `a0f12f75d08d596a5bfc53169e879a31fbb392dd`; Android CI run `36190542857` passed.
 
 ## Live ACL / RLS observations
 
