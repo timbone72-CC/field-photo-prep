@@ -59,6 +59,20 @@ For account/authentication work, the following rules are contractual:
 14. A new device must deliberately establish its own Drive binding through the supported platform access flow rather than inheriting another device's provider-bound identity.
 15. The FPP identity backend must remain an identity/account service, not a second property/work-order/photo database. Customer addresses, photos, work orders, SAF URIs, and Drive provider IDs are not required merely to authenticate a User.
 16. Identity implementation must preserve all existing photo-protection, exact-destination, upload, retry, reconciliation, cleanup, and Drive-access contracts.
+17. **Supabase** is the approved identity/account backend for original FPP, using a **dedicated Supabase project that is separate from Field Photo Prep Team** in Auth users, database, keys, functions, secrets, and migration history.
+18. Initial FPP sign-in uses **Supabase Auth email + password**. V1 is invitation-only after a controlled first-Owner bootstrap; open public self-signup is outside Phase 12B.
+19. Supabase Auth `auth.users.id` is the permanent FPP User ID. Email remains a mutable login/contact field and is never authorization identity.
+20. Original FPP stores only the minimum account model in Supabase: Organizations, Memberships, and Invitations. It must not mirror client-company folders, addresses, work orders, photos, Drive provider IDs, SAF URIs, routes, or inspection data into the identity backend.
+21. FPP roles remain `OWNER` and `MEMBER`. Organization authorization is controlled by exact RLS-backed Membership records, not editable user metadata, email equality, Team roles, or Drive account identity.
+22. Every FPP table exposed through Supabase's Data API must use explicit least-privilege grants and RLS. Privileged Owner/bootstrap/invitation actions remain server-side and must never expose a secret/service-role key in Android.
+23. Android stores only the required Supabase session and active identity snapshot. Access/refresh credentials must be encrypted at rest with Android Keystore-backed protection, excluded from backup/device transfer, and excluded from logs/diagnostics.
+24. When network is available, FPP revalidates the Auth session and authoritative Membership. A previously validated `ACTIVE` Membership may continue normal field work for the same active Organization for up to **72 hours** from the last successful validation.
+25. During the 72-hour offline grace, Organization switching and Membership/Invitation administration are unavailable. After 72 hours without successful revalidation, existing protected work remains preserved/recoverable, but new capture and new remote Drive mutations require successful Membership revalidation.
+26. Once an authoritative `REVOKED` Membership is learned, new ordinary Organization work and new remote Drive writes under that Membership stop immediately. Revocation must not delete protected originals, delete Drive data, rewrite destinations, or silently transfer unfinished work.
+27. FPP sign-out remains subject to the protected-work guard. When allowed, it clears local FPP Auth/session state and must not delete protected photos, Drive records, sharing, or provider identities.
+28. FPP Supabase identity never selects, infers, authorizes, or rewrites the Android SAF Drive account/workspace. FPP Auth email and Drive account email may differ.
+29. Field Photo Prep Team's Supabase project, Auth users, tables, keys, functions, secrets, Organization IDs, work orders, photos, and sessions are never original-FPP runtime identity/data.
+30. Supabase Storage, Realtime, job/photo synchronization, Google Drive OAuth, Google/social sign-in, subscriptions/licensing, and public self-signup remain outside Phase 12B.
 
 ## 2. Company, property, work-order, and folder identity
 
