@@ -161,6 +161,22 @@ public final class RuntimeAuthorizationManagerTest {
     }
 
     @Test
+    public void membershipRateLimitUsesExistingGrace() {
+        FakeStore store = new FakeStore(activeSession(NOW - 60L));
+        FakeClock clock = new FakeClock(NOW, 100L);
+        FakeBackend backend = FakeBackend.membershipRateLimited();
+        RuntimeAuthorizationManager manager =
+                new RuntimeAuthorizationManager(store, backend, clock, Runnable::run);
+
+        AuthorizationDecision decision = manager.revalidateAsync().join();
+
+        assertEquals(AuthorizationDecision.State.GRACE, decision.state());
+        assertTrue(decision.allowsNewCapture());
+        assertTrue(store.state != null);
+        assertTrue(store.state.lastMembershipValidatedAtEpochSeconds() > 0L);
+    }
+
+    @Test
     public void membershipBadRequestFailsClosedWithoutPretendingSignInWasRejected() {
         FakeStore store = new FakeStore(activeSession(NOW - 60L));
         FakeClock clock = new FakeClock(NOW, 100L);
@@ -283,7 +299,8 @@ public final class RuntimeAuthorizationManagerTest {
             REVOKED,
             TEMPORARY_REFRESH_FAILURE,
             REJECTED_REFRESH,
-            MEMBERSHIP_BAD_REQUEST
+            MEMBERSHIP_BAD_REQUEST,
+            MEMBERSHIP_RATE_LIMITED
         }
 
         private static int globalSequence;
@@ -326,6 +343,11 @@ public final class RuntimeAuthorizationManagerTest {
             return new FakeBackend(Mode.MEMBERSHIP_BAD_REQUEST, null, null);
         }
 
+        static FakeBackend membershipRateLimited() {
+            globalSequence = 0;
+            return new FakeBackend(Mode.MEMBERSHIP_RATE_LIMITED, null, null);
+        }
+
         @Override
         public SupabaseAuthClient.AuthTokens refreshSession(String refreshToken)
                 throws IOException {
@@ -361,6 +383,9 @@ public final class RuntimeAuthorizationManagerTest {
             }
             if (mode == Mode.MEMBERSHIP_BAD_REQUEST) {
                 throw new SupabaseAuthClient.AuthException("membership query rejected", 400);
+            }
+            if (mode == Mode.MEMBERSHIP_RATE_LIMITED) {
+                throw new SupabaseAuthClient.AuthException("membership rate limited", 429);
             }
             AuthSessionState active = new AuthSessionState(
                     tokens.accessToken(),
