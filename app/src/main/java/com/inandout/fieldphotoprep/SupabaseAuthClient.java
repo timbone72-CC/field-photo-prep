@@ -15,6 +15,9 @@ import java.net.URLEncoder;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 final class SupabaseAuthClient {
     static final class AuthException extends IOException {
@@ -94,6 +97,59 @@ final class SupabaseAuthClient {
 
         String id() { return id; }
         String email() { return email; }
+    }
+
+    static final class AdminMember {
+        private final String membershipId;
+        private final String userId;
+        private final String email;
+        private final String role;
+        private final String status;
+
+        AdminMember(String membershipId, String userId, String email, String role, String status) {
+            this.membershipId = membershipId;
+            this.userId = userId;
+            this.email = email == null ? "" : email;
+            this.role = role;
+            this.status = status;
+        }
+
+        String membershipId() { return membershipId; }
+        String userId() { return userId; }
+        String email() { return email; }
+        String role() { return role; }
+        String status() { return status; }
+    }
+
+    static final class AdminInvitation {
+        private final String invitationId;
+        private final String email;
+        private final String intendedRole;
+        private final String status;
+        private final String deliveryStatus;
+        private final int deliveryAttemptCount;
+
+        AdminInvitation(
+                String invitationId,
+                String email,
+                String intendedRole,
+                String status,
+                String deliveryStatus,
+                int deliveryAttemptCount) {
+            this.invitationId = invitationId;
+            this.email = email == null ? "" : email;
+            this.intendedRole = intendedRole;
+            this.status = status;
+            this.deliveryStatus = deliveryStatus;
+            this.deliveryAttemptCount = deliveryAttemptCount;
+        }
+
+        String invitationId() { return invitationId; }
+        String email() { return email; }
+        String intendedRole() { return intendedRole; }
+        String status() { return status; }
+        String deliveryStatus() { return deliveryStatus; }
+        int deliveryAttemptCount() { return deliveryAttemptCount; }
     }
 
     static final class StoredMembershipValidation {
@@ -340,6 +396,224 @@ final class SupabaseAuthClient {
                     validatedAtEpochSeconds));
         } catch (JSONException e) {
             throw new AuthException("Field Photo Prep membership data was incomplete.", e);
+        }
+    }
+
+    List<AdminMember> listAdminMembers(
+            String accessToken,
+            String organizationId) throws IOException {
+        JSONObject body = rpcBody("p_organization_id", organizationId);
+        JSONArray response = requestArray(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_list_members",
+                body,
+                accessToken);
+        return parseAdminMembers(response);
+    }
+
+    List<AdminInvitation> listAdminInvitations(
+            String accessToken,
+            String organizationId) throws IOException {
+        JSONObject body = rpcBody("p_organization_id", organizationId);
+        JSONArray response = requestArray(
+                "POST",
+                "/rest/v1/rpc/fpp_admin_list_invitations",
+                body,
+                accessToken);
+        return parseAdminInvitations(response);
+    }
+
+    String sendOwnerInvitation(
+            String accessToken,
+            String organizationId,
+            String email,
+            String intendedRole,
+            String redirectUri) throws IOException {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("organization_id", organizationId);
+            body.put("email", email == null ? "" : email.trim());
+            body.put("intended_role", intendedRole);
+            body.put("redirect_uri", redirectUri);
+        } catch (JSONException e) {
+            throw new AuthException("Could not prepare invitation request.", e);
+        }
+        JSONObject response = requestObject(
+                "POST",
+                "/functions/v1/fpp-owner-invite",
+                body,
+                accessToken);
+        String outcome = response.optString("outcome", "");
+        if (!"SENT".equals(outcome) && !"RESENT".equals(outcome)) {
+            throw new AuthException(adminOutcomeMessage(outcome));
+        }
+        return outcome;
+    }
+
+    void updateInvitationRole(
+            String accessToken,
+            String organizationId,
+            String invitationId,
+            String intendedRole) throws IOException {
+        JSONObject response = adminRpc(
+                accessToken,
+                "/rest/v1/rpc/fpp_admin_update_invitation_role",
+                rpcBody(
+                        "p_organization_id", organizationId,
+                        "p_invitation_id", invitationId,
+                        "p_intended_role", intendedRole));
+        requireAdminOutcome(response, "UPDATED", "UNCHANGED");
+    }
+
+    void cancelInvitation(
+            String accessToken,
+            String organizationId,
+            String invitationId) throws IOException {
+        JSONObject response = adminRpc(
+                accessToken,
+                "/rest/v1/rpc/fpp_admin_cancel_invitation",
+                rpcBody(
+                        "p_organization_id", organizationId,
+                        "p_invitation_id", invitationId));
+        requireAdminOutcome(response, "CANCELLED");
+    }
+
+    void changeMembershipRole(
+            String accessToken,
+            String organizationId,
+            String membershipId,
+            String role) throws IOException {
+        JSONObject response = adminRpc(
+                accessToken,
+                "/rest/v1/rpc/fpp_admin_change_membership_role",
+                rpcBody(
+                        "p_organization_id", organizationId,
+                        "p_membership_id", membershipId,
+                        "p_role", role));
+        requireAdminOutcome(response, "UPDATED", "UNCHANGED");
+    }
+
+    void revokeMembership(
+            String accessToken,
+            String organizationId,
+            String membershipId) throws IOException {
+        JSONObject response = adminRpc(
+                accessToken,
+                "/rest/v1/rpc/fpp_admin_revoke_membership",
+                rpcBody(
+                        "p_organization_id", organizationId,
+                        "p_membership_id", membershipId));
+        requireAdminOutcome(response, "REVOKED");
+    }
+
+    void reactivateMembership(
+            String accessToken,
+            String organizationId,
+            String membershipId) throws IOException {
+        JSONObject response = adminRpc(
+                accessToken,
+                "/rest/v1/rpc/fpp_admin_reactivate_membership",
+                rpcBody(
+                        "p_organization_id", organizationId,
+                        "p_membership_id", membershipId));
+        requireAdminOutcome(response, "ACTIVE");
+    }
+
+    static List<AdminMember> parseAdminMembers(JSONArray response) throws AuthException {
+        List<AdminMember> out = new ArrayList<>();
+        try {
+            for (int i = 0; i < response.length(); i++) {
+                JSONObject row = response.getJSONObject(i);
+                out.add(new AdminMember(
+                        row.getString("membership_id"),
+                        row.getString("user_id"),
+                        row.optString("email", ""),
+                        row.getString("role"),
+                        row.getString("status")));
+            }
+        } catch (JSONException e) {
+            throw new AuthException("Member administration data was incomplete.", e);
+        }
+        return Collections.unmodifiableList(out);
+    }
+
+    static List<AdminInvitation> parseAdminInvitations(JSONArray response) throws AuthException {
+        List<AdminInvitation> out = new ArrayList<>();
+        try {
+            for (int i = 0; i < response.length(); i++) {
+                JSONObject row = response.getJSONObject(i);
+                out.add(new AdminInvitation(
+                        row.getString("invitation_id"),
+                        row.optString("email", ""),
+                        row.getString("intended_role"),
+                        row.getString("status"),
+                        row.optString("delivery_status", "NOT_SENT"),
+                        row.optInt("delivery_attempt_count", 0)));
+            }
+        } catch (JSONException e) {
+            throw new AuthException("Invitation administration data was incomplete.", e);
+        }
+        return Collections.unmodifiableList(out);
+    }
+
+    private JSONObject adminRpc(
+            String accessToken,
+            String path,
+            JSONObject body) throws IOException {
+        return requestObject("POST", path, body, accessToken);
+    }
+
+    private static JSONObject rpcBody(Object... pairs) throws AuthException {
+        if (pairs.length % 2 != 0) {
+            throw new AuthException("Could not prepare server request.");
+        }
+        JSONObject body = new JSONObject();
+        try {
+            for (int i = 0; i < pairs.length; i += 2) {
+                body.put(String.valueOf(pairs[i]), pairs[i + 1]);
+            }
+        } catch (JSONException e) {
+            throw new AuthException("Could not prepare server request.", e);
+        }
+        return body;
+    }
+
+    private static void requireAdminOutcome(
+            JSONObject response,
+            String... allowedOutcomes) throws AuthException {
+        String outcome = response.optString("outcome", "");
+        for (String allowed : allowedOutcomes) {
+            if (allowed.equals(outcome)) {
+                return;
+            }
+        }
+        throw new AuthException(adminOutcomeMessage(outcome));
+    }
+
+    private static String adminOutcomeMessage(String outcome) {
+        switch (outcome) {
+            case "LAST_OWNER_BLOCKED":
+                return "The final active Owner cannot be removed or changed to Member.";
+            case "ROLE_CHANGE_REQUIRED":
+                return "Change the pending invitation role explicitly before resending it.";
+            case "MEMBERSHIP_EXISTS":
+                return "That email already belongs to this organization.";
+            case "NOT_PENDING":
+                return "That invitation is no longer pending.";
+            case "EXPIRED":
+                return "That invitation has expired.";
+            case "CANCELLED":
+                return "That invitation was cancelled.";
+            case "INVALID_EMAIL":
+                return "Enter a valid email address.";
+            case "INVALID_ROLE":
+                return "Choose Owner or Member.";
+            case "NOT_FOUND":
+                return "The selected member or invitation no longer exists.";
+            case "OWNER_REQUIRED":
+                return "Current active Owner access is required.";
+            default:
+                return "The member administration request could not be completed.";
         }
     }
 
