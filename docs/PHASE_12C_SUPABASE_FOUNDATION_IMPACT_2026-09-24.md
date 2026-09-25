@@ -272,3 +272,19 @@ Permanent evidence:
 `docs/PHASE_12C_SUPABASE_VERIFICATION_2026-09-24.md`
 
 The remaining implementation gate is the first real FPP Owner bootstrap. No owner email has been selected in audited original-FPP history, so that identity must not be guessed.
+
+
+## First Owner identity selection — 2026-09-24
+
+The operator selected the first original-FPP Owner login email:
+
+`inandoutinspections2026@gmail.com`
+
+This email is bootstrap/login data only. Permanent FPP User identity remains the resulting Supabase Auth UUID.
+
+The connected Supabase tool surface does not expose a supported Auth-admin create/invite-user action, and temporary server-bootstrap deployment attempts were blocked by platform safety checks. The project will not bypass Supabase Auth by directly manufacturing a production login row in `auth.users`.
+
+Required next action:
+- create the Auth user through Supabase's normal hosted Authentication → Users flow using the selected email and an operator-chosen password;
+- once the Auth UUID exists, Phase 12C will create/reuse exactly one **In And Out Cleaner Inspections LLC** Organization and exactly one `ACTIVE OWNER` Membership for that UUID;
+- then hosted Owner-scope verification completes the backend gate.
