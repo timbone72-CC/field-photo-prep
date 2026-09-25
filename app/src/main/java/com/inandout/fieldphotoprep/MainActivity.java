@@ -56,6 +56,7 @@ public final class MainActivity extends Activity {
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
     private final Map<String, Integer> protectedPhotoCountByAddressId = new HashMap<>();
+    private final Map<String, Integer> protectedPhotoCountByWorkOrderId = new HashMap<>();
 
     private FolderPrefs folderPrefs;
     private Screen screen = Screen.ADDRESSES;
@@ -349,7 +350,10 @@ private void buildLegacyWorkOrderUi() {
     legacyRoot.findViewById(R.id.nav_work_orders).setSelected(true);
 
     workOrderControls = (LinearLayout) workOrderScroll.getChildAt(0);
-    workOrderAdapter = new WorkOrderListAdapter(this, workOrderFolders);
+    workOrderAdapter = new WorkOrderListAdapter(
+            this,
+            workOrderFolders,
+            protectedPhotoCountByWorkOrderId);
     workOrderList.setAdapter(workOrderAdapter);
     workOrderList.setOnItemClickListener((parent, view, position, id) -> {
         if (busy || position < 0 || position >= workOrderFolders.size()) {
@@ -1799,13 +1803,16 @@ private void buildLegacyWorkOrderUi() {
     private void refreshProtectedPhotoCounts() {
         executor.execute(() -> {
             final Map<String, Integer> counts;
+            final Map<String, Integer> workOrderCounts;
             try {
                 PendingPhotoStore store = new PendingPhotoStore(
                         new File(getFilesDir(), "pending_photos"));
                 PhotoPreparer preparer = new PhotoPreparer(
                         new File(getFilesDir(), "prepared_photos"));
-                counts = new HashMap<>(
-                        new ProtectedWorkGuard(store, preparer).inspect().addressCounts());
+                ProtectedWorkGuard.Result protectedWork =
+                        new ProtectedWorkGuard(store, preparer).inspect();
+                counts = new HashMap<>(protectedWork.addressCounts());
+                workOrderCounts = new HashMap<>(protectedWork.workOrderCounts());
             } catch (Exception error) {
                 return;
             }
@@ -1816,9 +1823,9 @@ private void buildLegacyWorkOrderUi() {
                 }
                 protectedPhotoCountByAddressId.clear();
                 protectedPhotoCountByAddressId.putAll(counts);
-                if (adapter != null) {
-                    adapter.notifyDataSetChanged();
-                }
+                protectedPhotoCountByWorkOrderId.clear();
+                protectedPhotoCountByWorkOrderId.putAll(workOrderCounts);
+                notifyFolderAdapters();
             });
         });
     }
