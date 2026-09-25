@@ -1,105 +1,96 @@
-# Field Photo Prep Agent Guardrails
+# Field Photo Prep — Agent Entry Point
 
-This repository protects a field-photo workflow where the wrong destination, lost photo, duplicate folder, or destructive retry can create real work problems. Every human or automated agent must follow these guardrails before changing approved behavior.
+This file is the mandatory starting point for human or automated work in this repository.
 
-## Mandatory contract read
+Do **not** begin by reading every contract. Route the work first.
 
-Before changing runtime code, tests that define runtime behavior, Google Drive behavior, permissions, photo handling, storage, or upload behavior, read:
+## Mandatory first read
 
-1. `CONTRACT.md`
-2. `CHANGE_CONTROL_CONTRACT.md`
-3. relevant sections of `REGRESSION_CHECKLIST.md`
-4. `TESTING_CONTRACT.md`
-5. `INTEGRATION_CONTRACT.md` when the change touches Google Drive, Android document-provider access, master-tree permissions, folder identity, upload, retry, or future external handoffs
+Before planning, creating a branch, changing code/configuration, or changing a live project system, read:
 
-Documentation-only edits must still read the document being changed and the change-class rules below.
+1. `GOVERNANCE.md`
+2. `PROJECT_PROFILE.md`
+3. `RULE_INDEX.md`
 
-## Mandatory master device-gate reread
+Then load only the detailed rule packs selected by `RULE_INDEX.md`.
 
-For any physical Android device-gate work, phone testing, APK install/test transition, device-gate result classification, deviation from the staged device path, merge recommendation based on device evidence, or Phase 7B design that relies on H4 observations, read:
+## Mandatory takeover preflight
 
-`docs/MASTER_DEVICE_REALITY_GATE_PLAN_2026-09-10.md`
+Before creating a new branch or restarting prior work:
 
-Re-read that file at all of these checkpoints:
+- inspect current `main`;
+- inspect open pull requests;
+- inspect relevant active branches;
+- locate the active build-state/impact record;
+- inspect any project-defined live external system touched by the work;
+- determine whether an authoritative implementation line already exists.
 
-1. at the start of every physical-device test session;
-2. immediately before installing or switching to the next APK/gate;
-3. immediately before declaring a gate PASS, BLOCKED, or FAIL;
-4. before deviating from the straight-line path because of an unexpected result; and
-5. before recommending merge approval or starting Phase 7B design from device evidence.
+If an existing branch/PR owns the same or overlapping scope, continue it.
 
-Do not replace these rereads with memory, a chat summary, or repeated ad hoc safety prompts. The master plan exists to keep device work straight-line, proportional, and free of unnecessary verification loops while preserving genuine stop conditions.
+Do not create a competing implementation line from `main` merely because active work is unmerged.
 
-## Mandatory phase-staging doctrine
+If an old line must be replaced, explicitly supersede it under `GOVERNANCE.md`.
 
-For phase transitions, planning work after a completed device gate, deciding how far a phase should be implemented before the next phone gate, or deciding whether development should stop for physical-device evidence, read:
+## Classify before implementation
 
-`docs/PHASE_STAGING_DOCTRINE.md`
+Record:
 
-This is especially mandatory for the Phase 6 → Phase 7 transition.
+- goal;
+- affected surfaces;
+- change level;
+- authoritative branch/PR;
+- required rule packs;
+- protected behavior;
+- external systems touched;
+- rollback point;
+- verification boundary.
 
-Re-read it:
+If scope expands into another rule category, load that rule pack and reclassify before continuing.
 
-1. after the Phase 6 device evidence is consolidated and before finalizing the Phase 7 implementation plan;
-2. before deciding that Phase 7 has reached its next genuine phone-dependent boundary;
-3. before creating the next staged device-gate plan; and
-4. whenever new device/provider evidence changes an assumption that controls how far the current phase can proceed.
+## Batch-size rule
 
-Default rule: build as far as can be honestly proven without the phone, then stage once at the next genuine device-dependent boundary. Do not fragment development into repeated phone checks, repeated safety prompts, or one-command-at-a-time Bash loops when the next safe work can proceed from evidence already established.
+Work in the **largest coherent safe batch**.
 
-## Choose the smallest honest change class
+Do not artificially fragment work into tiny steps when the scope, ownership, rollback, and verification are understood.
 
-### Level 1 — low risk
+Do not combine unrelated work merely to make a batch larger.
 
-Examples: documentation, comments, test wording, noninteractive copy, and appearance-only changes that cannot alter photo capture, photo storage, folder selection, upload destination, retry state, Drive writes, or permissions.
+Stop at genuine boundaries defined in `GOVERNANCE.md`, such as a failed required gate, unresolved structural assumption, external-state disagreement, physical reality gate, material scope expansion, or Level 3 merge approval.
 
-Use a branch, inspect the diff, and perform only the verification appropriate to the changed documentation or surface.
+## Consistency
 
-### Level 2 — normal feature or fix
+Unless the approved scope intentionally changes them:
 
-Examples: normal screens and controls, camera UI, photo review UI, job-folder display, status labels, non-destructive local workflow behavior, and ordinary feature additions that do not change stored-data schemas, Drive permissions, or destination identity.
+- preserve the established app workflow;
+- preserve established terminology/navigation/status meanings;
+- extend canonical behavior instead of creating alternate implementations;
+- keep one authoritative owner for each state, identity, destination, authorization decision, queue transition, and remote-write path.
 
-Record the problem, scope, owning files, protected behavior, focused tests, rollback point, and affected smoke check. Run focused tests during development, then the complete automated suite once on the final runtime head before merge.
+App consistency and workflow consistency are protected behavior.
 
-### Level 3 — high risk
+## Required failure behavior
 
-Examples: stored-data schema changes or migrations, deletion, automatic writes, document-provider/account-selection or persisted Drive-tree permission changes, folder-identity changes, upload/retry semantics, any change that could send photos to the wrong folder, and deployment changes.
+A required failure stops the affected merge/publication/deployment path.
 
-Use a detailed impact record, realistic fixtures or a safe test environment, explicit rollback steps, focused tests, one final complete automated verification, affected smoke checks, and explicit operator approval before merge.
+Do not call incomplete or failed evidence a pass.
 
-When uncertain between two levels, use the higher level.
+## Level 3 merge boundary
 
-## Authorization without repeated permission loops
+Level 3 work requires explicit operator approval before merge.
 
-- The user's request and approval authorize the documented scope.
-- Do not ask for the same approval again when the scope has not changed.
-- Ask again only when scope expands, assumptions prove false, or Level 3 pre-merge approval is required.
-- Contract findings and adjacent defects are not automatic authorization to change them.
+Implementation/design approval is not merge approval.
 
-## Live-data protection
+## Detailed rule packs
 
-- Never use a real field job as an experiment surface when a safe test folder or fixture can prove the behavior.
-- Never delete, move, rename, overwrite, or change permissions on an existing Drive file or folder unless that exact behavior is approved and tested.
-- A failed upload must never be reported as successful.
-- A retry must never silently create a duplicate photo or redirect it to a different job folder.
-- A captured original must not be destroyed merely because compression, upload, document-provider access, or Drive availability fails.
+The existing detailed contracts remain authoritative for their domains:
 
-## Ownership and narrow scope
+- `CONTRACT.md` — product/photo/queue behavior
+- `CHANGE_CONTROL_CONTRACT.md` — change levels, records, approval, rollback
+- `TESTING_CONTRACT.md` — test selection, final gates, failure behavior
+- `INTEGRATION_CONTRACT.md` — Google Drive / Android DocumentsProvider
+- `REGRESSION_CHECKLIST.md` — affected behavior checklist
+- `docs/PHASE_STAGING_DOCTRINE.md` — when development should stop for genuine device/external evidence
+- `docs/IDENTITY_MODEL_V1.md` — FPP identity model
+- current approved phase/design records — scope-specific behavior
 
-- Change the module that owns the behavior.
-- State which surfaces are read and which are written.
-- Preserve unrelated camera, local-photo, queue, folder, Drive, and provider/account-selection behavior.
-- Report adjacent defects separately.
-- Do not turn a fix into cleanup, redesign, refactoring, renaming, relocation, or feature expansion without approval.
-
-## Verification
-
-`TESTING_CONTRACT.md` owns test selection, timing, reuse, and failure-stop behavior.
-
-- During development, run only focused tests covering the changed behavior.
-- After fixing a focused failure, rerun that focused test first.
-- For runtime changes, run the complete suite once on the final runtime head before merge.
-- Documentation-only changes require diff and contract review, not runtime tests.
-- Any required test failure stops commit/push/merge/publication/deployment automation for that change.
-
-Before calling a Drive-related change ready, satisfy the Android document-provider reality gate in `INTEGRATION_CONTRACT.md` using a safe test destination.
+Use `RULE_INDEX.md` to decide which ones apply. Do not treat every file above as mandatory reading for unrelated work.
