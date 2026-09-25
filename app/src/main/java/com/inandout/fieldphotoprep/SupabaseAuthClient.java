@@ -343,6 +343,44 @@ final class SupabaseAuthClient {
         }
     }
 
+    void acceptInvitation(String accessToken, String invitationId) throws IOException {
+        if (invitationId == null || invitationId.trim().isEmpty()) {
+            throw new AuthException("The invitation link did not include its invitation identity.");
+        }
+
+        JSONObject body = new JSONObject();
+        try {
+            body.put("p_invitation_id", invitationId.trim());
+        } catch (JSONException e) {
+            throw new AuthException("Could not prepare invitation acceptance.", e);
+        }
+
+        JSONObject response = requestObject(
+                "POST",
+                "/rest/v1/rpc/fpp_accept_invitation",
+                body,
+                accessToken);
+        String outcome = response.optString("outcome", "");
+        if (!"ACCEPTED".equals(outcome) && !"ALREADY_ACCEPTED".equals(outcome)) {
+            throw new AuthException(invitationAcceptanceMessage(outcome));
+        }
+    }
+
+    private static String invitationAcceptanceMessage(String outcome) {
+        switch (outcome) {
+            case "EMAIL_NOT_CONFIRMED":
+                return "Confirm this email address before accepting the invitation.";
+            case "EXPIRED":
+                return "This Field Photo Prep invitation has expired.";
+            case "CANCELLED":
+                return "This Field Photo Prep invitation was cancelled.";
+            case "INVITATION_UNAVAILABLE":
+                return "This invitation is unavailable for the signed-in account.";
+            default:
+                return "The Field Photo Prep invitation could not be activated.";
+        }
+    }
+
     AuthTokens tokensFromRedirect(
             String accessToken,
             String refreshToken,
