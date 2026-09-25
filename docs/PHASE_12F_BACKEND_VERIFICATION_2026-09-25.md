@@ -85,10 +85,18 @@ Observed:
 
 The fixture was then restored to its prior A=REVOKED / B=ACTIVE state.
 
+## PASS — explicit pending-role change, cancellation and expiry
+
+Rollback-only hosted checks:
+- PENDING invitation MEMBER -> explicit Owner role update -> OWNER returned `UPDATED`;
+- matching invited identity after cancellation -> `CANCELLED`, no Membership activation;
+- matching invited identity after forced expiry -> `EXPIRED`, no Membership activation.
+
+These checks used only the disposable Phase 12F fixture and rolled back.
+
 ## Remaining backend gates
 
 Still required:
-- explicit pending-role-update and cancel/expired acceptance hosted checks;
 - delivery failure visibility/retry behavior through the Edge Function;
 - real invitation email/deep-link acceptance on a disposable user;
 - final RLS/grant/catalog diff and advisors;
