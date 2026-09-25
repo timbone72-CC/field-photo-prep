@@ -600,7 +600,7 @@ Approved model:
 Settled architecture:
 - Supabase project `Field Photo Prep Team` (`vyocaujuwrivoqynvitm`) is reused instead of creating another project;
 - `auth.users.id` is FPP User identity;
-- existing `public.organizations` is reused for the same real business identity;
+- the already-established business Organization UUID is preserved; the currently missing `public.organizations` row will be restored with that exact UUID in Phase 12C;
 - normal FPP adds only FPP-specific Membership/Invitation data;
 - normal FPP never uses Team work-order/photo operational tables;
 - initial login is Supabase email/password;
@@ -620,7 +620,7 @@ Completion gate for Phase 12B design:
 
 Planned scope:
 - add RLS-protected `fpp_memberships` and `fpp_invitations` to the existing Supabase project;
-- reuse the existing In And Out Cleaner Inspections LLC Organization row;
+- restore In And Out Cleaner Inspections LLC with the exact Organization UUID already referenced by the existing Supabase Auth identities;
 - create the initial Owner Membership through a controlled bootstrap;
 - prove wrong-user/wrong-Organization access is denied;
 - do not change Team operational data.
