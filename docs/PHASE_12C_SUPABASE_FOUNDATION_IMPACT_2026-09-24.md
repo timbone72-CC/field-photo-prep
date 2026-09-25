@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **IN PROGRESS — HOSTED SCHEMA/RLS VERIFIED; FIRST OWNER BOOTSTRAP PENDING**
+Status: **BACKEND IMPLEMENTATION COMPLETE — FINAL LEVEL 3 MERGE APPROVAL PENDING**
 
 ## User-facing problem
 
@@ -288,3 +288,20 @@ Required next action:
 - create the Auth user through Supabase's normal hosted Authentication → Users flow using the selected email and an operator-chosen password;
 - once the Auth UUID exists, Phase 12C will create/reuse exactly one **In And Out Cleaner Inspections LLC** Organization and exactly one `ACTIVE OWNER` Membership for that UUID;
 - then hosted Owner-scope verification completes the backend gate.
+
+
+## Real Owner bootstrap completion
+
+Verified real identities:
+- Auth User UUID: `789bc0d8-6f9d-4ab4-9f87-33195109a65a`
+- Organization UUID: `3198253e-8d41-4419-874e-46e2d3906928`
+- Membership UUID: `de55393f-6386-480a-9823-b6ee4d9901a0`
+- Membership: `OWNER / ACTIVE`
+
+Hosted exact-scope test:
+- real Owner reads exactly their Organization and Membership;
+- unrelated authenticated UUID reads no FPP identity rows.
+
+The initial invite exposed a default `localhost:3000` redirect. That redirect issue belongs to the following Android Auth/session/invitation-flow slice and does not invalidate the Phase 12C backend identity/RLS proof.
+
+Final Phase 12C Level 3 merge approval is now the remaining gate.
