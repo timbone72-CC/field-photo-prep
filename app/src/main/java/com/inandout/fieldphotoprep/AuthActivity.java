@@ -77,7 +77,7 @@ public final class AuthActivity extends Activity {
 
     private void handleIntent(Intent intent) {
         String data = intent == null ? null : intent.getDataString();
-        if (data == null || data.isBlank()) {
+        if (data == null || data.trim().isEmpty()) {
             AuthSessionState state = authStore.load();
             if (state != null && state.isActiveOwnerOrMember()) {
                 showConnected(state, "Account session is stored on this phone.");
@@ -201,7 +201,7 @@ public final class AuthActivity extends Activity {
     private void signIn() {
         String emailValue = email.getText().toString().trim();
         String passwordValue = password.getText().toString();
-        if (emailValue.isBlank() || passwordValue.isBlank()) {
+        if (emailValue.trim().isEmpty() || passwordValue.trim().isEmpty()) {
             status.setText("Enter both email and password.");
             return;
         }
@@ -227,7 +227,7 @@ public final class AuthActivity extends Activity {
 
     private void sendRecovery() {
         String emailValue = email.getText().toString().trim();
-        if (emailValue.isBlank()) {
+        if (emailValue.trim().isEmpty()) {
             status.setText("Enter the account email.");
             return;
         }
