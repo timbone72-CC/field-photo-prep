@@ -156,6 +156,8 @@ public final class AuthActivity extends Activity {
         confirmPassword.setVisibility(View.GONE);
         primary.setText("Send Recovery Email");
         secondary.setText("Back to Sign In");
+        primary.setVisibility(View.VISIBLE);
+        secondary.setVisibility(View.VISIBLE);
         primary.setOnClickListener(v -> sendRecovery());
         secondary.setOnClickListener(v -> showLogin(null));
         setBusy(false);
@@ -173,6 +175,8 @@ public final class AuthActivity extends Activity {
         password.setHint("New password");
         primary.setText("Set Password");
         secondary.setText("Cancel");
+        primary.setVisibility(View.VISIBLE);
+        secondary.setVisibility(View.VISIBLE);
         primary.setOnClickListener(v -> setRecoveredPassword());
         secondary.setOnClickListener(v -> showLogin(null));
         setBusy(false);
