@@ -492,7 +492,7 @@ public final class MemberAdminActivity extends Activity {
 
     private LinearLayout actionRow() {
         LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setOrientation(LinearLayout.VERTICAL);
         row.setPadding(0, dp(8), 0, 0);
         return row;
     }
@@ -501,10 +501,9 @@ public final class MemberAdminActivity extends Activity {
         Button button = new Button(this);
         button.setText(label);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f);
-        params.setMargins(dp(2), 0, dp(2), 0);
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, dp(2), 0, dp(2));
         button.setLayoutParams(params);
         return button;
     }
