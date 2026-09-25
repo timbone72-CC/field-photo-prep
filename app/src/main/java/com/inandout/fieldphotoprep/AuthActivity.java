@@ -39,6 +39,8 @@ public final class AuthActivity extends Activity {
 
     private Mode mode = Mode.LOGIN;
     private SupabaseAuthClient.AuthTokens pendingRecoveryTokens;
+    private AuthRedirectParser.Kind pendingRedirectKind;
+    private String pendingInvitationId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,6 +108,11 @@ public final class AuthActivity extends Activity {
                     : redirect.errorMessage());
             return;
         }
+        if (redirect.kind() == AuthRedirectParser.Kind.INVITE
+                && (redirect.invitationId() == null || redirect.invitationId().trim().isEmpty())) {
+            showLogin("The invitation link did not identify a Field Photo Prep invitation. Ask an Owner to resend it.");
+            return;
+        }
 
         setBusy(true);
         status.setText("Verifying the authentication link…");
@@ -117,9 +124,11 @@ public final class AuthActivity extends Activity {
                         redirect.expiresAtEpochSeconds());
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = tokens;
+                    pendingRedirectKind = redirect.kind();
+                    pendingInvitationId = redirect.invitationId();
                     showPasswordSetup(
                             redirect.kind() == AuthRedirectParser.Kind.INVITE
-                                    ? "Invitation accepted. Choose a password for this account."
+                                    ? "Invitation link verified. Choose a password to finish joining this organization."
                                     : "Choose a new password for this account.");
                 });
             } catch (IOException e) {
@@ -131,6 +140,8 @@ public final class AuthActivity extends Activity {
     private void showLogin(String message) {
         mode = Mode.LOGIN;
         pendingRecoveryTokens = null;
+        pendingRedirectKind = null;
+        pendingInvitationId = null;
         title.setText("Field Photo Prep Account");
         status.setText(message == null
                 ? "Sign in to your Field Photo Prep organization."
@@ -286,6 +297,8 @@ public final class AuthActivity extends Activity {
 
     private void setRecoveredPassword() {
         SupabaseAuthClient.AuthTokens tokens = pendingRecoveryTokens;
+        AuthRedirectParser.Kind redirectKind = pendingRedirectKind;
+        String invitationId = pendingInvitationId;
         if (tokens == null) {
             showLogin("The recovery session is no longer available. Request another recovery email.");
             return;
@@ -313,19 +326,34 @@ public final class AuthActivity extends Activity {
                 SupabaseAuthClient.AuthTokens signedIn = authClient.signInWithPassword(
                         tokens.email(),
                         first);
+                if (redirectKind == AuthRedirectParser.Kind.INVITE) {
+                    authClient.acceptInvitation(signedIn.accessToken(), invitationId);
+                }
                 AuthSessionState state = authClient.validateMembership(signedIn);
                 replaceAuthenticatedSessionSafely(state);
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = null;
-                    showConnected(state, "Password updated and account verified.");
+                    pendingRedirectKind = null;
+                    pendingInvitationId = null;
+                    showConnected(
+                            state,
+                            redirectKind == AuthRedirectParser.Kind.INVITE
+                                    ? "Invitation accepted and account verified."
+                                    : "Password updated and account verified.");
                 });
             } catch (Exception e) {
                 boolean changed = passwordUpdated;
                 runOnUiThread(() -> {
                     if (changed) {
+                        String detail = e.getMessage() == null ? "" : " " + e.getMessage();
                         showLogin(
-                                "Password was updated, but automatic sign-in did not finish. "
-                                        + "Sign in with the new password.");
+                                redirectKind == AuthRedirectParser.Kind.INVITE
+                                        ? "Password was updated, but invitation setup did not finish."
+                                                + detail
+                                                + " Open the invitation again or ask an Owner to resend it."
+                                        : "Password was updated, but automatic sign-in did not finish."
+                                                + detail
+                                                + " Sign in with the new password.");
                         email.setText(tokens.email());
                     } else {
                         setBusy(false);
