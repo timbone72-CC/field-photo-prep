@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **FINAL AUTOMATED GATE PASSED — RECOVERY DEVICE GATE PENDING**
+Status: **DEVICE GATE PASSED — FINAL LEVEL 3 MERGE APPROVAL PENDING**
 
 ## Purpose
 
@@ -295,14 +295,35 @@ This exact runtime contains the two final-review sequencing corrections:
 
 Already accepted Samsung evidence from the prior exact Phase 12D build is retained for normal sign-in, ACTIVE OWNER Membership, Recheck Account, restart persistence, and existing Drive/workspace smoke. Those independent observations do not need to be repeated.
 
-Remaining device gate:
-1. install this exact final internal artifact;
-2. request one fresh recovery email after the hosted email quota has cleared;
-3. open the newest recovery message on the Samsung exactly once;
-4. verify **Field Photo Prep Internal** opens;
-5. set the new password;
-6. verify the fresh post-recovery sign-in reaches ACTIVE OWNER;
-7. close/reopen and Recheck Account.
+## Final Samsung device evidence — PASS
+
+Device:
+- Samsung SM-G996U;
+- Android 15;
+- exact hardening runtime: `df02a34981e601d3009875edc8fe154e2a23c936`;
+- internal APK artifact: `10857473938`.
+
+Observed straight-line result:
+1. exact final hardening APK installed successfully over Field Photo Prep Internal;
+2. one fresh recovery email was sent through the same Supabase `/auth/v1/recover` endpoint using the internal callback;
+3. newest recovery link was opened once on the Samsung;
+4. Android opened **Field Photo Prep Internal → Set Password**, not localhost or a browser dead-end;
+5. password update completed successfully;
+6. the hardening build immediately performed a fresh normal email/password sign-in;
+7. live Supabase logs showed password update `200`, password sign-in `200`, ACTIVE Membership read `200`, and exact Organization read `200`;
+8. the app returned to the connected account/selected Organization screen;
+9. after full close/reopen, the connected account restored normally;
+10. **Recheck Account** succeeded;
+11. live Supabase logs for the recheck showed refresh-token exchange `200`, ACTIVE Membership read `200`, and Organization read `200`.
+
+Previously accepted evidence was reused rather than repeated:
+- normal sign-in and ACTIVE OWNER identity;
+- encrypted session persistence;
+- existing Drive/workspace flow smoke.
+
+**Phase 12D physical recovery/sign-in/restart gate: PASS.**
+
+No additional phone repetition is required before the Level 3 merge decision.
 
 ## Password minimum
 
