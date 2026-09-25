@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,10 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
     private final LayoutInflater inflater;
     private final List<DriveFolder> folders;
     private final Map<String, Integer> protectedPhotoCountsByAddressId;
+
+    PropertyListAdapter(Context context, List<DriveFolder> folders) {
+        this(context, folders, Collections.emptyMap());
+    }
 
     PropertyListAdapter(
             Context context,
