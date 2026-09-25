@@ -2,6 +2,7 @@ package com.inandout.fieldphotoprep;
 
 import java.net.URI;
 import java.net.URLDecoder;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -122,7 +123,7 @@ final class AuthRedirectParser {
     }
 
     private static void addPairs(Map<String, String> out, String raw) {
-        if (raw == null || raw.isBlank()) {
+        if (raw == null || raw.trim().isEmpty()) {
             return;
         }
         for (String pair : raw.split("&")) {
@@ -137,6 +138,10 @@ final class AuthRedirectParser {
     }
 
     private static String decode(String value) {
-        return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException("UTF-8 is unavailable.", e);
+        }
     }
 }
