@@ -58,6 +58,79 @@ public final class RuntimeAuthorizationManagerTest {
     }
 
     @Test
+    public void signOutDuringMembershipValidationCannotRestoreRotatedSession() {
+        FakeStore store = new FakeStore(activeSession(NOW - 10L));
+        FakeClock clock = new FakeClock(NOW, 100L);
+        final RuntimeAuthorizationManager[] holder = new RuntimeAuthorizationManager[1];
+        RuntimeAuthorizationManager.Backend backend = new RuntimeAuthorizationManager.Backend() {
+            @Override
+            public SupabaseAuthClient.AuthTokens refreshSession(String refreshToken) {
+                return new SupabaseAuthClient.AuthTokens(
+                        "rotated-access", "rotated-refresh", NOW + 7200L,
+                        "user-1", "user@example.com");
+            }
+
+            @Override
+            public SupabaseAuthClient.StoredMembershipValidation validateStoredMembership(
+                    SupabaseAuthClient.AuthTokens tokens,
+                    AuthSessionState stored,
+                    long validatedAtEpochSeconds) {
+                holder[0].clearAuthenticatedSession();
+                return SupabaseAuthClient.StoredMembershipValidation.active(
+                        stored.withSessionTokens(
+                                tokens.accessToken(), tokens.refreshToken(),
+                                tokens.expiresAtEpochSeconds()));
+            }
+        };
+        RuntimeAuthorizationManager manager =
+                new RuntimeAuthorizationManager(store, backend, clock, Runnable::run);
+        holder[0] = manager;
+
+        assertEquals(AuthorizationDecision.State.SIGN_IN_REQUIRED,
+                manager.revalidateAsync().join().state());
+        assertEquals(null, store.state);
+    }
+
+    @Test
+    public void replacementDuringMembershipValidationCannotOverwriteNewAccount() throws Exception {
+        FakeStore store = new FakeStore(activeSession(NOW - 10L));
+        FakeClock clock = new FakeClock(NOW, 100L);
+        AuthSessionState replacement = new AuthSessionState(
+                "new-access", "new-refresh", NOW + 7200L,
+                "user-2", "new@example.com", "org-2", "New Organization",
+                "membership-2", "MEMBER", "ACTIVE", NOW);
+        final RuntimeAuthorizationManager[] holder = new RuntimeAuthorizationManager[1];
+        RuntimeAuthorizationManager.Backend backend = new RuntimeAuthorizationManager.Backend() {
+            @Override
+            public SupabaseAuthClient.AuthTokens refreshSession(String refreshToken) {
+                return new SupabaseAuthClient.AuthTokens(
+                        "rotated-access", "rotated-refresh", NOW + 7200L,
+                        "user-1", "user@example.com");
+            }
+
+            @Override
+            public SupabaseAuthClient.StoredMembershipValidation validateStoredMembership(
+                    SupabaseAuthClient.AuthTokens tokens,
+                    AuthSessionState stored,
+                    long validatedAtEpochSeconds) throws IOException {
+                try {
+                    holder[0].replaceAuthenticatedSession(replacement);
+                } catch (Exception error) {
+                    throw new IOException(error);
+                }
+                return SupabaseAuthClient.StoredMembershipValidation.active(stored);
+            }
+        };
+        RuntimeAuthorizationManager manager =
+                new RuntimeAuthorizationManager(store, backend, clock, Runnable::run);
+        holder[0] = manager;
+
+        assertEquals("user-2", manager.revalidateAsync().join().userId());
+        assertSame(replacement, store.state);
+        assertEquals("new-refresh", store.state.refreshToken());
+    }
+
+    @Test
     public void concurrentRevalidationRequestsAreCoalesced() {
         FakeStore store = new FakeStore(activeSession(NOW - 10L));
         FakeClock clock = new FakeClock(NOW, 100L);
