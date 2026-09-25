@@ -8,6 +8,10 @@ android {
     namespace 'com.inandout.fieldphotoprep'
     compileSdk 36
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId 'com.inandout.fieldphotoprep'
         minSdk 26
