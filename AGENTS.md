@@ -1,12 +1,12 @@
 # Field Photo Prep — Agent Entry Point
 
-This file is the mandatory starting point for human or automated work in this repository.
+This is the mandatory starting point for human or automated work in this repository.
 
-Do **not** begin by reading every contract. Route the work first.
+Do **not** read every contract by default. Route the work first.
 
 ## Mandatory first read
 
-Before planning, creating a branch, changing code/configuration, or changing a live project system, read:
+Before planning, branching, changing code/configuration, or changing a live project system, read:
 
 1. `GOVERNANCE.md`
 2. `PROJECT_PROFILE.md`
@@ -14,84 +14,39 @@ Before planning, creating a branch, changing code/configuration, or changing a l
 
 Then load only the detailed rule packs selected by `RULE_INDEX.md`.
 
-## Mandatory takeover preflight
+## Before creating or replacing a branch
 
-Before creating a new branch or restarting prior work:
-
-- inspect current `main`;
-- inspect open pull requests;
-- inspect relevant active branches;
+Perform the takeover preflight required by `GOVERNANCE.md`:
+- inspect `main`;
+- inspect open PRs/relevant active branches;
 - locate the active build-state/impact record;
-- inspect any project-defined live external system touched by the work;
+- inspect any live external system touched by the work;
 - determine whether an authoritative implementation line already exists.
 
-If an existing branch/PR owns the same or overlapping scope, continue it.
+If it does, continue it. Do not create a competing implementation line from `main`.
 
-Do not create a competing implementation line from `main` merely because active work is unmerged.
+## Before implementation
 
-If an old line must be replaced, explicitly supersede it under `GOVERNANCE.md`.
+Use the PR governance classification format to record the scope, affected surfaces, change level, authoritative branch, required rule packs, protected behavior, external systems, rollback point, and verification boundary.
 
-## Classify before implementation
+If scope expands into another rule category, reclassify before continuing.
 
-Record:
+## Working rule
 
-- goal;
-- affected surfaces;
-- change level;
-- authoritative branch/PR;
-- required rule packs;
-- protected behavior;
-- external systems touched;
-- rollback point;
-- verification boundary.
+Work in the **largest coherent safe batch** allowed by the approved scope, ownership boundaries, rollback plan, and available verification.
 
-If scope expands into another rule category, load that rule pack and reclassify before continuing.
+Do not fragment work merely for caution. Do not combine unrelated work merely for size.
 
-## Batch-size rule
+App consistency and operator workflow consistency are protected behavior unless the approved change intentionally modifies them.
 
-Work in the **largest coherent safe batch**.
+## Stop/merge rules
 
-Do not artificially fragment work into tiny steps when the scope, ownership, rollback, and verification are understood.
+A required failure or unresolved structural/external-state contradiction stops the affected path.
 
-Do not combine unrelated work merely to make a batch larger.
+Level 3 work requires explicit operator approval before merge. Design or implementation approval is not merge approval.
 
-Stop at genuine boundaries defined in `GOVERNANCE.md`, such as a failed required gate, unresolved structural assumption, external-state disagreement, physical reality gate, material scope expansion, or Level 3 merge approval.
+## Detailed rules
 
-## Consistency
+`RULE_INDEX.md` routes to the authoritative domain/testing/integration/phase rules.
 
-Unless the approved scope intentionally changes them:
-
-- preserve the established app workflow;
-- preserve established terminology/navigation/status meanings;
-- extend canonical behavior instead of creating alternate implementations;
-- keep one authoritative owner for each state, identity, destination, authorization decision, queue transition, and remote-write path.
-
-App consistency and workflow consistency are protected behavior.
-
-## Required failure behavior
-
-A required failure stops the affected merge/publication/deployment path.
-
-Do not call incomplete or failed evidence a pass.
-
-## Level 3 merge boundary
-
-Level 3 work requires explicit operator approval before merge.
-
-Implementation/design approval is not merge approval.
-
-## Detailed rule packs
-
-The existing detailed contracts remain authoritative for their domains:
-
-- `CONTRACT.md` — product/photo/queue behavior
-- `CHANGE_CONTROL_CONTRACT.md` — change levels, records, approval, rollback
-- `TESTING_CONTRACT.md` — universal test selection, final gates, failure behavior
-- `rules/testing/*` — feature-specific camera, upload/retry, and Drive/provider regression rules
-- `INTEGRATION_CONTRACT.md` — Google Drive / Android DocumentsProvider
-- `REGRESSION_CHECKLIST.md` — affected behavior checklist
-- `docs/PHASE_STAGING_DOCTRINE.md` — when development should stop for genuine device/external evidence
-- `docs/IDENTITY_MODEL_V1.md` — FPP identity model
-- current approved phase/design records — scope-specific behavior
-
-Use `RULE_INDEX.md` to decide which ones apply. Do not treat every file above as mandatory reading for unrelated work.
+Do not rely on chat memory when the repository rule source is available.
