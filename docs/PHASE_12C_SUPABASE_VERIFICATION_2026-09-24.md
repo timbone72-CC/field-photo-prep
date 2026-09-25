@@ -182,3 +182,29 @@ Required follow-up for the Android auth slice:
 - configure a deliberate FPP mobile redirect/deep-link;
 - configure the corresponding Supabase allowed redirect URL(s);
 - prove invitation and password-recovery completion through that path.
+
+
+## Final advisor state after real Owner bootstrap
+
+Security advisor:
+- one warning: `auth_leaked_password_protection`;
+- reason: Supabase leaked-password protection is disabled;
+- Supabase documents leaked-password protection as available on **Pro Plan and above**;
+- the current FPP Supabase project is on Free, so this warning is documented and does not block the Phase 12C backend foundation.
+
+Required free-plan follow-up in the Android Auth/session slice:
+- configure the strongest available password length/character requirements;
+- keep password recovery inside Supabase Auth;
+- do not weaken RLS or store passwords in FPP.
+
+Performance advisor:
+- only unused-index informational notices remain on the newly created low-row database;
+- no missing foreign-key-index finding remains.
+
+Final persistent counts:
+- Organizations: 1
+- Memberships: 1
+- Invitations: 0
+- Auth users: 1
+
+Separate Team project remained `INACTIVE`.
