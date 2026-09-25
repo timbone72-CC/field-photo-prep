@@ -131,6 +131,16 @@ public final class MainActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
+        RuntimeAuthorizationManager manager = app.authorizationManager();
+        if (manager != null) {
+            manager.revalidateAsync();
+        }
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
