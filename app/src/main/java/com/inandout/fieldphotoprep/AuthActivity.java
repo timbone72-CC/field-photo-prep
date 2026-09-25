@@ -39,6 +39,7 @@ public final class AuthActivity extends Activity {
 
     private Mode mode = Mode.LOGIN;
     private SupabaseAuthClient.AuthTokens pendingRecoveryTokens;
+    private String pendingInvitationId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,9 +118,17 @@ public final class AuthActivity extends Activity {
                         redirect.expiresAtEpochSeconds());
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = tokens;
+                    pendingInvitationId = redirect.kind() == AuthRedirectParser.Kind.INVITE
+                            ? redirect.invitationId()
+                            : null;
+                    if (redirect.kind() == AuthRedirectParser.Kind.INVITE
+                            && (pendingInvitationId == null || pendingInvitationId.trim().isEmpty())) {
+                        showLogin("The invitation link was missing its Field Photo Prep invitation identity.");
+                        return;
+                    }
                     showPasswordSetup(
                             redirect.kind() == AuthRedirectParser.Kind.INVITE
-                                    ? "Invitation accepted. Choose a password for this account."
+                                    ? "Invitation verified. Choose a password to finish joining this organization."
                                     : "Choose a new password for this account.");
                 });
             } catch (IOException e) {
@@ -131,6 +140,7 @@ public final class AuthActivity extends Activity {
     private void showLogin(String message) {
         mode = Mode.LOGIN;
         pendingRecoveryTokens = null;
+        pendingInvitationId = null;
         title.setText("Field Photo Prep Account");
         status.setText(message == null
                 ? "Sign in to your Field Photo Prep organization."
@@ -304,28 +314,51 @@ public final class AuthActivity extends Activity {
 
         setBusy(true);
         status.setText("Updating password…");
+        String invitationId = pendingInvitationId;
         executor.execute(() -> {
             boolean passwordUpdated = false;
+            boolean invitationActivated = false;
             try {
                 authClient.updatePassword(tokens.accessToken(), first);
                 passwordUpdated = true;
+
+                if (invitationId != null) {
+                    authClient.acceptInvitation(tokens.accessToken(), invitationId);
+                    invitationActivated = true;
+                }
 
                 SupabaseAuthClient.AuthTokens signedIn = authClient.signInWithPassword(
                         tokens.email(),
                         first);
                 AuthSessionState state = authClient.validateMembership(signedIn);
                 replaceAuthenticatedSessionSafely(state);
+                boolean joined = invitationActivated;
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = null;
-                    showConnected(state, "Password updated and account verified.");
+                    pendingInvitationId = null;
+                    showConnected(
+                            state,
+                            joined
+                                    ? "Invitation accepted and account verified."
+                                    : "Password updated and account verified.");
                 });
             } catch (Exception e) {
                 boolean changed = passwordUpdated;
+                boolean joined = invitationActivated;
                 runOnUiThread(() -> {
                     if (changed) {
-                        showLogin(
-                                "Password was updated, but automatic sign-in did not finish. "
-                                        + "Sign in with the new password.");
+                        String message;
+                        if (joined) {
+                            message = "Invitation was accepted and the password was updated, "
+                                    + "but automatic sign-in did not finish. Sign in with the new password.";
+                        } else if (invitationId != null) {
+                            message = "Password was updated, but the invitation could not be activated: "
+                                    + e.getMessage();
+                        } else {
+                            message = "Password was updated, but automatic sign-in did not finish. "
+                                    + "Sign in with the new password.";
+                        }
+                        showLogin(message);
                         email.setText(tokens.email());
                     } else {
                         setBusy(false);
