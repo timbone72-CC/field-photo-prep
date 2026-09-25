@@ -567,12 +567,16 @@ add durable FPP User/Organization identity and release-readiness controls withou
 
 Governing design:
 - `docs/IDENTITY_MODEL_V1.md`;
-- `docs/PHASE_12_IDENTITY_MODEL_IMPACT_2026-09-21.md`.
+- `docs/PHASE_12_IDENTITY_MODEL_IMPACT_2026-09-21.md`;
+- `docs/PHASE_12B_SUPABASE_AUTH_ARCHITECTURE_2026-09-24.md`;
+- `docs/PHASE_12B_SUPABASE_AUTH_IMPACT_2026-09-24.md`.
 
 Current status:
-- Identity Model v1 is the settled Phase 12A design;
-- no Phase 12 runtime identity/authentication implementation has started;
-- current personal-Drive production remains valid;
+- Identity Model v1 is settled;
+- Supabase is the settled identity/account backend;
+- the existing `Field Photo Prep Team` Supabase project is reused;
+- Phase 12 runtime identity/authentication implementation has not started;
+- current personal-Drive production remains valid and unchanged;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
 
 ### Phase 12A — Identity model — DESIGN APPROVED / NOT IMPLEMENTED
@@ -588,33 +592,53 @@ Approved model:
 - provider-bound Drive IDs remain local/platform-context identity;
 - one active Organization per installation in v1;
 - Organization switching blocked while unresolved/protected local work could cross the boundary;
-- offline field capture remains possible for previously authenticated/validated Membership when the account service is temporarily unavailable;
 - sign-out/revocation/account closure never automatically delete protected photos or Drive business records;
 - identity backend remains small and does not duplicate property/work-order/photo data.
 
-Deferred to the next recorded design slice:
-- authentication/backend provider;
-- Continue with Google implementation;
-- session/token storage;
-- exact offline revalidation/grace policy;
-- invitation delivery/acceptance mechanics;
-- account recovery;
-- organization-close UX.
+### Phase 12B — Supabase authentication architecture — DESIGN RECORDED / NOT IMPLEMENTED
 
-No implementation may select those choices silently; record the decision before building the dependent behavior.
+Settled architecture:
+- Supabase project `Field Photo Prep Team` (`vyocaujuwrivoqynvitm`) is reused instead of creating another project;
+- `auth.users.id` is FPP User identity;
+- existing `public.organizations` is reused for the same real business identity;
+- normal FPP adds only FPP-specific Membership/Invitation data;
+- normal FPP never uses Team work-order/photo operational tables;
+- initial login is Supabase email/password;
+- Google sign-in/Credential Manager is not required for v1;
+- Android remains Java-first with a narrow HTTPS Supabase auth client rather than a broad SDK/framework migration;
+- session token material is encrypted using Android Keystore-backed local storage;
+- cached ACTIVE Membership supports the same Organization's offline field workflow for at most 7 days since successful validation;
+- account recovery uses Supabase Auth;
+- Drive remains separately authorized through Android SAF.
 
-### Phase 12B+ — Authentication and release-readiness slices — NOT YET DESIGNED
+Completion gate for Phase 12B design:
+- architecture/impact record reviewed;
+- core contract reconciled;
+- Level 3 operator pre-merge approval recorded.
 
-Expected later areas, to be split and governed as decisions are settled:
-- authentication architecture and first-run/new-device flow;
-- account/Drive mismatch protection;
+### Phase 12C — Identity schema + Owner bootstrap — NEXT AFTER 12B MERGE
+
+Planned scope:
+- add RLS-protected `fpp_memberships` and `fpp_invitations` to the existing Supabase project;
+- reuse the existing In And Out Cleaner Inspections LLC Organization row;
+- create the initial Owner Membership through a controlled bootstrap;
+- prove wrong-user/wrong-Organization access is denied;
+- do not change Team operational data.
+
+### Later Phase 12 slices
+
+After 12C:
+- Java sign-in/session client + secure token storage;
+- startup/offline/revocation/sign-out gate;
+- invitation/member administration;
+- first-run/new-device and account/Drive mismatch protection;
 - App Status & Diagnostics;
 - safe recovery guidance;
 - production signing/update path;
 - clean-install/another-user reality gate;
 - account/privacy/release closeout.
 
-The sequence and exact subphase labels remain provisional until each design is recorded. Settled Phase 12A identity rules must not drift while later slices are designed.
+Settled Phase 12A/12B decisions must not be reopened without contradictory evidence or an explicit governed design change.
 
 ## Phase development staging rule
 
