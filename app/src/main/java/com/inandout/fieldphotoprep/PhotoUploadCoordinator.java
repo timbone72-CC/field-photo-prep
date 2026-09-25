@@ -39,12 +39,18 @@ public final class PhotoUploadCoordinator {
     private final DrivePhotoUploader driveUploader;
     private final DrivePhotoReconciler driveReconciler;
     private final ConfirmedPhotoCleanup confirmedPhotoCleanup;
+    private final AuthorizationActionGuard authorizationGuard;
 
     public PhotoUploadCoordinator(
             PendingPhotoStore photoStore,
             PhotoPreparer photoPreparer,
             DrivePhotoUploader driveUploader) {
-        this(photoStore, photoPreparer, driveUploader, null);
+        this(
+                photoStore,
+                photoPreparer,
+                driveUploader,
+                null,
+                AuthorizationActionGuard.permissiveForTests());
     }
 
     public PhotoUploadCoordinator(
@@ -52,10 +58,40 @@ public final class PhotoUploadCoordinator {
             PhotoPreparer photoPreparer,
             DrivePhotoUploader driveUploader,
             DrivePhotoReconciler driveReconciler) {
+        this(
+                photoStore,
+                photoPreparer,
+                driveUploader,
+                driveReconciler,
+                AuthorizationActionGuard.permissiveForTests());
+    }
+
+    PhotoUploadCoordinator(
+            PendingPhotoStore photoStore,
+            PhotoPreparer photoPreparer,
+            DrivePhotoUploader driveUploader,
+            AuthorizationActionGuard authorizationGuard) {
+        this(
+                photoStore,
+                photoPreparer,
+                driveUploader,
+                null,
+                authorizationGuard);
+    }
+
+    PhotoUploadCoordinator(
+            PendingPhotoStore photoStore,
+            PhotoPreparer photoPreparer,
+            DrivePhotoUploader driveUploader,
+            DrivePhotoReconciler driveReconciler,
+            AuthorizationActionGuard authorizationGuard) {
         this.photoStore = Objects.requireNonNull(photoStore, "photoStore");
         this.photoPreparer = Objects.requireNonNull(photoPreparer, "photoPreparer");
         this.driveUploader = Objects.requireNonNull(driveUploader, "driveUploader");
         this.driveReconciler = driveReconciler;
+        this.authorizationGuard = Objects.requireNonNull(
+                authorizationGuard,
+                "authorizationGuard");
         this.confirmedPhotoCleanup = new ConfirmedPhotoCleanup(photoStore, photoPreparer);
     }
 
@@ -71,6 +107,7 @@ public final class PhotoUploadCoordinator {
             throw new IOException("Prepare this photo before uploading. Queue state was not changed.");
         }
 
+        authorizationGuard.requireDriveMutation();
         PendingPhotoRecord uploading = photoStore.beginUploadAttempt(photoId);
         final DrivePhotoUploader.CreatedUpload created;
         try {
