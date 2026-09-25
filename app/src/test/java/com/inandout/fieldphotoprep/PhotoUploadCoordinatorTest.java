@@ -267,7 +267,7 @@ public final class PhotoUploadCoordinatorTest {
         PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                 store,
                 preparer,
-                new DrivePhotoUploader(provider));
+                new DrivePhotoUploader(provider, TestAuthorization.allowedGuard()));
 
         try {
             coordinator.upload(first.id());
@@ -303,7 +303,7 @@ public final class PhotoUploadCoordinatorTest {
         PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                 store,
                 preparer,
-                new DrivePhotoUploader(provider));
+                new DrivePhotoUploader(provider, TestAuthorization.allowedGuard()));
         return new Fixture(pendingRoot, store, preparer, waiting, provider, coordinator);
     }
 
