@@ -555,7 +555,7 @@ Permanent record:
 
 The prior Phase 11 `IN PROGRESS` labels were stale documentation and were corrected by the 2026-09-24 source-of-truth reconciliation.
 
-## Phase 12 — User Identity & Release Readiness — DESIGNING
+## Phase 12 — User Identity & Release Readiness — MASTER PLAN APPROVED / 12E NEXT
 
 Goal:
 add durable FPP User/Organization identity and release-readiness controls without conflating FPP sign-in with Google Drive authorization or turning FPP into a second job/photo database.
@@ -565,7 +565,8 @@ Governing design:
 - `docs/PHASE_12_IDENTITY_MODEL_IMPACT_2026-09-21.md`;
 - `docs/SOURCE_OF_TRUTH_RECONCILIATION_2026-09-24.md`;
 - `docs/PHASE_12B_SUPABASE_AUTH_ARCHITECTURE_2026-09-24.md`;
-- `docs/PHASE_12B_SUPABASE_AUTH_IMPACT_2026-09-24.md`.
+- `docs/PHASE_12B_SUPABASE_AUTH_IMPACT_2026-09-24.md`;
+- `docs/PHASE_12_MASTER_PLAN_2026-09-25.md`.
 
 Current status:
 - Phase 12A Identity Model v1 is approved;
@@ -698,18 +699,92 @@ Phase 12D completion:
 
 Phase 12D is **COMPLETE**.
 
-### Later Phase 12 slices
+### Phase 12E — Runtime authorization enforcement — NEXT
 
-After 12D:
-- startup/offline/revocation/sign-out enforcement using the proven 72-hour policy;
-- invitation/member administration;
-- first-run/new-device flow;
-- account/Drive mismatch protection;
-- App Status & Diagnostics;
-- safe recovery guidance;
-- production signing/update path;
-- clean-install/another-user reality gate;
-- account/privacy/release closeout.
+Implement the actual startup/resume authorization gate using the proven 12D session layer:
+- automatic online Membership revalidation;
+- 72-hour same-Organization offline grace;
+- grace reset after successful validation;
+- no real-time 72-hour wait in testing — boundary logic uses deterministic clock-based tests;
+- authoritative REVOKED overrides remaining grace immediately;
+- after grace expiry, protected work remains safe but new capture and new Drive mutations wait for successful revalidation;
+- safe sign-out remains blocked while unresolved/protected work would be stranded.
+
+### Phase 12F — Owner/member administration — PLANNED
+
+- OWNER/MEMBER administration only;
+- invite, cancel, role change, revoke/reactivate;
+- idempotent duplicate protection;
+- last-active-Owner protection;
+- privileged mutations remain server-side;
+- Android never receives a service-role key.
+
+### Phase 12G — First-run/new-device flow — PLANNED
+
+- sign in and validate Membership first;
+- establish active Organization;
+- separately connect/select Drive workspace through Android SAF;
+- invited-user setup;
+- no portable provider IDs or silent Drive-account inference.
+
+### Phase 12H — Organization ↔ Drive binding protection — PLANNED
+
+- bind the local Drive workspace deliberately to the active FPP Organization;
+- prevent another Organization from silently reusing that binding;
+- preserve queued immutable destinations;
+- do not compare Auth email to Drive email as an authorization rule.
+
+### Phase 12I — App Status & Diagnostics — PLANNED
+
+Read-only operator status for:
+- signed-in/Membership state;
+- last successful validation and offline-grace state;
+- Organization;
+- Drive connected/not connected;
+- queue/protected-work counts;
+- app version and relevant permission state.
+
+Diagnostics must consume the authoritative 12E/12H state rather than create a second state machine, and copied support status excludes tokens, provider IDs, SAF URIs, customer addresses/photos, and other sensitive content.
+
+### Phase 12J — Recovery/account-state UX — PLANNED
+
+Clear guidance for:
+- temporary offline grace;
+- grace expired / revalidation required;
+- revoked/no ACTIVE Membership;
+- sign-in required;
+- Drive disconnected;
+- sign-out blocked by protected work;
+- manual Recheck Account.
+
+Recovery guidance must never delete or silently redirect protected work.
+
+### Phase 12K — Production identity/release path — PLANNED
+
+- separately secured production signing;
+- production callback/update continuity;
+- no production private key in the repository;
+- production-suitable Auth email delivery before outside-user/public distribution;
+- revisit verified Android App Links if an owned HTTPS domain and external distribution make them worthwhile;
+- no forced Play Store/public-distribution decision.
+
+### Phase 12L — Clean-install/new-user reality gates — PLANNED
+
+- prove clean/no-session behavior on real Android;
+- prove invited/new user identity flow;
+- prove Drive connection remains a separate deliberate SAF action;
+- prove account transitions cannot cross Organization/Drive boundaries;
+- reuse overlapping Phase 8C second-phone evidence if a suitable second phone becomes available rather than duplicate testing.
+
+### Phase 12M — Account/privacy/release closeout — PLANNED
+
+Final source-of-truth, security, privacy, RLS, backup, diagnostics-data-boundary, release, and protected-work review before Phase 12 is called complete.
+
+Default remaining sequence:
+
+**12E → 12F → 12G → 12H → 12I → 12J → 12K → 12L → 12M**
+
+Safe design work may overlap where recorded in the master plan, but multiple runtime branches must not independently take ownership of startup/auth/Drive-binding state.
 
 Settled Phase 12A/12B decisions must not drift without contradictory evidence or an explicit governed design change.
 
