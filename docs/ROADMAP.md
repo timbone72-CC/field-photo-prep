@@ -683,9 +683,19 @@ Current final runtime evidence:
 - existing Drive/workspace smoke: **PASS**;
 - final session-sequencing hardening: **PASS automated**.
 
+Final Samsung hardening gate:
+- exact final APK install: **PASS**;
+- fresh recovery link opens Field Photo Prep Internal: **PASS**;
+- password update + fresh normal sign-in: **PASS**;
+- ACTIVE OWNER Membership/Organization validation: **PASS**;
+- restart session restore: **PASS**;
+- Recheck Account refresh/revalidation: **PASS**;
+- prior Drive/workspace smoke: **PASS / reused valid evidence**.
+
+Phase 12D is ready for its final Level 3 decision.
+
 Completion still requires:
-- install the exact final hardening APK and run one fresh Samsung recovery-link → password-update → fresh-sign-in → restart/recheck path;
-- final Level 3 operator merge approval.
+- explicit operator pre-merge approval for PR #67.
 
 ### Later Phase 12 slices
 
