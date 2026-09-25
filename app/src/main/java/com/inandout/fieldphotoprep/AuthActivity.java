@@ -277,18 +277,32 @@ public final class AuthActivity extends Activity {
         setBusy(true);
         status.setText("Updating password…");
         executor.execute(() -> {
+            boolean passwordUpdated = false;
             try {
                 authClient.updatePassword(tokens.accessToken(), first);
-                AuthSessionState state = authClient.validateMembership(tokens);
+                passwordUpdated = true;
+
+                SupabaseAuthClient.AuthTokens signedIn = authClient.signInWithPassword(
+                        tokens.email(),
+                        first);
+                AuthSessionState state = authClient.validateMembership(signedIn);
                 authStore.save(state);
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = null;
                     showConnected(state, "Password updated and account verified.");
                 });
             } catch (IOException | GeneralSecurityException e) {
+                boolean changed = passwordUpdated;
                 runOnUiThread(() -> {
-                    setBusy(false);
-                    status.setText("Could not finish password setup: " + e.getMessage());
+                    if (changed) {
+                        showLogin(
+                                "Password was updated, but automatic sign-in did not finish. "
+                                        + "Sign in with the new password.");
+                        email.setText(tokens.email());
+                    } else {
+                        setBusy(false);
+                        status.setText("Could not finish password setup: " + e.getMessage());
+                    }
                 });
             }
         });
@@ -300,6 +314,13 @@ public final class AuthActivity extends Activity {
         executor.execute(() -> {
             try {
                 SupabaseAuthClient.AuthTokens refreshed = authClient.refreshSession(stored.refreshToken());
+
+                AuthSessionState rotated = stored.withSessionTokens(
+                        refreshed.accessToken(),
+                        refreshed.refreshToken(),
+                        refreshed.expiresAtEpochSeconds());
+                authStore.save(rotated);
+
                 AuthSessionState state = authClient.validateMembership(refreshed);
                 authStore.save(state);
                 runOnUiThread(() -> showConnected(state, "Account is active."));

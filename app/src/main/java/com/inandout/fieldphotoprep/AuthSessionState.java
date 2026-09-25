@@ -55,6 +55,24 @@ final class AuthSessionState {
                 && ("OWNER".equals(role) || "MEMBER".equals(role));
     }
 
+    AuthSessionState withSessionTokens(
+            String newAccessToken,
+            String newRefreshToken,
+            long newExpiresAtEpochSeconds) {
+        return new AuthSessionState(
+                newAccessToken,
+                newRefreshToken,
+                newExpiresAtEpochSeconds,
+                userId,
+                email,
+                organizationId,
+                organizationName,
+                membershipId,
+                role,
+                membershipStatus,
+                lastMembershipValidatedAtEpochSeconds);
+    }
+
     private static String require(String value, String name) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(name + " is required");
