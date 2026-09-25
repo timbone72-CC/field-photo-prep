@@ -35,6 +35,7 @@ public final class AuthActivity extends Activity {
     private ProgressBar progress;
     private Button primary;
     private Button secondary;
+    private Button manageMembers;
     private Button close;
 
     private Mode mode = Mode.LOGIN;
@@ -74,7 +75,10 @@ public final class AuthActivity extends Activity {
         progress = findViewById(R.id.auth_progress);
         primary = findViewById(R.id.auth_primary);
         secondary = findViewById(R.id.auth_secondary);
+        manageMembers = findViewById(R.id.auth_manage_members);
         close = findViewById(R.id.auth_close);
+        manageMembers.setOnClickListener(v ->
+                startActivity(new Intent(this, MemberAdminActivity.class)));
         close.setOnClickListener(v -> finish());
     }
 
@@ -155,6 +159,7 @@ public final class AuthActivity extends Activity {
         secondary.setText("Forgot Password");
         primary.setVisibility(View.VISIBLE);
         secondary.setVisibility(View.VISIBLE);
+        manageMembers.setVisibility(View.GONE);
         primary.setOnClickListener(v -> signIn());
         secondary.setOnClickListener(v -> showRecoveryRequest());
         setBusy(false);
@@ -171,6 +176,7 @@ public final class AuthActivity extends Activity {
         secondary.setText("Back to Sign In");
         primary.setVisibility(View.VISIBLE);
         secondary.setVisibility(View.VISIBLE);
+        manageMembers.setVisibility(View.GONE);
         primary.setOnClickListener(v -> sendRecovery());
         secondary.setOnClickListener(v -> showLogin(null));
         setBusy(false);
@@ -190,6 +196,7 @@ public final class AuthActivity extends Activity {
         secondary.setText("Cancel");
         primary.setVisibility(View.VISIBLE);
         secondary.setVisibility(View.VISIBLE);
+        manageMembers.setVisibility(View.GONE);
         primary.setOnClickListener(v -> setRecoveredPassword());
         secondary.setOnClickListener(v -> showLogin(null));
         setBusy(false);
@@ -236,6 +243,9 @@ public final class AuthActivity extends Activity {
         secondary.setText("Sign Out");
         secondary.setVisibility(View.VISIBLE);
         primary.setVisibility(View.VISIBLE);
+        AuthorizationDecision decision = authorizationManager.currentDecision();
+        manageMembers.setVisibility(
+                decision.allowsMemberAdministration() ? View.VISIBLE : View.GONE);
         primary.setOnClickListener(v -> recheckStoredSession(state));
         secondary.setOnClickListener(v -> signOutSafely(state));
         setBusy(false);
@@ -507,6 +517,7 @@ public final class AuthActivity extends Activity {
         progress.setVisibility(busy ? View.VISIBLE : View.GONE);
         primary.setEnabled(!busy);
         secondary.setEnabled(!busy);
+        manageMembers.setEnabled(!busy);
         email.setEnabled(!busy);
         password.setEnabled(!busy);
         confirmPassword.setEnabled(!busy);
