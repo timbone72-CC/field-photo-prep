@@ -59,6 +59,15 @@ For account/authentication work, the following rules are contractual:
 14. A new device must deliberately establish its own Drive binding through the supported platform access flow rather than inheriting another device's provider-bound identity.
 15. The FPP identity backend must remain an identity/account service, not a second property/work-order/photo database. Customer addresses, photos, work orders, SAF URIs, and Drive provider IDs are not required merely to authenticate a User.
 16. Identity implementation must preserve all existing photo-protection, exact-destination, upload, retry, reconciliation, cleanup, and Drive-access contracts.
+17. **Supabase** is the approved FPP identity/account backend. Normal FPP reuses the existing `Field Photo Prep Team` Supabase project and existing business Organization identity rather than creating another backend/project merely for FPP identity.
+18. Supabase Auth `auth.users.id` is the permanent FPP User identity. Initial FPP login uses Supabase email/password. Google sign-in is optional later work, not a v1 requirement.
+19. Normal FPP authorization is stored in FPP-specific Membership/Invitation records. It must not depend on Team work-order/photo data or Team's `app_metadata.role` authorization model.
+20. FPP Membership authorization must support roles `OWNER` and `MEMBER`, status `INVITED`/`ACTIVE`/`REVOKED`, exact Organization identity, and one Membership per User/Organization pair.
+21. FPP identity tables exposed through Supabase must use RLS. Privileged Owner/invitation/bootstrap operations must remain server-side and must never ship service-role/secret credentials in Android.
+22. Supabase access/refresh session material stored on Android must be protected at rest using Android Keystore-backed encryption, excluded from backup/device transfer, and omitted from logs/exports.
+23. A previously validated `ACTIVE` Membership may authorize safe offline field work for the same active Organization for up to **7 days** since the most recent successful server validation. Offline state may not authorize Organization switching or membership administration.
+24. If the 7-day cached-validation window expires while the identity service is unavailable, existing protected work remains preserved/recoverable, but new Organization work/capture requires successful revalidation.
+25. Supabase identity/account state must never select, infer, replace, or rewrite the Android SAF Drive provider/account/workspace. Supabase login and Drive authorization remain separate security boundaries.
 
 ## 2. Company, property, work-order, and folder identity
 
