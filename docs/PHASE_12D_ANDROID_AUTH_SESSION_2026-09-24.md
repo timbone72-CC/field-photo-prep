@@ -272,3 +272,12 @@ Next gate:
 2. install the internal APK on the Samsung field phone;
 3. run recovery → app deep link → password update → ACTIVE OWNER validation → restart session restore;
 4. smoke the existing Drive workflow.
+
+
+## Password minimum
+
+The Android password-setup screen requires **8 characters minimum**.
+
+This matches Supabase's current recommendation that passwords shorter than 8 characters are not recommended, while avoiding an unnecessary 12-character local requirement.
+
+FPP does not impose extra composition rules in 12D beyond the hosted Supabase project policy.
