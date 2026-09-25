@@ -984,6 +984,14 @@ private File thumbnailSource(PendingPhotoRecord record) {
             return;
         }
 
+        try {
+            authorizationGuard.requireDriveMutation();
+        } catch (IOException denied) {
+            showPhotoStatus(denied.getMessage());
+            updateBatchSelectionUi();
+            return;
+        }
+
         if (!UPLOAD_GATE.tryBegin(BATCH_UPLOAD_GATE_ID)) {
             showPhotoStatus("A Drive operation is already in progress.");
             updateBatchSelectionUi();
@@ -1473,6 +1481,14 @@ private File thumbnailSource(PendingPhotoRecord record) {
             }
         } catch (Exception error) {
             showError("Could not verify the selected photo before upload", error);
+            return;
+        }
+
+        try {
+            authorizationGuard.requireDriveMutation();
+        } catch (IOException denied) {
+            showPhotoStatus(denied.getMessage());
+            renderSelectedPhoto();
             return;
         }
 
