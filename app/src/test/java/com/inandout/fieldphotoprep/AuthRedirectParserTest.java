@@ -29,6 +29,25 @@ public final class AuthRedirectParserTest {
     }
 
     @Test
+    public void inviteCallbackPreservesInvitationIdentityAcrossQueryAndFragment() {
+        AuthRedirectParser.Result result = AuthRedirectParser.parse(
+                SCHEME + "://" + HOST
+                        + "?fpp_invitation_id=11111111-1111-4111-8111-111111111111"
+                        + "#access_token=access123"
+                        + "&refresh_token=refresh456"
+                        + "&expires_at=2000000000"
+                        + "&type=invite",
+                SCHEME,
+                HOST);
+
+        assertEquals(AuthRedirectParser.Kind.INVITE, result.kind());
+        assertEquals(
+                "11111111-1111-4111-8111-111111111111",
+                result.invitationId());
+        assertTrue(result.hasSessionTokens());
+    }
+
+    @Test
     public void inviteCallbackIsRecognizedButStillRequiresSessionTokens() {
         AuthRedirectParser.Result result = AuthRedirectParser.parse(
                 SCHEME + "://" + HOST + "?type=invite",
