@@ -13,7 +13,13 @@ android {
         minSdk 26
         targetSdk 36
         versionCode 34
-        versionName '0.26.1-company-selector'
+        versionName '0.27-auth-session-foundation'
+
+        buildConfigField 'String', 'SUPABASE_URL', '"https://vtyiktvqhbgabawotkrj.supabase.co"'
+        buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_QXGedlj5wCmMpV2HncZp9A_kfgLzuAQ"'
+        buildConfigField 'String', 'AUTH_REDIRECT_SCHEME', '"com.inandout.fieldphotoprep"'
+        buildConfigField 'String', 'AUTH_REDIRECT_HOST', '"auth-callback"'
+        manifestPlaceholders = [authRedirectScheme: 'com.inandout.fieldphotoprep']
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -32,6 +38,8 @@ android {
             applicationIdSuffix '.internal'
             versionNameSuffix '-internal'
             signingConfig signingConfigs.stableTest
+            buildConfigField 'String', 'AUTH_REDIRECT_SCHEME', '"com.inandout.fieldphotoprep.internal"'
+            manifestPlaceholders = [authRedirectScheme: 'com.inandout.fieldphotoprep.internal']
         }
     }
 
