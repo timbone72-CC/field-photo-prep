@@ -91,6 +91,10 @@ final class RuntimeAuthorizationPolicy {
                     null,
                     null);
         }
+
+        ObservationKind kind() {
+            return kind;
+        }
     }
 
     AuthorizationDecision evaluate(
