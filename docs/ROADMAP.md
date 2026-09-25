@@ -618,7 +618,7 @@ Completion gate for 12B design:
 - explicit Level 3 operator pre-merge approval recorded;
 - no runtime/schema implementation begins before merge.
 
-### Phase 12C — Dedicated FPP Supabase foundation — IN PROGRESS
+### Phase 12C — Dedicated FPP Supabase foundation — BACKEND COMPLETE / MERGE APPROVAL PENDING
 
 Completed:
 1. dedicated original-FPP Supabase project created: `Field Photo Prep`, ref `vtyiktvqhbgabawotkrj`;
@@ -631,11 +631,20 @@ Completed:
 8. disposable test identities rolled back to zero persistent rows;
 9. Team remains separate and untouched.
 
-Remaining:
-- create the first real FPP Auth Owner through the supported Supabase Auth path;
-- bootstrap In And Out Cleaner Inspections LLC + ACTIVE OWNER Membership;
-- verify exact Owner scope;
-- obtain final Level 3 pre-merge approval.
+Completed:
+- real Auth Owner created/confirmed for `inandoutinspections2026@gmail.com`;
+- **In And Out Cleaner Inspections LLC** created as the real FPP Organization;
+- exact `ACTIVE OWNER` Membership created;
+- hosted RLS verified with the real Owner UUID;
+- unrelated authenticated identity verified to read no FPP identity rows;
+- default `localhost:3000` invite redirect identified and recorded for the next Android-auth slice;
+- post-bootstrap advisor review complete.
+
+Known non-blocking warning:
+- leaked-password protection is disabled because Supabase documents that feature as Pro-only; current project is Free.
+
+Remaining Phase 12C gate:
+- explicit Level 3 operator pre-merge approval.
 
 No Android runtime auth work is included in Phase 12C.
 
