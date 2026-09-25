@@ -99,7 +99,6 @@ final class ProtectedWorkGuard {
                     if (hasNonEmptyProtectedOriginal(record)) {
                         capturing++;
                         increment(addressCounts, record.addressId());
-                    increment(workOrderCounts, record.workOrderId());
                         increment(workOrderCounts, record.workOrderId());
                     }
                     break;
@@ -115,7 +114,6 @@ final class ProtectedWorkGuard {
                     if (hasAnyLocalCopy(record)) {
                         cleanupPending++;
                         increment(addressCounts, record.addressId());
-                    increment(workOrderCounts, record.workOrderId());
                         increment(workOrderCounts, record.workOrderId());
                     }
                     break;
@@ -135,8 +133,8 @@ final class ProtectedWorkGuard {
                 workOrderCounts);
     }
 
-    private static void increment(Map<String, Integer> counts, String addressId) {
-        counts.put(addressId, counts.getOrDefault(addressId, 0) + 1);
+    private static void increment(Map<String, Integer> counts, String identity) {
+        counts.put(identity, counts.getOrDefault(identity, 0) + 1);
     }
 
     private boolean hasNonEmptyProtectedOriginal(PendingPhotoRecord record) throws IOException {
