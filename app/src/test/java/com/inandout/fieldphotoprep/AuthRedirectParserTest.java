@@ -29,13 +29,33 @@ public final class AuthRedirectParserTest {
     }
 
     @Test
-    public void inviteCallbackIsRecognizedButStillRequiresSessionTokens() {
+    public void inviteCallbackCarriesExactInvitationIdAcrossQueryAndFragment() {
         AuthRedirectParser.Result result = AuthRedirectParser.parse(
-                SCHEME + "://" + HOST + "?type=invite",
+                SCHEME + "://" + HOST
+                        + "?fpp_invitation_id=11111111-2222-4333-8444-555555555555"
+                        + "#access_token=access123"
+                        + "&refresh_token=refresh456"
+                        + "&expires_at=2000000000"
+                        + "&type=invite",
                 SCHEME,
                 HOST);
 
         assertEquals(AuthRedirectParser.Kind.INVITE, result.kind());
+        assertEquals("11111111-2222-4333-8444-555555555555", result.invitationId());
+        assertTrue(result.hasSessionTokens());
+    }
+
+    @Test
+    public void inviteCallbackWithoutSessionTokensRemainsIncomplete() {
+        AuthRedirectParser.Result result = AuthRedirectParser.parse(
+                SCHEME + "://" + HOST
+                        + "?fpp_invitation_id=11111111-2222-4333-8444-555555555555"
+                        + "&type=invite",
+                SCHEME,
+                HOST);
+
+        assertEquals(AuthRedirectParser.Kind.INVITE, result.kind());
+        assertEquals("11111111-2222-4333-8444-555555555555", result.invitationId());
         assertFalse(result.hasSessionTokens());
     }
 
