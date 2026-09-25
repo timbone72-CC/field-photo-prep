@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **AUTOMATED GATE PASSED — SUPABASE REDIRECT + DEVICE GATE PENDING**
+Status: **FINAL HARDENING IN PROGRESS — RECOVERY DEVICE GATE PENDING**
 
 ## Purpose
 
@@ -120,8 +120,9 @@ Multiple active Memberships fail closed in 12D rather than guessing; a future Or
 5. recovery access/refresh tokens establish a temporary Supabase session;
 6. app asks for a new password;
 7. app updates the password through Supabase Auth;
-8. app validates User + ACTIVE Membership + Organization;
-9. app stores the resulting session/identity securely.
+8. because a password change is security-sensitive and may terminate the recovery session, app performs a normal email/password sign-in using the newly chosen password;
+9. app validates the fresh signed-in User + ACTIVE Membership + Organization;
+10. app stores only that fresh normal session/identity securely.
 
 This is also the correct path for the already-created first Owner if the Owner does not know the generated invite credential.
 
@@ -190,9 +191,11 @@ Access tokens are short lived; Supabase refresh tokens are rotating.
 Only one serialized auth/session owner may refresh at a time.
 
 On successful refresh:
-- persist the complete new access + refresh pair atomically.
+- persist the complete new access + refresh pair atomically **before** any later Membership/Organization request can fail;
+- preserve the previous identity snapshot and its last-successful Membership validation timestamp until authoritative Membership revalidation succeeds;
+- after revalidation succeeds, atomically replace the stored snapshot with the newly validated identity + refreshed token pair.
 
-Do not allow multiple parallel refresh attempts using the same stored refresh token.
+Do not allow multiple parallel refresh attempts using the same stored refresh token. A transient Membership/API failure after a successful token rotation must not strand the app with the already-consumed old refresh token.
 
 ## 12D rollout safety
 
@@ -232,6 +235,26 @@ Production redirect URI may be allowlisted at the same time but is not physicall
 Custom URI schemes are not domain-verified.
 
 Before broad/public distribution, revisit verified Android App Links under the release-readiness phase if the business has an owned domain.
+
+## 2026-09-25 final-review hardening
+
+Final review against the current Supabase session documentation and the Phase 12D contract found two narrow sequencing corrections before the last phone recovery gate:
+
+1. **Rotating refresh-token persistence:** Supabase refresh tokens are one-use/rotating. The refreshed access + refresh pair must be persisted immediately after a successful refresh, before Membership/Organization revalidation can fail. The prior validated identity snapshot remains unchanged until revalidation succeeds.
+2. **Fresh session after password recovery:** Supabase documents password change as a security-sensitive action that can terminate a session. After the recovery session successfully changes the password, FPP must establish a fresh normal email/password session with the new password, validate ACTIVE Membership + Organization, then persist that fresh session.
+
+These corrections do not change Drive/SAF behavior, photo state, destination identity, public signup policy, or the Phase 12D rollout boundary.
+
+Already accepted physical evidence is retained and must not be repeated:
+- internal APK installed successfully on the Samsung field phone;
+- normal sign-in succeeded;
+- ACTIVE OWNER identity loaded;
+- Recheck Account succeeded against live Supabase;
+- encrypted stored session survived app close/reopen;
+- existing company/workspace + Drive-backed navigation remained usable.
+
+The only remaining physical auth observation after the hardening build is:
+**fresh recovery email → newest link on Samsung → Field Photo Prep Internal → set password → fresh sign-in/ACTIVE OWNER → restart/recheck.**
 
 ## Completion gate
 
