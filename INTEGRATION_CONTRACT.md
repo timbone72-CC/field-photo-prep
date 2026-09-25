@@ -1,5 +1,7 @@
 # Field Photo Prep Google Drive Integration Contract
 
+> **Routing scope:** Google Drive, Android SAF/DocumentsProvider, provider identity, folder operations, upload/retry, permissions, and Drive reality gates. Read when `RULE_INDEX.md` routes the current work to Drive/provider surfaces.
+
 ## Connected systems
 
 - Current local app: Android Field Photo Prep

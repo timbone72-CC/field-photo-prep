@@ -1,5 +1,7 @@
 # Field Photo Prep Contract
 
+> **Routing scope:** Product and runtime invariants. Read the sections selected by `RULE_INDEX.md` when work touches app behavior, identity, photo protection, queue state, destination identity, deletion, or related product boundaries. This file is not mandatory for unrelated documentation/process work.
+
 This contract protects behavior the user has approved. It does not require features that have not yet been built.
 
 ## 1. App purpose

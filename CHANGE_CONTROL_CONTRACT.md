@@ -1,5 +1,7 @@
 # Field Photo Prep Change Control Contract
 
+> **Routing scope:** Change classification, authorization, impact records, rollback, diff control, and merge gates. Read for every implementation change, but use `GOVERNANCE.md` for takeover, authoritative-line, external-state-parity, batch-sizing, and closeout rules.
+
 ## Purpose
 
 This contract controls how changes are approved, implemented, tested, reviewed, merged, and rolled back. The process must match the actual risk: enough protection to prevent lost or misfiled photos without turning every small improvement into a large project.
