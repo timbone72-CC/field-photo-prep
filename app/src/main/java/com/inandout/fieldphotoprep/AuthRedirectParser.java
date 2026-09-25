@@ -20,6 +20,7 @@ final class AuthRedirectParser {
         private final String accessToken;
         private final String refreshToken;
         private final long expiresAtEpochSeconds;
+        private final String invitationId;
         private final String errorMessage;
 
         Result(
@@ -27,11 +28,13 @@ final class AuthRedirectParser {
                 String accessToken,
                 String refreshToken,
                 long expiresAtEpochSeconds,
+                String invitationId,
                 String errorMessage) {
             this.kind = kind;
             this.accessToken = accessToken;
             this.refreshToken = refreshToken;
             this.expiresAtEpochSeconds = expiresAtEpochSeconds;
+            this.invitationId = invitationId;
             this.errorMessage = errorMessage;
         }
 
@@ -39,6 +42,7 @@ final class AuthRedirectParser {
         String accessToken() { return accessToken; }
         String refreshToken() { return refreshToken; }
         long expiresAtEpochSeconds() { return expiresAtEpochSeconds; }
+        String invitationId() { return invitationId; }
         String errorMessage() { return errorMessage; }
 
         boolean hasSessionTokens() {
@@ -65,7 +69,7 @@ final class AuthRedirectParser {
 
             String error = first(values, "error_description", "error");
             if (error != null && !error.trim().isEmpty()) {
-                return new Result(Kind.ERROR, null, null, 0L, error);
+                return new Result(Kind.ERROR, null, null, 0L, null, error);
             }
 
             String type = values.get("type");
@@ -91,6 +95,7 @@ final class AuthRedirectParser {
                     values.get("access_token"),
                     values.get("refresh_token"),
                     expiresAt,
+                    values.get("fpp_invitation_id"),
                     null);
         } catch (RuntimeException e) {
             return unsupported("The authentication link is malformed.");
@@ -98,7 +103,7 @@ final class AuthRedirectParser {
     }
 
     private static Result unsupported(String message) {
-        return new Result(Kind.UNSUPPORTED, null, null, 0L, message);
+        return new Result(Kind.UNSUPPORTED, null, null, 0L, null, message);
     }
 
     private static String first(Map<String, String> values, String... keys) {
