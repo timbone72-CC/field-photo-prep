@@ -16,16 +16,19 @@ final class ProtectedWorkGuard {
         private final int capturingCount;
         private final int queuedCount;
         private final int cleanupPendingCount;
+        private final int unreadableCount;
 
         Result(
                 int blockingCount,
                 int capturingCount,
                 int queuedCount,
-                int cleanupPendingCount) {
+                int cleanupPendingCount,
+                int unreadableCount) {
             this.blockingCount = blockingCount;
             this.capturingCount = capturingCount;
             this.queuedCount = queuedCount;
             this.cleanupPendingCount = cleanupPendingCount;
+            this.unreadableCount = unreadableCount;
         }
 
         boolean blocksSignOut() {
@@ -47,6 +50,10 @@ final class ProtectedWorkGuard {
         int cleanupPendingCount() {
             return cleanupPendingCount;
         }
+
+        int unreadableCount() {
+            return unreadableCount;
+        }
     }
 
     private final PendingPhotoStore photoStore;
@@ -58,10 +65,12 @@ final class ProtectedWorkGuard {
     }
 
     Result inspect() throws IOException {
-        PendingPhotoStore.ScanResult scan = photoStore.scan();
+        PendingPhotoStore.ScanResult scan =
+                photoStore.scanAllPersistedRecordsForProtection();
         int capturing = 0;
         int queued = 0;
         int cleanupPending = 0;
+        int unreadable = scan.corruptMetadataFiles().size();
 
         for (PendingPhotoRecord record : scan.records()) {
             switch (record.state()) {
@@ -86,8 +95,8 @@ final class ProtectedWorkGuard {
             }
         }
 
-        int total = capturing + queued + cleanupPending;
-        return new Result(total, capturing, queued, cleanupPending);
+        int total = capturing + queued + cleanupPending + unreadable;
+        return new Result(total, capturing, queued, cleanupPending, unreadable);
     }
 
     private boolean hasNonEmptyProtectedOriginal(PendingPhotoRecord record) throws IOException {
