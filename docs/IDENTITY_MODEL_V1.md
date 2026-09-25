@@ -68,9 +68,9 @@ An email address is not the permanent User identity. Changing login email must n
 
 An Authentication Identity binds a login provider/account to one User.
 
-Identity v1 may initially use **Continue with Google**, but the permanent FPP identity remains `user_id`, not the Google email address.
+Identity v1 uses **Supabase Auth email + password** for the initial FPP implementation. The permanent FPP identity is the Supabase Auth user UUID (`auth.users.id`), not the login email address.
 
-Using Google for FPP sign-in does not authorize Google Drive access for FPP's field-work workflow.
+A later Google sign-in option may be added without changing permanent User identity. Any Google sign-in used for FPP authentication remains separate from Google Drive authorization for the field-work workflow.
 
 ### Organization
 
@@ -400,17 +400,24 @@ A copied support status should exclude by default:
 14. A new device must deliberately establish its own Drive Binding rather than restoring another device's provider identity.
 15. Identity implementation must preserve the existing photo-protection, destination, retry, reconciliation, and cleanup contracts.
 
-## Deferred implementation choices
+## Settled Phase 12B authentication choices
 
-This model does not yet choose:
-- authentication/backend vendor;
-- exact Google sign-in technology;
-- token/session duration;
-- offline revalidation duration;
-- invitation delivery mechanism;
-- account recovery mechanism;
+The governing authentication architecture is `docs/PHASE_12B_SUPABASE_AUTH_ARCHITECTURE_2026-09-24.md`.
+
+Settled for v1:
+- Supabase is the identity/account backend;
+- the existing `Field Photo Prep Team` Supabase project is reused;
+- `auth.users.id` is permanent User identity;
+- normal FPP uses FPP-specific Membership/Invitation records and does not use Team work-order/photo data;
+- initial FPP login is Supabase email/password;
+- session tokens are protected locally with Android Keystore-backed encryption;
+- cached ACTIVE Membership may support the same Organization's offline field workflow for up to 7 days from last successful validation;
+- account recovery uses Supabase Auth;
+- Google sign-in is optional later work, not a v1 prerequisite.
+
+Still deferred:
 - organization-close UX;
 - release/distribution channel;
 - subscription/licensing model.
 
-Those decisions must be designed and recorded under Phase 12 before implementation reaches them.
+Those remaining decisions must be recorded before implementation reaches them.
