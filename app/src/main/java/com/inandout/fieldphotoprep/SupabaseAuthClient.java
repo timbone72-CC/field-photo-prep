@@ -198,6 +198,42 @@ final class SupabaseAuthClient {
         return parseUser(response);
     }
 
+    void acceptInvitation(String accessToken, String invitationId) throws IOException {
+        if (invitationId == null || invitationId.trim().isEmpty()) {
+            throw new AuthException("The invitation link did not identify a Field Photo Prep invitation.");
+        }
+
+        JSONObject body = new JSONObject();
+        try {
+            body.put("p_invitation_id", invitationId.trim());
+        } catch (JSONException e) {
+            throw new AuthException("Could not prepare invitation acceptance.", e);
+        }
+
+        JSONObject response = requestObject(
+                "POST",
+                "/rest/v1/rpc/fpp_accept_invitation",
+                body,
+                accessToken);
+        String outcome = response.optString("outcome", "");
+        if ("ACCEPTED".equals(outcome) || "ALREADY_ACCEPTED".equals(outcome)) {
+            return;
+        }
+
+        switch (outcome) {
+            case "CANCELLED":
+                throw new AuthException("This Field Photo Prep invitation was cancelled.");
+            case "EXPIRED":
+                throw new AuthException("This Field Photo Prep invitation expired. Ask an Owner to resend it.");
+            case "EMAIL_NOT_CONFIRMED":
+                throw new AuthException("Confirm the invited email address before accepting this invitation.");
+            case "INVITATION_UNAVAILABLE":
+                throw new AuthException("This Field Photo Prep invitation is unavailable for this account.");
+            default:
+                throw new AuthException("The Field Photo Prep invitation could not be accepted.");
+        }
+    }
+
     AuthSessionState validateMembership(AuthTokens tokens) throws IOException {
         UserIdentity user;
         if (tokens.userId() == null || tokens.userId().trim().isEmpty()) {
