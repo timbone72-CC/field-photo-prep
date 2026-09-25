@@ -24,8 +24,8 @@ The existing project already contains Team operational data. Normal FPP must reu
 
 Reuse:
 - Supabase Auth `auth.users` as permanent FPP User identity;
-- the existing `public.organizations` business identity for **In And Out Cleaner Inspections LLC**;
 - the existing Supabase project/publishable-client model;
+- the already-established business Organization UUID `494154a6-2a7a-4c98-a0a8-2143443fec0e` referenced by the existing Auth users.
 - trusted server-side functions/Edge Functions for privileged account actions.
 
 Normal FPP adds only its own identity/account tables, namespaced so they cannot be confused with Team authorization:
@@ -230,13 +230,26 @@ Do not rely on Team's single-role `app_metadata.role` / `organization_id` claims
 
 Owner-only privileged operations should use narrowly scoped private functions or JWT-protected Edge Functions with explicit caller/membership checks. Any `SECURITY DEFINER` function must stay outside the exposed public API implementation surface, explicitly validate `auth.uid()`, and have default PUBLIC execution revoked.
 
-## Existing Organization bootstrap
+## Verified live-project bootstrap state
 
-The current In And Out Cleaner Inspections LLC Organization row is reused.
+The live Supabase project was restored and inspected on 2026-09-24.
 
-The initial FPP Owner Membership is created through one controlled bootstrap/migration after the intended Supabase Auth user is identified.
+Verified state:
+- `public.organizations`: 0 rows;
+- `public.work_orders`: 0 rows;
+- `public.photos`: 0 rows;
+- `public.contractor_invitations`: 0 rows;
+- existing Auth user `57d08e76-7354-4edb-adea-027c805ac62c` uses email `timbone72@gmail.com` and Team app metadata role `ADMIN`;
+- existing Auth user `e7208389-fb9f-4061-9fca-56301c021847` uses email `rushingl27@gmail.com` and Team app metadata role `CONTRACTOR`;
+- both Auth users reference Organization UUID `494154a6-2a7a-4c98-a0a8-2143443fec0e`.
 
-Do not create a second Organization row merely because normal FPP is a different Android app.
+The Organization row referenced by those Auth identities is currently missing.
+
+Phase 12C must restore/create **In And Out Cleaner Inspections LLC** using that exact existing Organization UUID rather than generating a different business identity.
+
+The initial normal-FPP Owner Membership is then created for the intended Owner Auth user through the controlled migration/bootstrap.
+
+Do not automatically grant additional normal-FPP Membership merely because another Auth user exists in the Supabase project. Additional FPP access follows the governed FPP invitation/membership path.
 
 ## Drive boundary
 
