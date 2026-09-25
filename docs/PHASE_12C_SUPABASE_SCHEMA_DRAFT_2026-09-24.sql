@@ -1,5 +1,5 @@
--- Phase 12C schema draft.
--- DESIGN/STAGING FILE ONLY until applied through the governed Supabase migration path.
+-- Phase 12C identity foundation schema.
+-- Applied to dedicated FPP Supabase project vtyiktvqhbgabawotkrj as migration 20260925012939.
 -- No Team project may receive this SQL.
 
 create schema if not exists private;
@@ -57,6 +57,13 @@ create index fpp_memberships_user_idx
 
 create index fpp_invitations_org_idx
     on public.fpp_invitations (organization_id);
+
+create index fpp_invitations_auth_user_idx
+    on public.fpp_invitations (auth_user_id)
+    where auth_user_id is not null;
+
+create index fpp_invitations_invited_by_user_idx
+    on public.fpp_invitations (invited_by_user_id);
 
 create function private.fpp_set_updated_at()
 returns trigger
