@@ -569,8 +569,9 @@ Governing design:
 
 Current status:
 - Phase 12A Identity Model v1 is approved;
-- Phase 12B dedicated Supabase authentication architecture is recorded pending Level 3 merge approval;
-- no Phase 12 runtime identity/authentication implementation has started;
+- Phase 12B dedicated Supabase authentication architecture is approved and merged;
+- Phase 12C dedicated Supabase backend foundation is complete and merged;
+- Android runtime authentication/session implementation has not started;
 - current personal-Drive production remains valid and unchanged;
 - Team remains a separate product/backend;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
@@ -592,7 +593,7 @@ Approved model:
 - sign-out/revocation/account closure never automatically delete protected photos or Drive business records;
 - identity backend remains small and does not duplicate property/work-order/photo data.
 
-### Phase 12B — Dedicated Supabase authentication architecture — DESIGN RECORDED / NOT IMPLEMENTED
+### Phase 12B — Dedicated Supabase authentication architecture — DESIGN APPROVED / BACKEND FOUNDATION IMPLEMENTED IN 12C
 
 Settled design:
 - Supabase is the original-FPP identity/account backend;
@@ -618,7 +619,7 @@ Completion gate for 12B design:
 - explicit Level 3 operator pre-merge approval recorded;
 - no runtime/schema implementation begins before merge.
 
-### Phase 12C — Dedicated FPP Supabase foundation — BACKEND COMPLETE / MERGE APPROVAL PENDING
+### Phase 12C — Dedicated FPP Supabase foundation — COMPLETE
 
 Completed:
 1. dedicated original-FPP Supabase project created: `Field Photo Prep`, ref `vtyiktvqhbgabawotkrj`;
@@ -627,7 +628,7 @@ Completed:
 4. wrong-user/wrong-Organization hosted isolation tests passed;
 5. Owner-vs-Member invitation visibility tests passed;
 6. duplicate Membership and pending-Invitation protections passed;
-7. security advisor reports 0 lints;
+7. database/RLS security checks passed; final Auth advisor shows only the known Pro-only leaked-password-protection warning;
 8. disposable test identities rolled back to zero persistent rows;
 9. Team remains separate and untouched.
 
@@ -643,8 +644,9 @@ Completed:
 Known non-blocking warning:
 - leaked-password protection is disabled because Supabase documents that feature as Pro-only; current project is Free.
 
-Remaining Phase 12C gate:
-- explicit Level 3 operator pre-merge approval.
+Merge evidence:
+- explicit Level 3 operator approval given on 2026-09-24;
+- PR #65 merged at `c76ce157627dd1a0247786f35eb2fb0eba105938`.
 
 No Android runtime auth work is included in Phase 12C.
 
