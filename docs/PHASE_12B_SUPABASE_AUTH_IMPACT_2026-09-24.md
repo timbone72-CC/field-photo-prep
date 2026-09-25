@@ -174,6 +174,6 @@ Identity/auth failures must never delete protected originals or redirect Drive d
 
 ## Explicit pre-merge approval
 
-**PENDING.**
+**APPROVED by operator on 2026-09-24.**
 
-Level 3 requires explicit operator approval after review of this exact Phase 12B design.
+The operator explicitly approved this exact Phase 12B dedicated-Supabase architecture before merge.
