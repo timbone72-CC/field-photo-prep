@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **IMPLEMENTATION STAGED — EXTERNAL PROJECT CREATION NOT YET PERFORMED**
+Status: **IN PROGRESS — DEDICATED PROJECT CREATED; SCHEMA NOT YET APPLIED**
 
 ## User-facing problem
 
@@ -37,9 +37,13 @@ Existing Team project:
 - remains separate and untouched.
 
 New project:
-- intended name: **Field Photo Prep**
-- intended region: **us-east-2**
-- must receive a new independent Supabase project ref.
+- name: **Field Photo Prep**
+- project ref: `vtyiktvqhbgabawotkrj`
+- region: **us-east-2**
+- status after creation: `ACTIVE_HEALTHY`
+- quoted cost at creation: **$0/month**
+- initial public tables: **0**
+- initial migration history: **0**.
 
 No Team project key, Auth user, table, Edge Function, migration, Organization UUID, or session may be reused.
 
