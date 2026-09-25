@@ -2,7 +2,7 @@
 
 Date: 2026-09-24
 
-Status: **FINAL HARDENING IN PROGRESS — RECOVERY DEVICE GATE PENDING**
+Status: **FINAL AUTOMATED GATE PASSED — RECOVERY DEVICE GATE PENDING**
 
 ## Purpose
 
@@ -268,34 +268,41 @@ The only remaining physical auth observation after the hardening build is:
 - final Level 3 operator merge approval is recorded.
 
 
-## Automated CI evidence
+## Final automated CI evidence
 
-Android CI run: `36086075764`
+Exact final runtime head:
+`df02a34981e601d3009875edc8fe154e2a23c936`
 
-- attempt 1:
-  - unit tests: PASS
-  - internal debug build: PASS
-  - stable test signer verification: PASS
-  - connected Android tests: PASS
-  - job conclusion: FAILURE only because the emulator went offline during the final rendered-screen script after successful instrumentation
-- attempt 2, same code/head:
-  - **PASS**
-  - run conclusion: **SUCCESS**
+Android CI:
+- run: `36122577021`
+- run number: `822`
+- conclusion: **SUCCESS**
+- unit tests: PASS
+- internal debug build: PASS
+- stable test signer verification: PASS
+- connected/instrumented tests + launch smoke: PASS
 
-Exact tested branch head at the automated gate:
-`59ed1759f6f38fed00fe7b6e348350ae87014ac3`
+Final internal APK artifact:
+- name: `field-photo-prep-internal-apk`
+- artifact ID: `10857473938`
+- digest: `sha256:53f49a0187bcea1abe70f1dbda6ffe289ef3632bcd1aa815d977ee7d90d63ee5`
+- version: `0.27.1-auth-session-hardening-internal`
+- versionCode: `36`
 
-No runtime change was made to turn the first failed run green; rerunning the same head passed, confirming an emulator/ADB infrastructure flake rather than an app regression.
+This exact runtime contains the two final-review sequencing corrections:
+- rotated refresh tokens are durably stored before later Membership/Organization revalidation can fail;
+- recovery password change is followed by a fresh normal password sign-in before the validated session is stored.
 
-Internal test APK artifact:
-`field-photo-prep-internal-apk`
+Already accepted Samsung evidence from the prior exact Phase 12D build is retained for normal sign-in, ACTIVE OWNER Membership, Recheck Account, restart persistence, and existing Drive/workspace smoke. Those independent observations do not need to be repeated.
 
-Next gate:
-1. allowlist the exact internal and production callback URIs in Supabase Auth;
-2. install the internal APK on the Samsung field phone;
-3. run recovery → app deep link → password update → ACTIVE OWNER validation → restart session restore;
-4. smoke the existing Drive workflow.
-
+Remaining device gate:
+1. install this exact final internal artifact;
+2. request one fresh recovery email after the hosted email quota has cleared;
+3. open the newest recovery message on the Samsung exactly once;
+4. verify **Field Photo Prep Internal** opens;
+5. set the new password;
+6. verify the fresh post-recovery sign-in reaches ACTIVE OWNER;
+7. close/reopen and Recheck Account.
 
 ## Password minimum
 
