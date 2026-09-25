@@ -18,12 +18,35 @@ import java.time.Instant;
 
 final class SupabaseAuthClient {
     static final class AuthException extends IOException {
+        private final int statusCode;
+
         AuthException(String message) {
-            super(message);
+            this(message, 0, null);
         }
 
         AuthException(String message, Throwable cause) {
+            this(message, 0, cause);
+        }
+
+        AuthException(String message, int statusCode) {
+            this(message, statusCode, null);
+        }
+
+        private AuthException(String message, int statusCode, Throwable cause) {
             super(message, cause);
+            this.statusCode = statusCode;
+        }
+
+        int statusCode() {
+            return statusCode;
+        }
+
+        boolean isAuthenticationRejected() {
+            return statusCode == 400 || statusCode == 401;
+        }
+
+        boolean isTemporaryServerFailure() {
+            return statusCode >= 500 && statusCode <= 599;
         }
     }
 
@@ -65,6 +88,42 @@ final class SupabaseAuthClient {
 
         String id() { return id; }
         String email() { return email; }
+    }
+
+    static final class StoredMembershipValidation {
+        enum Kind {
+            ACTIVE,
+            REVOKED,
+            NO_MEMBERSHIP,
+            IDENTITY_MISMATCH
+        }
+
+        private final Kind kind;
+        private final AuthSessionState activeState;
+
+        private StoredMembershipValidation(Kind kind, AuthSessionState activeState) {
+            this.kind = kind;
+            this.activeState = activeState;
+        }
+
+        static StoredMembershipValidation active(AuthSessionState state) {
+            return new StoredMembershipValidation(Kind.ACTIVE, state);
+        }
+
+        static StoredMembershipValidation revoked() {
+            return new StoredMembershipValidation(Kind.REVOKED, null);
+        }
+
+        static StoredMembershipValidation noMembership() {
+            return new StoredMembershipValidation(Kind.NO_MEMBERSHIP, null);
+        }
+
+        static StoredMembershipValidation identityMismatch() {
+            return new StoredMembershipValidation(Kind.IDENTITY_MISMATCH, null);
+        }
+
+        Kind kind() { return kind; }
+        AuthSessionState activeState() { return activeState; }
     }
 
     private static final int CONNECT_TIMEOUT_MS = 15000;
@@ -183,6 +242,85 @@ final class SupabaseAuthClient {
         }
     }
 
+    StoredMembershipValidation validateStoredMembership(
+            AuthTokens tokens,
+            AuthSessionState stored,
+            long validatedAtEpochSeconds) throws IOException {
+        if (tokens == null || stored == null) {
+            throw new AuthException("Stored membership validation requires a session and identity snapshot.");
+        }
+        if (validatedAtEpochSeconds <= 0L) {
+            throw new AuthException("Stored membership validation requires a trustworthy validation time.");
+        }
+
+        UserIdentity user = getUser(tokens.accessToken());
+        if (!stored.userId().equals(user.id())) {
+            return StoredMembershipValidation.identityMismatch();
+        }
+
+        String membershipPath = "/rest/v1/fpp_memberships"
+                + "?select=id,organization_id,role,status"
+                + "&id=eq." + encode(stored.membershipId())
+                + "&user_id=eq." + encode(user.id());
+        JSONArray memberships = requestArray("GET", membershipPath, null, tokens.accessToken());
+        if (memberships.length() != 1) {
+            return StoredMembershipValidation.noMembership();
+        }
+
+        try {
+            JSONObject membership = memberships.getJSONObject(0);
+            String membershipId = membership.getString("id");
+            String organizationId = membership.getString("organization_id");
+            String role = membership.getString("role");
+            String status = membership.getString("status");
+
+            if (!stored.membershipId().equals(membershipId)
+                    || !stored.organizationId().equals(organizationId)) {
+                return StoredMembershipValidation.identityMismatch();
+            }
+            if ("REVOKED".equals(status)) {
+                return StoredMembershipValidation.revoked();
+            }
+            if (!"ACTIVE".equals(status)
+                    || (!"OWNER".equals(role) && !"MEMBER".equals(role))) {
+                return StoredMembershipValidation.noMembership();
+            }
+
+            String organizationPath = "/rest/v1/fpp_organizations"
+                    + "?select=id,name,status"
+                    + "&id=eq." + encode(organizationId);
+            JSONArray organizations = requestArray(
+                    "GET",
+                    organizationPath,
+                    null,
+                    tokens.accessToken());
+            if (organizations.length() != 1) {
+                return StoredMembershipValidation.noMembership();
+            }
+
+            JSONObject organization = organizations.getJSONObject(0);
+            if (!organizationId.equals(organization.getString("id"))
+                    || !"ACTIVE".equals(organization.getString("status"))) {
+                return StoredMembershipValidation.noMembership();
+            }
+
+            return StoredMembershipValidation.active(new AuthSessionState(
+                    tokens.accessToken(),
+                    tokens.refreshToken(),
+                    tokens.expiresAtEpochSeconds(),
+                    user.id(),
+                    user.email(),
+                    organizationId,
+                    organization.getString("name"),
+                    membershipId,
+                    role,
+                    status,
+                    validatedAtEpochSeconds));
+        } catch (JSONException e) {
+            throw new AuthException("Field Photo Prep membership data was incomplete.", e);
+        }
+    }
+
     AuthTokens tokensFromRedirect(
             String accessToken,
             String refreshToken,
@@ -286,7 +424,7 @@ final class SupabaseAuthClient {
                     : connection.getErrorStream();
             String response = readBody(stream);
             if (code < 200 || code >= 300) {
-                throw new AuthException(safeErrorMessage(code, response));
+                throw new AuthException(safeErrorMessage(code, response), code);
             }
             return response;
         } finally {
