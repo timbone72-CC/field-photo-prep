@@ -268,19 +268,30 @@ final class SupabaseAuthClient {
 
         String membershipPath = "/rest/v1/fpp_memberships"
                 + "?select=id,organization_id,role,status"
-                + "&id=eq." + encode(stored.membershipId())
                 + "&user_id=eq." + encode(user.id());
         JSONArray memberships = requestArray("GET", membershipPath, null, tokens.accessToken());
-        if (memberships.length() != 1) {
-            return StoredMembershipValidation.noMembership();
-        }
 
         try {
-            JSONObject membership = memberships.getJSONObject(0);
-            String membershipId = membership.getString("id");
-            String organizationId = membership.getString("organization_id");
-            String role = membership.getString("role");
-            String status = membership.getString("status");
+            JSONObject exactMembership = null;
+            int activeMembershipCount = 0;
+            for (int index = 0; index < memberships.length(); index++) {
+                JSONObject candidate = memberships.getJSONObject(index);
+                if ("ACTIVE".equals(candidate.optString("status", ""))) {
+                    activeMembershipCount++;
+                }
+                if (stored.membershipId().equals(candidate.optString("id", ""))) {
+                    exactMembership = candidate;
+                }
+            }
+
+            if (exactMembership == null) {
+                return StoredMembershipValidation.noMembership();
+            }
+
+            String membershipId = exactMembership.getString("id");
+            String organizationId = exactMembership.getString("organization_id");
+            String role = exactMembership.getString("role");
+            String status = exactMembership.getString("status");
 
             if (!stored.membershipId().equals(membershipId)
                     || !stored.organizationId().equals(organizationId)) {
@@ -290,7 +301,8 @@ final class SupabaseAuthClient {
                 return StoredMembershipValidation.revoked();
             }
             if (!"ACTIVE".equals(status)
-                    || (!"OWNER".equals(role) && !"MEMBER".equals(role))) {
+                    || (!"OWNER".equals(role) && !"MEMBER".equals(role))
+                    || activeMembershipCount != 1) {
                 return StoredMembershipValidation.noMembership();
             }
 
