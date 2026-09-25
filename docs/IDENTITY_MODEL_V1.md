@@ -68,9 +68,11 @@ An email address is not the permanent User identity. Changing login email must n
 
 An Authentication Identity binds a login provider/account to one User.
 
-Identity v1 may initially use **Continue with Google**, but the permanent FPP identity remains `user_id`, not the Google email address.
+Identity Model v1 does **not** select an authentication provider or backend technology.
 
-Using Google for FPP sign-in does not authorize Google Drive access for FPP's field-work workflow.
+Whatever sign-in method is later approved, the permanent FPP identity remains `user_id`, not an email address or provider-specific display value.
+
+FPP sign-in never authorizes Google Drive access for FPP's field-work workflow; Android SAF remains a separate authorization boundary.
 
 ### Organization
 
@@ -404,7 +406,7 @@ A copied support status should exclude by default:
 
 This model does not yet choose:
 - authentication/backend vendor;
-- exact Google sign-in technology;
+- authentication/sign-in provider and implementation;
 - token/session duration;
 - offline revalidation duration;
 - invitation delivery mechanism;
