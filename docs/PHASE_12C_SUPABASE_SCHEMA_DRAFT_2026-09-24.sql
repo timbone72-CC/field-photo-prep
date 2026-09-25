@@ -1,5 +1,6 @@
--- Phase 12C identity foundation schema.
--- Applied to dedicated FPP Supabase project vtyiktvqhbgabawotkrj as migration 20260925012939.
+-- Phase 12C composite current-schema record.
+-- Dedicated FPP Supabase project: vtyiktvqhbgabawotkrj.
+-- Live migration history is tracked under supabase/migrations/; this file combines the current Phase 12C schema for review.
 -- No Team project may receive this SQL.
 
 create schema if not exists private;
