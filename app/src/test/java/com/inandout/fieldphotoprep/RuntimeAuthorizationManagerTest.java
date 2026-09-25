@@ -161,6 +161,21 @@ public final class RuntimeAuthorizationManagerTest {
     }
 
     @Test
+    public void membershipBadRequestFailsClosedWithoutPretendingSignInWasRejected() {
+        FakeStore store = new FakeStore(activeSession(NOW - 60L));
+        FakeClock clock = new FakeClock(NOW, 100L);
+        FakeBackend backend = FakeBackend.membershipBadRequest();
+        RuntimeAuthorizationManager manager =
+                new RuntimeAuthorizationManager(store, backend, clock, Runnable::run);
+
+        AuthorizationDecision decision = manager.revalidateAsync().join();
+
+        assertEquals(AuthorizationDecision.State.RECHECK_REQUIRED, decision.state());
+        assertTrue(store.state != null);
+        assertEquals(0L, store.state.lastMembershipValidatedAtEpochSeconds());
+    }
+
+    @Test
     public void successfulValidationResetsTheSeventyTwoHourWindow() {
         FakeStore store = new FakeStore(
                 activeSession(NOW - RuntimeAuthorizationPolicy.GRACE_SECONDS + 1L));
@@ -267,7 +282,8 @@ public final class RuntimeAuthorizationManagerTest {
             ACTIVE,
             REVOKED,
             TEMPORARY_REFRESH_FAILURE,
-            REJECTED_REFRESH
+            REJECTED_REFRESH,
+            MEMBERSHIP_BAD_REQUEST
         }
 
         private static int globalSequence;
@@ -305,6 +321,11 @@ public final class RuntimeAuthorizationManagerTest {
             return new FakeBackend(Mode.REJECTED_REFRESH, null, null);
         }
 
+        static FakeBackend membershipBadRequest() {
+            globalSequence = 0;
+            return new FakeBackend(Mode.MEMBERSHIP_BAD_REQUEST, null, null);
+        }
+
         @Override
         public SupabaseAuthClient.AuthTokens refreshSession(String refreshToken)
                 throws IOException {
@@ -337,6 +358,9 @@ public final class RuntimeAuthorizationManagerTest {
             }
             if (mode == Mode.REVOKED) {
                 return SupabaseAuthClient.StoredMembershipValidation.revoked();
+            }
+            if (mode == Mode.MEMBERSHIP_BAD_REQUEST) {
+                throw new SupabaseAuthClient.AuthException("membership query rejected", 400);
             }
             AuthSessionState active = new AuthSessionState(
                     tokens.accessToken(),
