@@ -14,10 +14,6 @@ import java.util.List;
 public final class DriveClient {
     private final AuthorizationActionGuard authorizationGuard;
 
-    DriveClient() {
-        this(AuthorizationActionGuard.permissiveForTests());
-    }
-
     DriveClient(AuthorizationActionGuard authorizationGuard) {
         this.authorizationGuard = java.util.Objects.requireNonNull(
                 authorizationGuard,
