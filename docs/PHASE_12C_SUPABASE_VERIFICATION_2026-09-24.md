@@ -142,3 +142,43 @@ Required next action:
 - create the Auth user through Supabase's normal hosted Authentication → Users flow using the selected email and an operator-chosen password;
 - once the Auth UUID exists, Phase 12C will create/reuse exactly one **In And Out Cleaner Inspections LLC** Organization and exactly one `ACTIVE OWNER` Membership for that UUID;
 - then hosted Owner-scope verification completes the backend gate.
+
+
+## Real Owner bootstrap — PASS
+
+Real Auth identity:
+- email: `inandoutinspections2026@gmail.com`
+- User UUID: `789bc0d8-6f9d-4ab4-9f87-33195109a65a`
+- confirmed: yes
+- password credential present: yes
+
+Real Organization:
+- **In And Out Cleaner Inspections LLC**
+- UUID: `3198253e-8d41-4419-874e-46e2d3906928`
+- status: `ACTIVE`
+
+Real Membership:
+- UUID: `de55393f-6386-480a-9823-b6ee4d9901a0`
+- role: `OWNER`
+- status: `ACTIVE`
+
+RLS verification with the real Owner JWT subject:
+- exactly one Organization visible;
+- exactly one Membership visible;
+- no Invitations visible.
+
+RLS verification with unrelated authenticated subject:
+- 0 Organizations;
+- 0 Memberships;
+- 0 Invitations.
+
+### Redirect finding
+
+The initial Supabase invite landed at `localhost:3000` and displayed an expired/invalid link error because the project still uses the default development redirect target.
+
+The Auth identity itself was nevertheless created and confirmed.
+
+Required follow-up for the Android auth slice:
+- configure a deliberate FPP mobile redirect/deep-link;
+- configure the corresponding Supabase allowed redirect URL(s);
+- prove invitation and password-recovery completion through that path.
