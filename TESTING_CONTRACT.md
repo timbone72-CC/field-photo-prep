@@ -1,5 +1,7 @@
 # Field Photo Prep Lean Testing Contract
 
+> **Routing scope:** Test selection, verification timing, failure-stop behavior, and feature-specific regression boundaries. Runtime work must use the applicable portions selected by `RULE_INDEX.md`; unrelated feature sections are reference material, not mandatory reading.
+
 ## Purpose
 
 This contract controls which tests run, when they run, and what happens after a failure. It keeps verification proportional to the change while protecting the photo and Drive workflows that matter most.
