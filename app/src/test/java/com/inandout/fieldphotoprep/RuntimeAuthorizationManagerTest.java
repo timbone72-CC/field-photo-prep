@@ -19,6 +19,45 @@ public final class RuntimeAuthorizationManagerTest {
     private static final long NOW = 2_000_000_000L;
 
     @Test
+    public void signOutDuringRefreshCannotRestoreOldSession() {
+        FakeStore store = new FakeStore(activeSession(NOW - 10L));
+        FakeClock clock = new FakeClock(NOW, 100L);
+        final RuntimeAuthorizationManager[] holder = new RuntimeAuthorizationManager[1];
+
+        RuntimeAuthorizationManager.Backend backend =
+                new RuntimeAuthorizationManager.Backend() {
+                    @Override
+                    public SupabaseAuthClient.AuthTokens refreshSession(String refreshToken) {
+                        holder[0].clearAuthenticatedSession();
+                        return new SupabaseAuthClient.AuthTokens(
+                                "rotated-access",
+                                "rotated-refresh",
+                                NOW + 7200L,
+                                "user-1",
+                                "user@example.com");
+                    }
+
+                    @Override
+                    public SupabaseAuthClient.StoredMembershipValidation validateStoredMembership(
+                            SupabaseAuthClient.AuthTokens tokens,
+                            AuthSessionState stored,
+                            long validatedAtEpochSeconds) {
+                        throw new AssertionError(
+                                "Membership validation must not run after the session was cleared.");
+                    }
+                };
+
+        RuntimeAuthorizationManager manager =
+                new RuntimeAuthorizationManager(store, backend, clock, Runnable::run);
+        holder[0] = manager;
+
+        AuthorizationDecision decision = manager.revalidateAsync().join();
+
+        assertEquals(AuthorizationDecision.State.SIGN_IN_REQUIRED, decision.state());
+        assertEquals(null, store.state);
+    }
+
+    @Test
     public void concurrentRevalidationRequestsAreCoalesced() {
         FakeStore store = new FakeStore(activeSession(NOW - 10L));
         FakeClock clock = new FakeClock(NOW, 100L);
