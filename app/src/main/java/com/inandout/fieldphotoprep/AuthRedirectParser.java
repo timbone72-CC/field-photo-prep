@@ -41,15 +41,15 @@ final class AuthRedirectParser {
         String errorMessage() { return errorMessage; }
 
         boolean hasSessionTokens() {
-            return accessToken != null && !accessToken.isBlank()
-                    && refreshToken != null && !refreshToken.isBlank();
+            return accessToken != null && !accessToken.trim().isEmpty()
+                    && refreshToken != null && !refreshToken.trim().isEmpty();
         }
     }
 
     private AuthRedirectParser() {}
 
     static Result parse(String rawUri, String expectedScheme, String expectedHost) {
-        if (rawUri == null || rawUri.isBlank()) {
+        if (rawUri == null || rawUri.trim().isEmpty()) {
             return unsupported("Missing callback URL.");
         }
         try {
@@ -63,7 +63,7 @@ final class AuthRedirectParser {
             addPairs(values, uri.getRawFragment());
 
             String error = first(values, "error_description", "error");
-            if (error != null && !error.isBlank()) {
+            if (error != null && !error.trim().isEmpty()) {
                 return new Result(Kind.ERROR, null, null, 0L, error);
             }
 
@@ -111,7 +111,7 @@ final class AuthRedirectParser {
     }
 
     private static long parseLong(String value) {
-        if (value == null || value.isBlank()) {
+        if (value == null || value.trim().isEmpty()) {
             return 0L;
         }
         try {
