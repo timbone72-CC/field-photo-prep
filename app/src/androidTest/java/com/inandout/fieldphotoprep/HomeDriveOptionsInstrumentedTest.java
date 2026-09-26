@@ -24,7 +24,7 @@ import java.util.List;
 @RunWith(AndroidJUnit4.class)
 public final class HomeDriveOptionsInstrumentedTest {
     @Test
-    public void homeOverflowExposesCompanyActionsAndHonorsBusyState() throws Exception {
+    public void homeOverflowKeepsAccountReachableWhenDriveIsUnsafeAndHonorsBusyState() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SharedPreferences raw =
                 context.getSharedPreferences("field_photo_prep", Context.MODE_PRIVATE);
@@ -48,17 +48,17 @@ public final class HomeDriveOptionsInstrumentedTest {
                 assertTrue(overflow.performClick());
             });
 
-            assertTrue("Switch Company should no longer be buried in overflow",
+            assertTrue("Unsafe binding must not expose Switch Company",
                     findText(instrumentation, "Switch Company").isEmpty());
-            assertFalse("Company options must expose Add Company",
-                    awaitText(instrumentation, "Add Company").isEmpty());
-            assertFalse("Company options must expose Edit Company",
-                    awaitText(instrumentation, "Edit Company").isEmpty());
-            assertFalse("Company options must expose Change Workspace",
-                    awaitText(instrumentation, "Change Workspace").isEmpty());
-            assertFalse("Home overflow must expose Account without adding a Settings screen",
+            assertTrue("Unsafe binding must not expose Add Company",
+                    findText(instrumentation, "Add Company").isEmpty());
+            assertTrue("Unsafe binding must not expose Edit Company",
+                    findText(instrumentation, "Edit Company").isEmpty());
+            assertTrue("Unsafe binding must not expose Change Workspace",
+                    findText(instrumentation, "Change Workspace").isEmpty());
+            assertFalse("Home overflow must keep Account reachable while Drive is blocked",
                     awaitText(instrumentation, "Account").isEmpty());
-            assertTrue("Company options must not invent a Settings surface",
+            assertTrue("Blocked Drive options must not invent a Settings surface",
                     findText(instrumentation, "Settings").isEmpty());
 
             List<AccessibilityNodeInfo> cancelNodes = awaitText(instrumentation, "Cancel");

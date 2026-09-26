@@ -4,8 +4,14 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 
+import java.util.Objects;
+
 public final class FolderPrefs {
     private static final String PREFS = "field_photo_prep";
+    static final int ORGANIZATION_DRIVE_BINDING_VERSION = 1;
+    private static final String DRIVE_BINDING_ORGANIZATION_ID =
+            "drive_binding_organization_id";
+    private static final String DRIVE_BINDING_VERSION = "drive_binding_version";
 
     // Legacy single-company master keys. Keep these intact as rollback/migration state.
     private static final String MASTER_URI = "master_tree_uri";
@@ -28,12 +34,50 @@ public final class FolderPrefs {
 
     private final SharedPreferences prefs;
 
+    static final class DriveBinding {
+        private final Uri treeUri;
+        private final DriveFolder rootFolder;
+        private final String organizationId;
+        private final int version;
+
+        DriveBinding(Uri treeUri, DriveFolder rootFolder, String organizationId, int version) {
+            this.treeUri = treeUri;
+            this.rootFolder = rootFolder;
+            this.organizationId = organizationId;
+            this.version = version;
+        }
+
+        Uri treeUri() { return treeUri; }
+        DriveFolder rootFolder() { return rootFolder; }
+        String organizationId() { return organizationId; }
+        int version() { return version; }
+    }
+
     public FolderPrefs(Context context) {
         prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
     public boolean hasWorkspace() {
         return getWorkspaceTreeUri() != null && getWorkspaceFolder() != null;
+    }
+
+    DriveBinding getDriveBinding() {
+        Uri workspaceTree = getWorkspaceTreeUri();
+        DriveFolder workspace = getWorkspaceFolder();
+        Uri bindingTree;
+        DriveFolder bindingRoot;
+        if (workspaceTree != null || workspace != null) {
+            bindingTree = workspaceTree;
+            bindingRoot = workspace;
+        } else {
+            bindingTree = getLegacyMasterTreeUri();
+            bindingRoot = getLegacyMasterFolder();
+        }
+        return new DriveBinding(
+                bindingTree,
+                bindingRoot,
+                normalize(prefs.getString(DRIVE_BINDING_ORGANIZATION_ID, null)),
+                prefs.getInt(DRIVE_BINDING_VERSION, 0));
     }
 
     public Uri getWorkspaceTreeUri() {
@@ -126,6 +170,8 @@ public final class FolderPrefs {
                 .remove(WORK_ORDER_ID)
                 .remove(WORK_ORDER_NAME)
                 .remove(WORK_ORDER_ADDRESS_ID)
+                .remove(DRIVE_BINDING_ORGANIZATION_ID)
+                .remove(DRIVE_BINDING_VERSION)
                 .apply();
     }
 
@@ -142,7 +188,60 @@ public final class FolderPrefs {
                 .remove(WORK_ORDER_ID)
                 .remove(WORK_ORDER_NAME)
                 .remove(WORK_ORDER_ADDRESS_ID)
+                .remove(DRIVE_BINDING_ORGANIZATION_ID)
+                .remove(DRIVE_BINDING_VERSION)
                 .apply();
+    }
+
+    /**
+     * Confirms the exact selected provider root for one authoritative FPP Organization.
+     *
+     * Reselecting the exact current provider root adds/updates only its Organization tag and
+     * display metadata. Selecting a different provider root keeps the existing workspace-change
+     * behavior and clears only navigation state; queued photo destinations remain independent.
+     */
+    boolean bindSelectedDriveRoot(Uri treeUri, DriveFolder folder, String organizationId) {
+        Objects.requireNonNull(treeUri, "treeUri");
+        Objects.requireNonNull(folder, "folder");
+        String normalizedOrganizationId = normalize(organizationId);
+        if (normalizedOrganizationId == null) {
+            throw new IllegalArgumentException("organizationId is required");
+        }
+
+        Uri previousTree = getMasterTreeUri();
+        DriveFolder previousRoot = getBindingRootFolder();
+        boolean sameProviderRoot = previousTree != null
+                && previousRoot != null
+                && previousTree.equals(treeUri)
+                && previousRoot.id().equals(folder.id());
+
+        SharedPreferences.Editor editor = prefs.edit();
+        if (sameProviderRoot && !hasWorkspace()) {
+            editor.putString(MASTER_URI, treeUri.toString())
+                    .putString(MASTER_ID, folder.id())
+                    .putString(MASTER_NAME, folder.name());
+        } else {
+            editor.putString(WORKSPACE_URI, treeUri.toString())
+                    .putString(WORKSPACE_ID, folder.id())
+                    .putString(WORKSPACE_NAME, folder.name());
+            if (!sameProviderRoot) {
+                editor.remove(COMPANY_ID)
+                        .remove(COMPANY_NAME)
+                        .remove(ADDRESS_ID)
+                        .remove(ADDRESS_NAME)
+                        .remove(ADDRESS_COMPANY_ID)
+                        .remove(WORK_ORDER_ID)
+                        .remove(WORK_ORDER_NAME)
+                        .remove(WORK_ORDER_ADDRESS_ID);
+            }
+        }
+
+        editor.putString(DRIVE_BINDING_ORGANIZATION_ID, normalizedOrganizationId)
+                .putInt(DRIVE_BINDING_VERSION, ORGANIZATION_DRIVE_BINDING_VERSION);
+        if (!editor.commit()) {
+            throw new IllegalStateException("Could not persist the Organization Drive binding.");
+        }
+        return sameProviderRoot;
     }
 
     public void setCurrentCompany(DriveFolder folder) {
@@ -232,9 +331,22 @@ public final class FolderPrefs {
                 .apply();
     }
 
+    private DriveFolder getBindingRootFolder() {
+        Uri workspaceTree = getWorkspaceTreeUri();
+        DriveFolder workspace = getWorkspaceFolder();
+        if (workspaceTree != null || workspace != null) {
+            return workspace;
+        }
+        return getLegacyMasterFolder();
+    }
+
     private Uri getUri(String key) {
         String value = prefs.getString(key, null);
         return value == null ? null : Uri.parse(value);
+    }
+
+    private static String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private DriveFolder getFolder(String idKey, String nameKey) {

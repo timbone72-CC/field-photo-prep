@@ -52,6 +52,8 @@ public final class MainActivity extends Activity {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private DriveClient driveClient;
     private AuthorizationActionGuard authorizationGuard;
+    private OrganizationDriveBindingGuard driveBindingGuard;
+    private OrganizationDriveBindingGuard.State lastDriveBindingState;
     private final List<DriveFolder> companyFolders = new ArrayList<>();
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
@@ -119,23 +121,15 @@ public final class MainActivity extends Activity {
         authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
         driveClient = new DriveClient(authorizationGuard);
         folderPrefs = new FolderPrefs(this);
+        driveBindingGuard = new OrganizationDriveBindingGuard(
+                folderPrefs,
+                authorizationGuard,
+                this::hasPersistedReadPermission);
         buildUi();
         showAddressScreen(false);
         renderSavedMaster();
 
-        Uri savedTree = folderPrefs.getMasterTreeUri();
-        if (savedTree == null) {
-            showHomeInlineMessage("Google Drive is not connected.");
-        } else if (hasPersistedReadPermission(savedTree)) {
-            clearHomeInlineMessage();
-            if (folderPrefs.hasWorkspace()) {
-                refreshCompanyFolders(true, false);
-            } else {
-                refreshAddressFolders();
-            }
-        } else {
-            showHomeInlineMessage("Drive access expired. Reconnect the workspace.");
-        }
+        restoreSavedDriveIfUsable();
     }
 
     @Override
@@ -143,10 +137,68 @@ public final class MainActivity extends Activity {
         super.onResume();
         FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
         RuntimeAuthorizationManager manager = app.authorizationManager();
+
+        // Re-evaluate immediately from the stored session before rendering any Drive state.
+        // This is essential when AuthActivity replaced the current User/Organization while this
+        // MainActivity instance remained underneath it on the Android back stack.
+        reconcileDriveBindingForCurrentOrganization();
+
         if (manager != null) {
-            manager.revalidateAsync();
+            manager.revalidateAsync().whenComplete((decision, error) ->
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            reconcileDriveBindingForCurrentOrganization();
+                        }
+                    }));
         }
         refreshProtectedPhotoCounts();
+    }
+
+    private void reconcileDriveBindingForCurrentOrganization() {
+        if (folderPrefs == null || driveBindingGuard == null) {
+            return;
+        }
+
+        OrganizationDriveBindingGuard.Result binding = driveBindingGuard.current();
+        OrganizationDriveBindingGuard.State previousState = lastDriveBindingState;
+        lastDriveBindingState = binding.state();
+
+        if (binding.state() == OrganizationDriveBindingGuard.State.NO_WORKSPACE) {
+            // Ordinary no-workspace state does not represent cross-Organization leakage.
+            // Preserve the current local screen/navigation state when returning from Photos or
+            // Account so existing Work Orders UI behavior is unchanged.
+            renderSavedMaster();
+            setNotBusy();
+            return;
+        }
+
+        if (!binding.isUsable()) {
+            // These are process-memory navigation caches only. Persisted provider identity,
+            // Organization binding metadata, SAF grants, and queued-photo destinations remain
+            // untouched so the owning Organization can safely recover them later.
+            companyFolders.clear();
+            propertyFolders.clear();
+            workOrderFolders.clear();
+            selectedAddress = null;
+            selectedWorkOrder = null;
+            showAddressScreen(false);
+            showHomeInlineMessage(binding.message());
+            renderPropertyCountAndEmptyState();
+            return;
+        }
+
+        clearHomeInlineMessage();
+        if (DriveBindingResumePolicy.shouldReload(previousState, binding.state())) {
+            if (folderPrefs.hasWorkspace()) {
+                refreshCompanyFolders(true, false);
+            } else {
+                refreshAddressFolders();
+            }
+            return;
+        }
+
+        renderSavedMaster();
+        setNotBusy();
     }
 
     @Override
@@ -288,14 +340,10 @@ private void openSavedPhotosFromHome() {
             return;
         }
 
-        final CharSequence[] items;
-        if (!folderPrefs.hasWorkspace()) {
-            items = new CharSequence[]{"Set Up Companies", "Account"};
-        } else if (folderPrefs.getCurrentCompany() == null) {
-            items = new CharSequence[]{"Choose Company", "Add Company", "Change Workspace", "Account"};
-        } else {
-            items = new CharSequence[]{"Add Company", "Edit Company", "Change Workspace", "Account"};
-        }
+        final CharSequence[] items = DriveOptionsPolicy.items(
+                driveBindingGuard.current().isUsable(),
+                folderPrefs.hasWorkspace(),
+                folderPrefs.getCurrentCompany() != null);
 
         new AlertDialog.Builder(this)
                 .setTitle("App & Drive")
@@ -395,9 +443,41 @@ private void buildLegacyWorkOrderUi() {
 }
 
 
+    private void restoreSavedDriveIfUsable() {
+        OrganizationDriveBindingGuard.Result binding = driveBindingGuard.current();
+        lastDriveBindingState = binding.state();
+        if (!binding.isUsable()) {
+            showHomeInlineMessage(binding.message());
+            renderSavedMaster();
+            return;
+        }
+        clearHomeInlineMessage();
+        if (folderPrefs.hasWorkspace()) {
+            refreshCompanyFolders(true, false);
+        } else {
+            refreshAddressFolders();
+        }
+    }
+
+    private Uri usableDriveTreeOrMessage() {
+        try {
+            return driveBindingGuard.requireUsableTreeUri();
+        } catch (IOException error) {
+            showMessage(error.getMessage());
+            renderSavedMaster();
+            return null;
+        }
+    }
+
     private void chooseMasterFolder() {
         if (busy) {
             showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            return;
+        }
+        try {
+            driveBindingGuard.requireValidatedOrganizationForBinding();
+        } catch (IOException error) {
+            showHomeInlineMessage(error.getMessage());
             return;
         }
         new AlertDialog.Builder(this)
@@ -434,13 +514,18 @@ private void buildLegacyWorkOrderUi() {
         try {
             getContentResolver().takePersistableUriPermission(treeUri, grantedFlags);
             DriveFolder workspace = driveClient.getTreeFolder(getContentResolver(), treeUri);
-            folderPrefs.setWorkspaceFolder(treeUri, workspace);
+            String organizationId = driveBindingGuard.requireValidatedOrganizationForBinding();
+            folderPrefs.bindSelectedDriveRoot(treeUri, workspace, organizationId);
             companyFolders.clear();
             propertyFolders.clear();
             notifyFolderAdapters();
             showAddressScreen(false);
             renderSavedMaster();
-            refreshCompanyFolders(true, false);
+            if (folderPrefs.hasWorkspace()) {
+                refreshCompanyFolders(true, false);
+            } else {
+                refreshAddressFolders();
+            }
         } catch (Exception error) {
             showError("Could not keep access to that workspace", error);
         }
@@ -455,9 +540,12 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void refreshCompanyFolders(boolean restoreLegacyCompany, boolean showChooserAfter) {
-        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
         DriveFolder workspace = folderPrefs.getWorkspaceFolder();
-        if (treeUri == null || workspace == null) {
+        if (workspace == null) {
             showMessage("Choose the field-work workspace first.");
             return;
         }
@@ -579,9 +667,12 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void showAddCompanyDialog() {
-        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
         DriveFolder workspace = folderPrefs.getWorkspaceFolder();
-        if (treeUri == null || workspace == null) {
+        if (workspace == null) {
             showMessage("Set up the company workspace first.");
             return;
         }
@@ -607,9 +698,12 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void useOrCreateCompany(String rawName) {
-        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
         DriveFolder workspace = folderPrefs.getWorkspaceFolder();
-        if (treeUri == null || workspace == null) {
+        if (workspace == null) {
             showMessage("Set up the company workspace first.");
             return;
         }
@@ -698,9 +792,11 @@ private void buildLegacyWorkOrderUi() {
             showMessage("Choose a company first.");
             return;
         }
-        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
-        if (treeUri == null || !hasPersistedReadPermission(treeUri)
-                || !hasPersistedWritePermission(treeUri)) {
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
+        if (!hasPersistedWritePermission(treeUri)) {
             showMessage("The workspace needs read/write access before a company can be edited.");
             return;
         }
@@ -723,10 +819,13 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void renameCurrentCompany(String rawName) {
-        Uri treeUri = folderPrefs.getWorkspaceTreeUri();
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
         DriveFolder workspace = folderPrefs.getWorkspaceFolder();
         DriveFolder company = folderPrefs.getCurrentCompany();
-        if (treeUri == null || workspace == null || company == null) {
+        if (workspace == null || company == null) {
             showMessage("Choose a company first.");
             return;
         }
@@ -813,9 +912,12 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void refreshAddressFolders() {
-        Uri treeUri = folderPrefs.getMasterTreeUri();
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
         DriveFolder master = folderPrefs.getMasterFolder();
-        if (treeUri == null || master == null) {
+        if (master == null) {
             showMessage(folderPrefs.hasWorkspace()
                     ? "Choose a company first."
                     : "Choose a master folder first.");
@@ -848,9 +950,12 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void showAddressEntryDialog() {
-        Uri treeUri = folderPrefs.getMasterTreeUri();
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
         DriveFolder master = folderPrefs.getMasterFolder();
-        if (treeUri == null || master == null) {
+        if (master == null) {
             showMessage(folderPrefs.hasWorkspace()
                     ? "Choose a company first."
                     : "Choose a master folder first.");
@@ -879,9 +984,12 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void useOrCreateAddress(String rawName) {
-        Uri treeUri = folderPrefs.getMasterTreeUri();
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
         DriveFolder master = folderPrefs.getMasterFolder();
-        if (treeUri == null || master == null) {
+        if (master == null) {
             showMessage("Choose a master folder first.");
             return;
         }
@@ -1069,7 +1177,7 @@ private void buildLegacyWorkOrderUi() {
         clearHomeInlineMessage();
         applySystemBarAppearance(true);
         setNotBusy();
-        if (refresh && folderPrefs.getMasterTreeUri() != null) {
+        if (refresh && driveBindingGuard.current().isUsable()) {
             if (folderPrefs.hasWorkspace() && folderPrefs.getCurrentCompany() == null) {
                 refreshCompanyFolders(false, false);
             } else {
@@ -1083,9 +1191,8 @@ private void buildLegacyWorkOrderUi() {
             showMessage("Choose an address first.");
             return;
         }
-        Uri treeUri = folderPrefs.getMasterTreeUri();
-        if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
-            showMessage("Drive access expired. Choose the workspace again.");
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
             return;
         }
 
@@ -1171,9 +1278,8 @@ private void buildLegacyWorkOrderUi() {
             showMessage("Choose an address first.");
             return;
         }
-        Uri treeUri = folderPrefs.getMasterTreeUri();
-        if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
-            showMessage("Drive access expired. Choose the workspace again.");
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
             return;
         }
         if (!hasPersistedWritePermission(treeUri)) {
@@ -1293,9 +1399,8 @@ private void buildLegacyWorkOrderUi() {
             showMessage("Select the older work-order folder you want to reuse first.");
             return;
         }
-        Uri treeUri = folderPrefs.getMasterTreeUri();
-        if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
-            showMessage("Drive access expired. Choose the workspace again.");
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
             return;
         }
         if (!hasPersistedWritePermission(treeUri)) {
@@ -1440,9 +1545,8 @@ private void buildLegacyWorkOrderUi() {
             showMessage("Select the older work-order folder you want to clear and reuse first.");
             return;
         }
-        Uri treeUri = folderPrefs.getMasterTreeUri();
-        if (treeUri == null || !hasPersistedReadPermission(treeUri)) {
-            showMessage("Drive access expired. Choose the workspace again.");
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
             return;
         }
         if (!hasPersistedWritePermission(treeUri)) {
@@ -1892,9 +1996,10 @@ private void buildLegacyWorkOrderUi() {
         DriveFolder workspace = folderPrefs.getWorkspaceFolder();
         DriveFolder company = folderPrefs.getCurrentCompany();
         DriveFolder legacyMaster = folderPrefs.getLegacyMasterFolder();
-        DriveFolder activeParent = folderPrefs.getMasterFolder();
         Uri treeUri = folderPrefs.getMasterTreeUri();
-        boolean canRead = treeUri != null && hasPersistedReadPermission(treeUri);
+        OrganizationDriveBindingGuard.Result binding = driveBindingGuard.current();
+        boolean canRead = binding.isUsable();
+        DriveFolder activeParent = canRead ? folderPrefs.getMasterFolder() : null;
 
         if (legacyMasterText != null) {
             legacyMasterText.setText(activeParent == null
@@ -1903,25 +2008,23 @@ private void buildLegacyWorkOrderUi() {
         }
 
         if (homeMasterNameText != null) {
-            if (treeUri == null) {
+            if (!canRead) {
                 homeMasterNameText.setText("Google Drive");
-                homeDriveStateText.setText("Not connected");
-                chooseMasterButton.setText("Connect Drive");
-                chooseMasterButton.setVisibility(View.VISIBLE);
-                refreshAddressButton.setVisibility(View.GONE);
-                driveOptionsButton.setVisibility(View.GONE);
-                tintDriveStatusDot(R.color.home_text_secondary);
-            } else if (!canRead) {
-                DriveFolder labelFolder = company != null
-                        ? company
-                        : (workspace != null ? workspace : legacyMaster);
-                homeMasterNameText.setText(labelFolder == null ? "Google Drive" : labelFolder.name());
-                homeDriveStateText.setText("Drive access expired");
-                chooseMasterButton.setText("Reconnect");
+                homeDriveStateText.setText(binding.state()
+                        == OrganizationDriveBindingGuard.State.NO_WORKSPACE
+                        ? "Not connected"
+                        : binding.message());
+                chooseMasterButton.setText(
+                        binding.state() == OrganizationDriveBindingGuard.State.LEGACY_UNBOUND
+                                ? "Confirm Drive"
+                                : "Connect Drive");
                 chooseMasterButton.setVisibility(View.VISIBLE);
                 refreshAddressButton.setVisibility(View.GONE);
                 driveOptionsButton.setVisibility(View.VISIBLE);
-                tintDriveStatusDot(R.color.home_error);
+                tintDriveStatusDot(binding.state()
+                        == OrganizationDriveBindingGuard.State.NO_WORKSPACE
+                                ? R.color.home_text_secondary
+                                : R.color.home_error);
             } else if (folderPrefs.hasWorkspace()) {
                 chooseMasterButton.setVisibility(View.GONE);
                 refreshAddressButton.setVisibility(View.VISIBLE);
@@ -1951,7 +2054,9 @@ private void buildLegacyWorkOrderUi() {
             refreshAddressButton.setEnabled(canRead && !busy);
         }
         if (driveOptionsButton != null) {
-            driveOptionsButton.setEnabled(treeUri != null && !busy);
+            // The menu is also the only Account/recheck entry point, so it must remain usable
+            // when Drive itself is intentionally blocked.
+            driveOptionsButton.setEnabled(!busy);
         }
         renderCompanySwitchControl(canRead, company);
         renderPropertyCountAndEmptyState();
@@ -1987,9 +2092,8 @@ private void buildLegacyWorkOrderUi() {
             homePropertyCountText.setText(count == 1 ? "1 property" : count + " properties");
         }
         if (homeEmptyText != null) {
-            Uri treeUri = folderPrefs == null ? null : folderPrefs.getMasterTreeUri();
-            boolean connected = treeUri != null
-                    && hasPersistedReadPermission(treeUri)
+            boolean connected = folderPrefs != null
+                    && driveBindingGuard.current().isUsable()
                     && folderPrefs.getMasterFolder() != null;
             homeEmptyText.setVisibility(connected && !busy && propertyFolders.isEmpty()
                     ? View.VISIBLE : View.GONE);
@@ -2002,9 +2106,7 @@ private void buildLegacyWorkOrderUi() {
             return;
         }
         DriveFolder master = folderPrefs.getMasterFolder();
-        Uri treeUri = folderPrefs.getMasterTreeUri();
-        boolean workspaceConnected = treeUri != null
-                && hasPersistedReadPermission(treeUri);
+        boolean workspaceConnected = driveBindingGuard.current().isUsable();
         boolean companySelected = master != null;
         DriveFolder saved = folderPrefs.getCurrentAddress();
         boolean savedPropertyAvailable = saved != null
@@ -2100,8 +2202,8 @@ private void buildLegacyWorkOrderUi() {
     private void setNotBusy() {
         busy = false;
         Uri treeUri = folderPrefs.getMasterTreeUri();
-        boolean canRead = treeUri != null && hasPersistedReadPermission(treeUri);
-        boolean canWrite = treeUri != null && hasPersistedWritePermission(treeUri);
+        boolean canRead = driveBindingGuard.current().isUsable();
+        boolean canWrite = canRead && treeUri != null && hasPersistedWritePermission(treeUri);
 
         if (homeProgress != null) {
             homeProgress.setVisibility(View.GONE);
