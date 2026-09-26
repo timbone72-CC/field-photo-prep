@@ -211,3 +211,14 @@ Physical Samsung check on 2026-09-26:
 - live backend verification matched the Android UI exactly.
 
 This confirms the reversible Owner-to-Member role-change path works without disturbing the remaining active Owner.
+
+
+## PASS — Owner revokes MEMBER
+
+Physical Samsung check on 2026-09-26:
+- `timbone72@gmail.com` changed from `MEMBER / ACTIVE` to `MEMBER / REVOKED`;
+- Owner administration replaced role/revoke controls with **REACTIVATE** for the revoked Membership;
+- original Owner remained `OWNER / ACTIVE`;
+- live backend verification matched the Android UI exactly.
+
+This confirms the Owner revocation path disables the Membership without deleting the identity or accepted invitation record.
