@@ -233,3 +233,32 @@ Current advisors:
 - performance: four informational unindexed foreign keys on `fpp_admin_audit`.
 
 No unexpected deployed authorization drift was found.
+
+
+## PASS — final disposable fixture cleanup
+
+On 2026-09-26 the remaining `Phase 12F Race Fixture` was inspected before deletion:
+- two disposable `.example.invalid` Auth users;
+- two fixture Memberships;
+- zero fixture Invitations;
+- two retained audit rows;
+- zero cross-Organization Membership references;
+- zero cross-Organization invitation/Auth references.
+
+After preserving that evidence, cleanup removed:
+- fixture audit rows;
+- fixture Invitations;
+- fixture Memberships;
+- fixture Organization;
+- both disposable Auth users.
+
+Post-cleanup verification:
+- fixture Organization count = 0;
+- fixture Membership count = 0;
+- fixture Invitation count = 0;
+- fixture audit count = 0;
+- fixture Auth-user count = 0;
+- real `In And Out Cleaner Inspections LLC` Organization count = 1;
+- real ACTIVE OWNER count = 1.
+
+Fixture cleanup is complete and did not touch the production Organization.
