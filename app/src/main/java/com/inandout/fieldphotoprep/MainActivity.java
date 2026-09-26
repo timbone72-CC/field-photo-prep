@@ -326,7 +326,11 @@ private void openSavedPhotosFromHome() {
         }
 
         final CharSequence[] items;
-        if (!folderPrefs.hasWorkspace()) {
+        if (!driveBindingGuard.current().isUsable()) {
+            // Account recovery/recheck must remain reachable even when Drive is blocked.
+            // Do not expose stale company/workspace actions from another Organization.
+            items = new CharSequence[]{"Account"};
+        } else if (!folderPrefs.hasWorkspace()) {
             items = new CharSequence[]{"Set Up Companies", "Account"};
         } else if (folderPrefs.getCurrentCompany() == null) {
             items = new CharSequence[]{"Choose Company", "Add Company", "Change Workspace", "Account"};
@@ -2008,7 +2012,7 @@ private void buildLegacyWorkOrderUi() {
                                 : "Connect Drive");
                 chooseMasterButton.setVisibility(View.VISIBLE);
                 refreshAddressButton.setVisibility(View.GONE);
-                driveOptionsButton.setVisibility(View.GONE);
+                driveOptionsButton.setVisibility(View.VISIBLE);
                 tintDriveStatusDot(binding.state()
                         == OrganizationDriveBindingGuard.State.NO_WORKSPACE
                                 ? R.color.home_text_secondary
@@ -2042,7 +2046,9 @@ private void buildLegacyWorkOrderUi() {
             refreshAddressButton.setEnabled(canRead && !busy);
         }
         if (driveOptionsButton != null) {
-            driveOptionsButton.setEnabled(canRead && !busy);
+            // The menu is also the only Account/recheck entry point, so it must remain usable
+            // when Drive itself is intentionally blocked.
+            driveOptionsButton.setEnabled(!busy);
         }
         renderCompanySwitchControl(canRead, company);
         renderPropertyCountAndEmptyState();
