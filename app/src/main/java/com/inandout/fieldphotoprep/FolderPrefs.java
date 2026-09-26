@@ -62,9 +62,20 @@ public final class FolderPrefs {
     }
 
     DriveBinding getDriveBinding() {
+        Uri workspaceTree = getWorkspaceTreeUri();
+        DriveFolder workspace = getWorkspaceFolder();
+        Uri bindingTree;
+        DriveFolder bindingRoot;
+        if (workspaceTree != null || workspace != null) {
+            bindingTree = workspaceTree;
+            bindingRoot = workspace;
+        } else {
+            bindingTree = getLegacyMasterTreeUri();
+            bindingRoot = getLegacyMasterFolder();
+        }
         return new DriveBinding(
-                getMasterTreeUri(),
-                getBindingRootFolder(),
+                bindingTree,
+                bindingRoot,
                 normalize(prefs.getString(DRIVE_BINDING_ORGANIZATION_ID, null)),
                 prefs.getInt(DRIVE_BINDING_VERSION, 0));
     }

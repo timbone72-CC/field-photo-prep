@@ -272,6 +272,29 @@ public final class FolderPrefsParentBindingInstrumentedTest {
         }
     }
 
+    @Test
+    public void partialWorkspaceStateDoesNotCombineWithLegacyProviderIdentity() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        raw.edit().clear().commit();
+        try {
+            raw.edit()
+                    .putString("master_tree_uri", "content://com.example.documents/tree/legacy")
+                    .putString("master_folder_id", "legacy-root")
+                    .putString("master_folder_name", "HNP Jobs")
+                    .putString("workspace_folder_id", "workspace-root")
+                    .putString("workspace_folder_name", "Photos")
+                    .commit();
+
+            FolderPrefs.DriveBinding binding = new FolderPrefs(context).getDriveBinding();
+
+            assertNull(binding.treeUri());
+            assertEquals("workspace-root", binding.rootFolder().id());
+        } finally {
+            raw.edit().clear().commit();
+        }
+    }
+
     private static void deleteRecursively(File file) {
         if (file == null || !file.exists()) {
             return;
