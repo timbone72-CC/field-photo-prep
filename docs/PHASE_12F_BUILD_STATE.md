@@ -200,3 +200,14 @@ Physical Samsung check on 2026-09-26:
 - live backend verification confirmed exactly two ACTIVE OWNER Memberships for the two tested identities.
 
 This confirms the Owner role-promotion path updates both Android UI and hosted Membership state consistently.
+
+
+## PASS — Owner demotes OWNER back to MEMBER
+
+Physical Samsung check on 2026-09-26:
+- `timbone72@gmail.com` changed from `OWNER / ACTIVE` back to `MEMBER / ACTIVE`;
+- original Owner remained `OWNER / ACTIVE`;
+- Owner administration refreshed to the expected role controls;
+- live backend verification matched the Android UI exactly.
+
+This confirms the reversible Owner-to-Member role-change path works without disturbing the remaining active Owner.
