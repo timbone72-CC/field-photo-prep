@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 Project: `vtyiktvqhbgabawotkrj` — Field Photo Prep
-Status: source-control reconciliation confirmed; core authorization/idempotency/race gates PASS; real invitation delivery PASS; deep-link acceptance and failure/retry gates remain
+Status: source-control reconciliation confirmed; core authorization/idempotency/race gates PASS; real invitation delivery/deep-link acceptance PASS; delivery failure/retry PASS
 
 ## Source-control reconciliation
 
@@ -195,3 +195,22 @@ Retest evidence:
   - resulting Membership status = `ACTIVE`.
 
 This closes the real invitation email/deep-link acceptance gate.
+
+
+## PASS — delivery failure visibility and safe retry
+
+Hosted disposable Race Fixture check on 2026-09-26:
+- disposable invitation created as MEMBER;
+- delivery failure recorded through `fpp_admin_record_invitation_delivery(..., false)`;
+- state became `PENDING / FAILED`, attempt count `1`;
+- same-role prepare returned `RESEND_READY`;
+- the exact same invitation UUID was reused;
+- delivery state reset to `NOT_SENT` while prior attempt count remained;
+- a second failed delivery on the same invitation raised attempt count to `2`;
+- no duplicate invitation was created.
+
+Deployed Edge Function source is still the reconciled PR #74 version and its `inviteError` branch records failed delivery with the same RPC, then returns `DELIVERY_FAILED` with `retryable: true`.
+
+Cleanup:
+- test invitation and associated disposable audit rows removed;
+- `Phase 12F Race Fixture` invitation count returned to 0.
