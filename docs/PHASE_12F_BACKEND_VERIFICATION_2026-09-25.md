@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 Project: `vtyiktvqhbgabawotkrj` — Field Photo Prep
-Status: source-control reconciliation confirmed; core authorization/idempotency/race gates PASS; delivery/email gates remain
+Status: source-control reconciliation confirmed; core authorization/idempotency/race gates PASS; real invitation delivery PASS; deep-link acceptance and failure/retry gates remain
 
 ## Source-control reconciliation
 
@@ -111,11 +111,26 @@ Immediately before the physical invitation gate:
 
 This confirms the real email/deep-link gate has not yet been executed and avoids mistaking rollback-only fixture evidence for a production delivery pass.
 
+## PASS — real invitation email delivery
+
+Physical-device invitation send on 2026-09-25:
+- Android Owner UI created one MEMBER invitation;
+- persisted invitation state was `PENDING`;
+- persisted delivery state was `SENT`;
+- delivery attempt count was exactly `1`;
+- `fpp-owner-invite` returned HTTP 200;
+- Supabase Auth invite endpoint returned HTTP 200;
+- `fpp_admin_record_invitation_delivery` returned HTTP 200;
+- the generated redirect carried the exact FPP invitation UUID into the approved internal callback URI;
+- the invitation email arrived in the invited mailbox.
+
+This proves successful real delivery visibility. It does not yet prove app deep-link acceptance or the explicit delivery-failure/retry path.
+
 ## Remaining backend gates
 
 Still required:
 - delivery failure visibility/retry behavior through the Edge Function;
-- real invitation email/deep-link acceptance on a disposable user;
+- real invitation deep-link acceptance on the disposable user;
 - final RLS/grant/catalog diff and advisors;
 - cleanup of the disposable Race Fixture only after its evidence is no longer needed.
 
