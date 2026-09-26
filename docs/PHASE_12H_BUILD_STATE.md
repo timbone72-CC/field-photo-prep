@@ -269,3 +269,43 @@ The different-Organization isolation gate is not yet marked fully PASS because t
 - revalidate the disposable Organization;
 - return to Home;
 - verify the old HNP/Photos binding remains unavailable after fresh authorization.
+
+
+## Samsung reality gate — different-Organization isolation PASS
+
+Final physical Samsung proof on 2026-09-26 using corrected runtime head
+`e62a911ab8c73165fbc9aac50eca485ef6894830`:
+
+- existing saved Drive binding remained tagged to the real FPP Organization;
+- Android retained the original SAF permission;
+- `timbone72@gmail.com` was temporarily assigned one disposable ACTIVE Organization;
+- account recheck completed successfully under `Phase 12H Isolation Fixture`;
+- after returning to Home, the old **HNP Jobs / Workspace: Photos** binding remained unavailable;
+- Home displayed **0 properties**;
+- UI explicitly reported that the saved Drive workspace belongs to a different Field Photo Prep Organization;
+- UI required connecting that Organization's own workspace;
+- old provider/company/property state did not leak across Organizations.
+
+The disposable fixture was immediately cleaned up afterward:
+- `timbone72@gmail.com` restored to `MEMBER · ACTIVE` in the real Organization;
+- fixture Membership deleted;
+- fixture Organization deleted and verified absent;
+- real Organization retained exactly one ACTIVE OWNER.
+
+This satisfies the different-Organization isolation reality gate.
+
+The runtime lifecycle/UI regressions discovered during this gate were fixed before final PASS:
+- stale Home navigation on return from AuthActivity;
+- ordinary NO_WORKSPACE resume regression;
+- Account/recheck path hidden while Drive was blocked;
+- stale company/workspace actions exposed by an outdated test assumption.
+
+Exact current green runtime CI:
+- runtime head `e62a911ab8c73165fbc9aac50eca485ef6894830`;
+- Android CI run `36246719902`;
+- governance PASS;
+- unit tests PASS;
+- internal APK build PASS;
+- signer verification PASS;
+- instrumented UI/image tests PASS;
+- launch smoke test PASS.
