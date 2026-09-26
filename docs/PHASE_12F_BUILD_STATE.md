@@ -76,7 +76,16 @@ Immediately before the physical invitation gate:
 - persisted `fpp_invitations` rows: **0**
 - matching `fpp-owner-invite` / delivery log events in the inspected prior 24-hour window: **0**
 
-Therefore no real invitation-delivery/deep-link pass has yet been recorded. The next invitation can be treated as the clean Phase 12F reality fixture.
+The first real phone invitation then produced:
+- one persisted MEMBER invitation;
+- status `PENDING`;
+- delivery status `SENT`;
+- delivery attempt count `1`;
+- successful HTTP 200 invite and delivery-record calls;
+- a received invitation email;
+- an approved internal callback containing the exact FPP invitation UUID.
+
+**Real invitation delivery: PASS.** Deep-link/app acceptance remains unproven until the operator opens the received link and completes the next bounded gate.
 
 ## Current advisor state
 
@@ -99,7 +108,7 @@ These advisor findings are recorded for final 12F/12M review; none is currently 
 
 Still required before Phase 12F can be called complete:
 1. prove Edge Function delivery-failure visibility and safe retry behavior;
-2. prove one real disposable invitation email/deep-link acceptance path;
+2. finish the real disposable invitation deep-link acceptance path (email delivery is PASS);
 3. record the final RLS/grant/catalog + advisor snapshot;
 4. finish/record focused Android Owner-administration and invitation UI verification;
 5. run the appropriate final Android regression on the exact final runtime head;
