@@ -8,6 +8,7 @@ This file is the durable handoff point for Phase 12H — Organization ↔ Drive 
 
 - merged Phase 12F / rollback base: `5e3580d3ab769015b7f3c6168022a5def2f308c2`
 - active branch: `phase-12h/organization-drive-binding-protection`
+- draft PR: **#80 — Phase 12H: organization Drive binding protection**
 - change level: **Level 3**
 - merge approval: **PENDING**
 - runtime implementation: **NOT STARTED**
@@ -92,11 +93,18 @@ Physical:
 
 ## Exact next checkpoint
 
-Before runtime coding:
-1. create the draft 12H PR with the Level 3 governance classification;
-2. reconcile the impact/build-state docs into that PR;
-3. inspect the exact current `INTEGRATION_CONTRACT.md` provider gate and the affected Drive/product contract clauses;
-4. then implement the largest coherent automated batch, starting with the local binding store/policy and focused tests.
+Pre-implementation gates are complete:
+1. draft PR #80 created with the Level 3 governance classification;
+2. impact/build-state docs reconciled into the authoritative PR;
+3. current `INTEGRATION_CONTRACT.md`, `CONTRACT.md`, `RULE_INDEX.md`, and `rules/testing/DRIVE_PROVIDER.md` re-read against the merged Phase 12F baseline.
+
+Next implement the largest coherent automated batch, starting with:
+- local Organization-tagged binding metadata/policy;
+- legacy-unbound and wrong-Organization fail-closed behavior;
+- one shared binding guard consumed by Home and Photos;
+- focused store/policy/bypass/immutable-destination tests.
+
+Do not run the real-provider gate until the automated/runtime batch is internally coherent and CI-clean.
 
 Stop if:
 - a second persisted Drive-binding system appears necessary;
