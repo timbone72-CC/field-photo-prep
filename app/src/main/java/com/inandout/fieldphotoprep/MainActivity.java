@@ -325,18 +325,10 @@ private void openSavedPhotosFromHome() {
             return;
         }
 
-        final CharSequence[] items;
-        if (!driveBindingGuard.current().isUsable()) {
-            // Account recovery/recheck must remain reachable even when Drive is blocked.
-            // Do not expose stale company/workspace actions from another Organization.
-            items = new CharSequence[]{"Account"};
-        } else if (!folderPrefs.hasWorkspace()) {
-            items = new CharSequence[]{"Set Up Companies", "Account"};
-        } else if (folderPrefs.getCurrentCompany() == null) {
-            items = new CharSequence[]{"Choose Company", "Add Company", "Change Workspace", "Account"};
-        } else {
-            items = new CharSequence[]{"Add Company", "Edit Company", "Change Workspace", "Account"};
-        }
+        final CharSequence[] items = DriveOptionsPolicy.items(
+                driveBindingGuard.current().isUsable(),
+                folderPrefs.hasWorkspace(),
+                folderPrefs.getCurrentCompany() != null);
 
         new AlertDialog.Builder(this)
                 .setTitle("App & Drive")
