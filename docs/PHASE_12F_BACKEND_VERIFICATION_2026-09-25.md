@@ -214,3 +214,22 @@ Deployed Edge Function source is still the reconciled PR #74 version and its `in
 Cleanup:
 - test invitation and associated disposable audit rows removed;
 - `Phase 12F Race Fixture` invitation count returned to 0.
+
+
+## PASS — final hosted authorization/catalog snapshot
+
+Final recheck on 2026-09-26:
+- live migration history remains exactly the four expected Phase 12C/12F versions;
+- `fpp-owner-invite` remains ACTIVE version 1 with JWT verification enabled;
+- RLS remains enabled on all four Phase 12 identity/admin tables;
+- authenticated table access remains SELECT-only for Organizations/Memberships/Invitations;
+- `fpp_admin_audit` remains unavailable as a client table surface;
+- the ten approved public SECURITY DEFINER RPCs remain authenticated/service_role-only, not anon;
+- private lock/require-owner/audit-write helpers remain unavailable to authenticated/anon;
+- Phase 12C private RLS predicates `fpp_is_active_member` and `fpp_is_active_owner` remain intentionally executable by authenticated, matching their source-controlled migration and RLS design.
+
+Current advisors:
+- security: only the known audit-no-policy INFO, ten intentional SECURITY DEFINER WARN findings, and leaked-password-protection WARN;
+- performance: four informational unindexed foreign keys on `fpp_admin_audit`.
+
+No unexpected deployed authorization drift was found.
