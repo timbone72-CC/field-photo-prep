@@ -141,3 +141,20 @@ Stop if:
 - Supabase would need Drive provider identity;
 - current provider/live state contradicts the approved design;
 - scope expands beyond the documented 12H boundary.
+
+
+## Samsung reality gate — legacy workspace quarantine PASS
+
+Physical Samsung evidence on 2026-09-26 using the exact green 12H runtime build from commit `114ccc5747488757dc824435e49713387e13459a`:
+
+- app updated over the existing installation;
+- existing pre-12H Drive provider state remained present locally;
+- app did **not** silently reuse that workspace;
+- Home rendered Drive as disconnected/quarantined;
+- UI showed **Confirm Drive**;
+- UI message: saved Drive workspace must be confirmed for the current Field Photo Prep Organization;
+- property list remained unavailable until confirmation.
+
+This satisfies the first physical gate: legacy untagged Drive state is quarantined rather than automatically assigned to the signed-in Organization.
+
+Next physical step: deliberately confirm/reselect the intended exact workspace through Android SAF, then verify same-Organization restart reuse.
