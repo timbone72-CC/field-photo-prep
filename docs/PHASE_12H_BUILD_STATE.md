@@ -175,3 +175,22 @@ Physical Samsung evidence on 2026-09-26 using the exact green 12H runtime build:
 This satisfies the explicit same-Organization confirmation/reconnect gate.
 
 Next physical step: fully close/reopen FPP and verify the same Organization reuses the now-tagged binding without asking for Drive confirmation again.
+
+
+## Samsung reality gate — same-Organization restart reuse PASS
+
+Physical Samsung evidence on 2026-09-26 using the exact green 12H runtime build:
+
+- FPP was fully closed after explicit Drive confirmation;
+- app was reopened without reconnecting or changing Drive state;
+- the saved Organization-tagged binding was reused automatically for the same authorized Organization;
+- Home reopened connected to **HNP Jobs** under **Workspace: Photos**;
+- existing property list restored with 25 properties;
+- no **Confirm Drive** prompt reappeared.
+
+This satisfies the same-Organization restart/reuse gate.
+
+Remaining physical 12H evidence:
+- prove a different Organization cannot silently inherit this workspace while Android still retains the old SAF permission;
+- verify deliberate reconnect still uses Android SAF;
+- preserve/verify queued-photo destination identities and unrelated Drive content.
