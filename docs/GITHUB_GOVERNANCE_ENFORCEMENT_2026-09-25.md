@@ -58,7 +58,29 @@ Workflow-changing head `78860e9e08c7d95d29b268fb1ed4f8e7d8c2d8ae`:
 - instrumented image tests/internal launch smoke: PASS;
 - artifact packaging: PASS.
 
-Because this PR also changes workflow YAML, every head in this PR correctly requires the full Android pipeline. The lightweight documentation path must be proven on the next separate PR whose complete diff is Markdown-only; do not claim that gate from this workflow-changing PR.
+PR #77 provided the separate Markdown-only proof:
+- exact head `c3907453d91cc0f291606ec4e5e8bf93b336b20e`;
+- Android CI run `36197963431`: **PASS**;
+- scope detection: PASS;
+- Markdown-only verification: PASS;
+- Java setup: SKIPPED;
+- Gradle setup: SKIPPED;
+- unit tests: SKIPPED;
+- debug build: SKIPPED;
+- stable signer verification: SKIPPED;
+- KVM/emulator/launch smoke: SKIPPED;
+- APK/evidence artifact upload: SKIPPED.
+
+Therefore the stable `test` check now proves both paths:
+- non-Markdown PR → full Android verification;
+- Markdown-only PR → lightweight documentation verification without runtime work.
+
+The Governance Check has also passed on:
+- active Phase 12F PR #74;
+- deferred UNCERTAIN reconciliation PR #39;
+- routed testing-rule PR #77.
+
+The two pre-existing open PRs now carry the required structured governance classification.
 
 ## Branch-protection target after this check exists
 
@@ -73,4 +95,24 @@ For `main`, the recommended GitHub protection is:
 - do not require signed commits;
 - do not require linear history.
 
-Repository administration settings are not modified by this branch.
+Current repository-admin state rechecked after the governance workflow merges:
+- `main` is still reported by GitHub as `protected: false`;
+- repository rulesets list is still empty.
+
+So the workflows and metadata checks are active, but they are not yet a hard merge barrier until GitHub branch protection/ruleset configuration is enabled.
+
+The connected GitHub integration available to this work can read branch/ruleset state but does not expose administration-write operations for branch protection. Enabling the final protection therefore remains an explicit repository-admin action outside this source-control branch.
+
+Recommended `main` settings:
+- require a pull request before merging;
+- require status checks `Governance Check / governance` and `Android CI / test`;
+- use loose status checks (do not require branch to be up to date solely for documentation-only main changes);
+- require conversation resolution;
+- do not require approving reviews;
+- do not require signed commits;
+- do not require linear history;
+- do not allow force pushes;
+- do not allow deletions;
+- apply protections to administrators / disable bypass when the selected GitHub UI option permits it, so the owner cannot accidentally bypass the same safety gates.
+
+Until that repository-admin setting is enabled, the contracts and checks still govern the workflow, but GitHub itself can technically permit a bypass.
