@@ -738,8 +738,12 @@ Completed verification:
 - Samsung invitation/member/role/revoke/reactivate/last-Owner reality gates: PASS;
 - final Android regression on current Phase 12F runtime content: Android CI run `36241181047` PASS at branch snapshot `2772ebdcc9165c2b6aae6c30f875a1c87f185a7c`.
 
+Completed cleanup:
+- disposable `Phase 12F Race Fixture` removed after preserving verification evidence;
+- fixture Organization, Memberships, Invitations, audit rows, and two `.example.invalid` Auth users verified at zero;
+- real `In And Out Cleaner Inspections LLC` Organization remained present with one ACTIVE OWNER.
+
 Still required before completion:
-- remove the remaining disposable Phase 12F Race Fixture after preserving its evidence;
 - obtain explicit Level 3 operator merge approval.
 
 Durable handoff:
