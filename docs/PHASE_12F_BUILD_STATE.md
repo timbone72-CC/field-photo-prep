@@ -166,3 +166,15 @@ Physical Samsung check on 2026-09-26:
 - app explicitly reported that the Drive workspace and local field data were left unchanged.
 
 This confirms the identity transition did not destructively reset the existing field workspace.
+
+
+## PASS — Owner access restored after MEMBER sign-out
+
+Physical Samsung check on 2026-09-26:
+- MEMBER account signed out successfully;
+- original Owner account `inandoutinspections2026@gmail.com` signed back in successfully;
+- Organization resolved correctly to `In And Out Cleaner Inspections LLC`;
+- role resolved correctly to `OWNER`;
+- **Manage Members** was visible again.
+
+This confirms the Owner/member identity transition restores Owner-only administration without carrying the prior MEMBER authorization state forward.
