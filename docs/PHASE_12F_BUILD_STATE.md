@@ -156,3 +156,13 @@ Physical Samsung check on 2026-09-25:
 - **Manage Members** was not present.
 
 This confirms the Android UI does not expose Owner administration to an ACTIVE MEMBER after real invitation acceptance.
+
+
+## PASS — MEMBER sign-out preserves field workspace
+
+Physical Samsung check on 2026-09-26:
+- signed out from the accepted ACTIVE MEMBER account;
+- app returned to the Field Photo Prep sign-in screen;
+- app explicitly reported that the Drive workspace and local field data were left unchanged.
+
+This confirms the identity transition did not destructively reset the existing field workspace.
