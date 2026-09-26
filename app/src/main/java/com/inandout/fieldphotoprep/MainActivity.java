@@ -136,10 +136,45 @@ public final class MainActivity extends Activity {
         super.onResume();
         FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
         RuntimeAuthorizationManager manager = app.authorizationManager();
+
+        // Re-evaluate immediately from the stored session before rendering any Drive state.
+        // This is essential when AuthActivity replaced the current User/Organization while this
+        // MainActivity instance remained underneath it on the Android back stack.
+        reconcileDriveBindingForCurrentOrganization();
+
         if (manager != null) {
-            manager.revalidateAsync();
+            manager.revalidateAsync().whenComplete((decision, error) ->
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            reconcileDriveBindingForCurrentOrganization();
+                        }
+                    }));
         }
         refreshProtectedPhotoCounts();
+    }
+
+    private void reconcileDriveBindingForCurrentOrganization() {
+        if (folderPrefs == null || driveBindingGuard == null) {
+            return;
+        }
+
+        OrganizationDriveBindingGuard.Result binding = driveBindingGuard.current();
+        if (!binding.isUsable()) {
+            // These are process-memory navigation caches only. Persisted provider identity,
+            // Organization binding metadata, SAF grants, and queued-photo destinations remain
+            // untouched so the owning Organization can safely recover them later.
+            companyFolders.clear();
+            propertyFolders.clear();
+            workOrderFolders.clear();
+            selectedAddress = null;
+            selectedWorkOrder = null;
+            showAddressScreen(false);
+            showHomeInlineMessage(binding.message());
+            return;
+        }
+
+        renderSavedMaster();
+        setNotBusy();
     }
 
     @Override
