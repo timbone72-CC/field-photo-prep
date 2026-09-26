@@ -10,15 +10,16 @@ The live project already had these applied migrations before the 12F Git branch 
 - `20260925195816_phase_12f_owner_member_admin`
 - `20260925195901_phase_12f_rpc_grant_hardening`
 
-The branch now source-controls reconstructed versions of both applied migration files and the deployed `fpp-owner-invite` Edge Function.
+The branch source-controls reconstructed versions of both applied migration files and the deployed `fpp-owner-invite` Edge Function.
 
 Recheck on 2026-09-25:
+- project status is **ACTIVE_HEALTHY**;
 - live migration history still contains the exact two Phase 12F versions above;
 - deployed `fpp-owner-invite` is ACTIVE version 1 with JWT verification enabled;
-- deployed `index.ts` text is an exact match to PR #74 source;
+- deployed `index.ts` text remains an exact match to PR #74 source;
 - current advisor output remains limited to the already-recorded audit-table/RPC/password warnings and informational performance findings.
 
-The last runtime/backend implementation checkpoint before documentation-only cleanup is `a0f12f75d08d596a5bfc53169e879a31fbb392dd`; Android CI run `36190542857` passed.
+The Phase 12F Android/backend implementation checkpoint is `a0f12f75d08d596a5bfc53169e879a31fbb392dd`; Android CI run `36190542857` passed. After governance/CI integration, branch snapshot `05a7c761bd56f41eb4923da87e50349349a53b54` also passed Android CI run `36203850206`.
 
 ## Live ACL / RLS observations
 
@@ -34,7 +35,7 @@ Supabase security advisor reports:
 - WARN: authenticated can execute the ten SECURITY DEFINER RPCs — intentional only because each is the narrow public server operation and internally validates caller/Organization.
 - WARN: leaked-password protection disabled — existing Free-plan limitation recorded in Phase 12C.
 
-Performance advisor reports audit foreign-key indexes as informational opportunities; no current correctness blocker.
+Performance advisor reports four audit foreign-key indexes as informational opportunities and two invitation indexes as currently unused; no current correctness blocker.
 
 ## Disposable fixture
 
@@ -101,6 +102,14 @@ Rollback-only hosted checks:
 - matching invited identity after forced expiry -> `EXPIRED`, no Membership activation.
 
 These checks used only the disposable Phase 12F fixture and rolled back.
+
+## Clean pre-reality-gate baseline
+
+Immediately before the physical invitation gate:
+- persisted `public.fpp_invitations` rows: **0**;
+- no matching `fpp-owner-invite` / delivery events were found in the inspected previous 24-hour Edge Function log window.
+
+This confirms the real email/deep-link gate has not yet been executed and avoids mistaking rollback-only fixture evidence for a production delivery pass.
 
 ## Remaining backend gates
 
