@@ -11,7 +11,7 @@ This file is the durable handoff point for Phase 12H — Organization ↔ Drive 
 - draft PR: **#80 — Phase 12H: organization Drive binding protection**
 - change level: **Level 3**
 - merge approval: **PENDING**
-- runtime implementation: **NOT STARTED**
+- runtime implementation: **FIRST AUTOMATED BATCH PASS**
 
 Do not implement 12H on the old Phase 12F branch and do not modify `main` directly.
 
@@ -91,20 +91,49 @@ Final:
 Physical:
 - smallest real Samsung + disposable Google Drive provider gate after automated work is complete.
 
+## Automated runtime checkpoint — PASS
+
+Exact tested runtime head: `114ccc5747488757dc824435e49713387e13459a`.
+
+Android CI run `36243441754` completed successfully on 2026-09-26.
+
+PASS evidence:
+- governance check;
+- unit tests;
+- internal debug build;
+- stable test APK signer verification;
+- instrumented image tests;
+- internal launch smoke test;
+- APK artifact upload;
+- rendered/test-evidence artifact upload.
+
+Implemented and covered:
+- local Organization UUID + binding-version metadata beside the existing provider-bound Drive root;
+- legacy untagged workspace quarantined/fail-closed;
+- wrong-Organization binding rejected without rewriting stored Drive identity;
+- same exact provider root can be explicitly confirmed and tagged without clearing company/address/work-order navigation;
+- different provider root uses existing navigation-clearing behavior while queued destination IDs remain unchanged;
+- corrupt/partial workspace state fails closed;
+- Home and Photos consume one shared Organization/Drive binding guard;
+- Photos has no direct raw `FolderPrefs.getMasterTreeUri()` upload/reconciliation bypass;
+- new capture requires a usable Organization/Drive binding because the capture record carries the selected provider destination;
+- GRACE may reuse an already-correct binding, but only online `VALIDATED` authorization may create/rebind one;
+- Phase 12E `AuthActivity` remains the single protected-work identity-transition guard and blocks cross-User/Organization session replacement while protected work exists.
+
 ## Exact next checkpoint
 
-Pre-implementation gates are complete:
-1. draft PR #80 created with the Level 3 governance classification;
-2. impact/build-state docs reconciled into the authoritative PR;
-3. current `INTEGRATION_CONTRACT.md`, `CONTRACT.md`, `RULE_INDEX.md`, and `rules/testing/DRIVE_PROVIDER.md` re-read against the merged Phase 12F baseline.
+Run the smallest required Samsung + disposable real Google Drive provider gate against the exact green runtime head `114ccc5747488757dc824435e49713387e13459a`.
 
-Next implement the largest coherent automated batch, starting with:
-- local Organization-tagged binding metadata/policy;
-- legacy-unbound and wrong-Organization fail-closed behavior;
-- one shared binding guard consumed by Home and Photos;
-- focused store/policy/bypass/immutable-destination tests.
+Prove only:
+1. legacy saved workspace is shown as needing explicit confirmation rather than silently reused;
+2. current validated Organization can deliberately confirm/reselect the intended workspace through Android SAF;
+3. app restart reuses the now-tagged binding for that same Organization;
+4. a different Organization cannot silently inherit that workspace even if Android retains the old SAF permission;
+5. reconnect uses the Android SAF picker;
+6. queued-photo destination IDs remain unchanged;
+7. unrelated Drive content is untouched.
 
-Do not run the real-provider gate until the automated/runtime batch is internally coherent and CI-clean.
+Do not broaden this into production-release testing or a second-device portability claim.
 
 Stop if:
 - a second persisted Drive-binding system appears necessary;
