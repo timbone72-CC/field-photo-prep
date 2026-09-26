@@ -2,194 +2,142 @@
 
 ## Purpose
 
-This file defines the universal operating rules for work in this repository. It is intentionally short. Detailed product, testing, integration, and feature rules are loaded only when the current work touches those surfaces.
+These are the universal work-control rules. Detailed product and feature rules are loaded through `RULE_INDEX.md`.
 
-The goal is not to force small changes. The goal is to make the largest coherent change that can be understood, reversed, and verified safely.
+Goal: make the largest coherent change that can be understood, reversed, and verified safely.
 
-## Mandatory operating cycle
+## Operating cycle
 
-For every task that may change the repository or an external project system:
+For repository or live-system work:
 
-1. **Discover** — inspect current `main`, open pull requests, relevant active branches, the active build-state record, and any project-defined live external systems touched by the work.
-2. **Classify** — state the requested scope, affected surfaces, change level, required rule packs, protected behavior, and rollback point.
-3. **Continue the authoritative line** — if an active branch/PR already owns the same or overlapping scope, continue it. Do not create a competing implementation line.
-4. **Plan the largest safe batch** — group as much related work as can be understood and verified together. Do not fragment work merely for caution, and do not combine unrelated concerns merely for size.
-5. **Implement within ownership boundaries** — use the existing owner of each behavior/state. Do not create a second state machine, persistence path, remote-write path, or user workflow for the same responsibility without an approved design change.
-6. **Verify proportionally** — use the rule packs selected by `RULE_INDEX.md`. A required failure stops the affected work.
-7. **Reconcile external state** — any persistent live-system change must be represented in source control or, when source control cannot represent it, recorded precisely in the active build-state/evidence record before proceeding.
-8. **Update the handoff** — keep the active build-state record accurate enough that a fresh agent can resume without reconstructing the project from chat history.
-9. **Close atomically** — a phase/scope is not complete until code/configuration, tests/evidence, external-state parity, status/roadmap records, and merge/approval state agree.
+1. **Discover** — inspect `main`, open PRs/active branches, active build-state, and touched live systems.
+2. **Classify** — record scope, surfaces, risk level, rule packs, protected behavior, rollback, and verification.
+3. **Continue** — use the one authoritative branch/PR for overlapping scope.
+4. **Batch safely** — group all related work that can be understood and verified together.
+5. **Implement in the owning path** — do not create duplicate state machines, persistence paths, remote-write paths, or user workflows without an approved design change.
+6. **Verify proportionally** — a required failure stops the affected path.
+7. **Reconcile external state** — persistent live changes must match source control or be precisely recorded when source control cannot represent them.
+8. **Handoff** — keep one durable status record sufficient for a fresh agent to resume.
+9. **Close atomically** — implementation, evidence, external state, roadmap/status, approval, and merge/deployment state must agree.
 
 ## One authoritative implementation line
 
-Only one branch/PR may be authoritative for the same or materially overlapping implementation scope.
+Only one branch/PR may be authoritative for the same or materially overlapping scope.
 
-Before creating a branch:
-- inspect open PRs;
-- inspect relevant active branches;
-- inspect the active build-state record;
-- compare the proposed scope with existing work.
+Before creating a branch, check open PRs, relevant branches, and the active build-state record.
 
-If an authoritative line exists, continue it.
+If a line already owns the scope, continue it. A replacement line must explicitly record:
+- why the old line is superseded;
+- what state carries forward;
+- the new authoritative line;
+- disposition of the old PR/branch.
 
-A replacement line is allowed only when the existing line is explicitly superseded. Record:
-- why the old line cannot safely continue;
-- what state is being carried forward;
-- which line is now authoritative;
-- what happens to the old PR/branch.
+Preserve history. Do not silently restart active work from `main`.
 
-Preserve history. Do not silently abandon one implementation and start the same work again from `main`.
+Independent branches are allowed only for genuinely non-overlapping ownership/surfaces.
 
-Unrelated work may use a separate branch only when ownership and affected surfaces do not overlap in a way that creates competing state or conflicting source-of-truth.
+## Source of truth
 
-## Source-of-truth rule
+Completed work: governed `main`.
 
-For completed work, `main` is the governed code baseline.
+In-progress work: governed `main` + the one authoritative branch/PR + its durable build-state/impact record + any legitimate live external state for that work.
 
-For in-progress work, source of truth is the combination of:
-- governed `main`;
-- the single authoritative active branch/PR;
-- its durable build-state/impact record;
-- the project-defined live external systems that the active work legitimately changes.
+Do not compare a live system only with `main` while ignoring an active branch.
 
-Do not compare a live system only to `main` and call it drift while ignoring an existing authoritative active branch.
-
-If these sources disagree materially, stop implementation and reconcile the disagreement before creating replacement code, migrations, services, or state.
+Material disagreement among these sources stops implementation until reconciled.
 
 ## External-state parity
 
-Persistent changes to databases, hosted functions, cloud configuration, deployments, permissions, schemas, or other project-defined live systems must not become an undocumented second source of truth.
+Databases, hosted functions, cloud configuration, permissions, schemas, deployments, and other project-defined live systems must not become undocumented second sources of truth.
 
-When a live change can be represented in source control:
-- capture it on the authoritative branch under the exact applicable version/history;
-- verify the source representation matches the live state before continuing beyond that checkpoint.
+If representable in source control, capture the exact live change on the authoritative branch and verify parity before proceeding.
 
-When a live setting cannot be represented directly in source control:
-- record its exact purpose, value class (never secrets), environment, verification evidence, and rollback/recovery instruction in the active project record.
+If not representable in source control, record purpose, environment, non-secret value/class, evidence, and rollback/recovery in the active project record.
 
-Never build a second backend or replacement external path merely because `main` is behind active work.
+Do not create a replacement backend/path merely because `main` is behind active work.
 
-## Work classification
+## Classification and risk
 
-Before implementation, record:
+Use `RULE_INDEX.md` and `CHANGE_CONTROL_CONTRACT.md`.
 
-- **Goal**
-- **Affected surfaces**
-- **Change level**
-- **Authoritative branch/PR**
-- **Required rule packs**
-- **Protected behavior**
-- **External systems touched**
-- **Rollback point**
-- **Verification boundary**
+Every implementation classification includes:
+- goal;
+- affected surfaces;
+- Level 1/2/3;
+- authoritative branch/PR;
+- rule packs;
+- protected behavior;
+- external systems;
+- rollback;
+- verification boundary.
 
-Use `RULE_INDEX.md` to choose the applicable rule packs.
-
-If work begins touching a surface not in the classification, reclassify before continuing that expanded work. If the expansion changes risk, raise the change level.
-
-## Change levels
-
-The detailed definitions remain in `CHANGE_CONTROL_CONTRACT.md`.
-
-- **Level 1** — low-risk documentation, comments, noninteractive copy, or equivalent changes that cannot alter protected runtime behavior.
-- **Level 2** — normal feature/fix work that does not change high-risk persistence, destination, permission, destructive, retry, or deployment semantics.
-- **Level 3** — high-risk changes involving persisted schemas, migrations, destructive behavior, provider/account selection, destination identity, retry/idempotency, protected-data risk, or deployment/signing.
-
-When uncertain, use the higher level.
+If scope expands, reclassify first. When uncertain between levels, use the higher level.
 
 Level 3 requires explicit operator approval before merge.
 
-## Safe batch sizing
+## Largest-safe-batch rule
 
-Prefer the largest coherent batch whose:
-- scope is stable;
-- dependencies are understood;
-- ownership is clear;
-- rollback is known;
-- verification can prove the whole batch.
+Prefer the largest coherent batch with stable scope, understood dependencies/ownership, known rollback, and a verification boundary that can prove the whole batch.
 
-Do not stop merely because the batch is large.
+Do not stop merely because work is large.
 
-Stop at a genuine boundary:
-- an unverified structural assumption;
-- a required user/product decision;
-- a physical-device or external reality gate that cannot be proven otherwise;
-- a required test failure;
-- external-state disagreement;
-- scope expansion requiring reclassification;
-- explicit Level 3 merge approval.
+Stop at a genuine boundary: unresolved structural assumption, required product decision, physical/external reality gate, required failure, external-state disagreement, material scope expansion, or Level 3 merge approval.
 
-## Consistency rule
+## Consistency
 
-The app and operator workflow are protected behavior.
+App behavior and operator workflow are protected behavior unless intentionally changed.
 
-Unless the approved scope intentionally changes them:
-- preserve established terminology, navigation patterns, status meanings, and action order;
-- prefer extending the existing canonical flow over adding an alternate flow for the same job;
-- reuse existing behavior/state owners instead of duplicating logic;
-- keep one authoritative representation for each identity, destination, queue state, authorization state, and remote-write decision;
-- treat visual consistency and workflow consistency as regression concerns, not optional polish.
+Preserve established terminology, navigation, status meanings, action order, and canonical flows. Extend existing owners rather than creating alternate paths for the same job.
 
-## Failure rule
+Keep one authoritative representation for each identity, destination, queue state, authorization state, persistence decision, and remote-write decision.
+
+Treat workflow and visual consistency as regression concerns.
+
+## Failure and verification
 
 A required test, verification gate, or structural precondition failure stops the affected merge/publication/deployment path.
 
-Do not report a failed or incomplete gate as passed.
+Do not report failed or incomplete evidence as passed. Fix the bounded defect, rerun focused evidence first, then required final verification.
 
-Fix the bounded defect, rerun the focused evidence first, then run the required final verification when the branch is ready.
+## Durable handoff
 
-## Handoff requirement
-
-Every active Level 2 or Level 3 scope must have one durable handoff record. It must identify at least:
-- governed base / rollback commit;
-- authoritative branch and PR;
-- current implementation head;
+Each active Level 2/3 scope has one handoff record containing:
+- governed base/rollback;
+- authoritative branch/PR and current implementation head;
 - completed work;
 - live external state touched;
-- tests/evidence already passed;
-- known failures or limitations;
-- exact remaining gates;
-- exact next checkpoint;
+- passed evidence;
+- known failures/limitations;
+- remaining gates and exact next checkpoint;
 - approval/merge status.
 
-The handoff is status, not a substitute for product contracts or design documents.
+The handoff records status; it does not replace behavior/design contracts.
 
-## Closeout rule
+## Closeout
 
 A phase/scope is complete only when:
-- the intended implementation/configuration is on the approved line;
-- required tests and reality gates pass;
-- external state matches the recorded/source-controlled state;
-- disposable fixtures are cleaned or deliberately documented as retained;
-- roadmap/status documents reflect reality;
-- superseded competing lines are closed or clearly quarantined;
+- intended implementation/configuration is on the approved line;
+- required automated/reality evidence passes;
+- external state is reconciled;
+- disposable fixtures are cleaned or deliberately retained/documented;
+- roadmap/status reflects reality;
+- competing lines are closed/quarantined;
 - required approval is recorded;
 - merge/deployment state is unambiguous.
 
-Do not leave the roadmap saying “NEXT” for work that has already merged.
-
 ## GitHub enforcement boundary
 
-GitHub should mechanically enforce the governance facts it can observe:
-- changes to `main` arrive through pull requests;
-- required repository status checks pass;
-- force pushes and branch deletion are blocked;
-- unresolved review conversations block merge where configured;
-- pull requests carry the machine-readable classification required by the repository governance check.
+GitHub should enforce what it can observe: PR-based changes to `main`, required checks, no force-push/delete, conversation resolution where configured, and machine-readable PR classification.
 
-GitHub cannot independently understand whether an AI chose every correct rule pack, whether a live external system truly matches source, whether a workflow is semantically consistent for the operator, or whether a recorded approval was genuinely spoken by the operator when automation shares the operator's GitHub identity.
+GitHub cannot prove semantic choices such as correct rule-pack selection, workflow quality, live-system parity, or that a recorded operator approval was genuinely spoken when automation shares the operator identity. Contracts and operator review remain authoritative for those decisions.
 
-Those semantic decisions remain governed here and in the applicable project rule packs. Machine enforcement supplements the contracts; it does not replace them.
+## Precedence
 
-## Rule precedence
+When documents disagree, stop and reconcile. Precedence:
+1. `GOVERNANCE.md` — work-control/process;
+2. `PROJECT_PROFILE.md` — project systems/boundaries;
+3. product/domain contracts — approved behavior;
+4. approved phase/design/impact records — current change design;
+5. active build-state record — current status/continuation point.
 
-When project documents disagree, reconcile the conflict rather than choosing whichever instruction is convenient.
-
-Use this order:
-1. this governance file for work-control/process rules;
-2. `PROJECT_PROFILE.md` for project-specific systems and permanent project boundaries;
-3. product/domain contracts for approved behavior;
-4. approved phase/design/impact records for the current change;
-5. active build-state records for current status and continuation point.
-
-A lower layer may add detail but may not silently override a higher layer.
+Lower layers may add detail but may not silently override higher layers.
