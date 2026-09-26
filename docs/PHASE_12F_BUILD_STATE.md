@@ -247,3 +247,17 @@ Physical Samsung check on 2026-09-26:
 - `fpp_admin_audit` recorded `MEMBERSHIP_REVOKED / REJECTED` for the attempted Owner revocation.
 
 This confirms the real-device Owner administration path cannot revoke the final active Owner.
+
+
+## PASS — real-device last-Owner demotion protection
+
+Physical Samsung check on 2026-09-26:
+- organization state before the attempt:
+  - `inandoutinspections2026@gmail.com` = `OWNER / ACTIVE`;
+  - `timbone72@gmail.com` = `MEMBER / ACTIVE`;
+- Owner tapped **MAKE MEMBER** on the original Owner Membership;
+- Android administration screen remained unchanged;
+- live backend state remained exactly one ACTIVE OWNER and one ACTIVE MEMBER;
+- `fpp_admin_audit` recorded `MEMBERSHIP_ROLE_CHANGED / REJECTED` for the attempted demotion.
+
+This confirms the real-device Owner administration path cannot demote the final active Owner.
