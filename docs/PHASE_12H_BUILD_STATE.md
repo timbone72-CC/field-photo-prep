@@ -224,3 +224,26 @@ Required fix:
 - do not clear the saved old-Organization binding merely because another Organization is signed in.
 
 The different-Organization physical gate remains **FAIL** until rerun on a fixed green APK.
+
+
+## Cross-Organization resume fix — automated PASS
+
+The first lifecycle fix at `74646e89241636946a55ea0f8ab26c0e12d70591` correctly added binding reconciliation on `MainActivity.onResume()`, but Android CI exposed an over-broad regression: ordinary `NO_WORKSPACE` resumes were forcing Work Orders/Photos navigation back to Home.
+
+That regression was corrected at runtime commit `79e505e1703624b81d56b1810063a1904df9fd76`:
+- `NO_WORKSPACE` preserves the current local screen/navigation state;
+- saved-but-unusable binding states (including wrong Organization, legacy unbound, invalid binding, permission missing, and authorization-required cases) still clear only in-memory Drive navigation and render the safe disconnected/quarantined Home state;
+- persisted provider IDs, Organization binding metadata, SAF grants, and queued-photo destinations remain untouched.
+
+Exact corrected Android CI:
+- run `36245357592`
+- runtime head `79e505e1703624b81d56b1810063a1904df9fd76`
+- governance: PASS
+- unit tests: PASS
+- internal debug build: PASS
+- stable test APK signer verification: PASS
+- instrumented image/UI tests: PASS
+- internal launch smoke test: PASS
+- APK/test evidence artifact upload: PASS
+
+Next checkpoint: rerun only the previously failed physical different-Organization isolation gate on the corrected APK.
