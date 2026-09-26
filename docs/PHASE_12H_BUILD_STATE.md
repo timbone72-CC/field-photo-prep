@@ -158,3 +158,20 @@ Physical Samsung evidence on 2026-09-26 using the exact green 12H runtime build 
 This satisfies the first physical gate: legacy untagged Drive state is quarantined rather than automatically assigned to the signed-in Organization.
 
 Next physical step: deliberately confirm/reselect the intended exact workspace through Android SAF, then verify same-Organization restart reuse.
+
+
+## Samsung reality gate — explicit same-Organization confirmation PASS
+
+Physical Samsung evidence on 2026-09-26 using the exact green 12H runtime build:
+
+- operator tapped **Confirm Drive** from the quarantined legacy state;
+- Android SAF picker was used to deliberately select/confirm the intended existing top-level workspace;
+- app returned to Home with Drive connected;
+- workspace displayed as **Photos**;
+- active company displayed as **HNP Jobs**;
+- existing property list restored (25 properties visible);
+- no automatic reassignment occurred before explicit confirmation.
+
+This satisfies the explicit same-Organization confirmation/reconnect gate.
+
+Next physical step: fully close/reopen FPP and verify the same Organization reuses the now-tagged binding without asking for Drive confirmation again.
