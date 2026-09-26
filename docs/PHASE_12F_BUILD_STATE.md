@@ -178,3 +178,14 @@ Physical Samsung check on 2026-09-26:
 - **Manage Members** was visible again.
 
 This confirms the Owner/member identity transition restores Owner-only administration without carrying the prior MEMBER authorization state forward.
+
+
+## PASS — Owner member list reconciles accepted invitation
+
+Physical Samsung check on 2026-09-26:
+- Owner administration showed the original Owner as `OWNER / ACTIVE`;
+- the accepted invited account showed as `MEMBER / ACTIVE`;
+- the corresponding invitation showed `MEMBER / ACCEPTED / delivery SENT`;
+- no duplicate active Membership was displayed.
+
+This confirms the Owner administration screen reconciles accepted invitation state into the active Membership list correctly.
