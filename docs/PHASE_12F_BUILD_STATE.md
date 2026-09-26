@@ -144,3 +144,15 @@ After that reality result is known, inspect Supabase invitation state/logs, reco
 ## Working rule
 
 Never modify `main` directly. Preserve the proven photo/Drive workflow. Keep original FPP separate from Field Photo Prep Team. Do not add a second auth, membership, invitation, or Drive-identity system.
+
+
+## PASS — accepted MEMBER cannot access Owner administration
+
+Physical Samsung check on 2026-09-25:
+- accepted identity: `timbone72@gmail.com`;
+- Organization: `In And Out Cleaner Inspections LLC`;
+- Membership role/status: `MEMBER / ACTIVE`;
+- reopening the Account screen showed the account as active;
+- **Manage Members** was not present.
+
+This confirms the Android UI does not expose Owner administration to an ACTIVE MEMBER after real invitation acceptance.
