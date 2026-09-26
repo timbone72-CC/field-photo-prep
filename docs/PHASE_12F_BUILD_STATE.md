@@ -120,10 +120,10 @@ Still required before Phase 12F can be called complete:
 1. Edge Function delivery-failure visibility and safe retry behavior — **PASS**;
 2. real disposable invitation email/deep-link acceptance path — **PASS**;
 3. final RLS/grant/catalog + advisor snapshot — **PASS**;
-4. finish/record focused Android Owner-administration and invitation UI verification;
-5. run the appropriate final Android regression on the exact final runtime head;
-6. run the smallest required Samsung reality gate;
-7. clean disposable backend fixture data after it is no longer needed;
+4. focused Android Owner-administration and invitation UI verification — **PASS**;
+5. final Android regression on the current Phase 12F runtime content — **PASS**, Android CI run `36241181047` at branch snapshot `2772ebdcc9165c2b6aae6c30f875a1c87f185a7c`;
+6. smallest required Samsung reality gate — **PASS**;
+7. clean the remaining disposable `Phase 12F Race Fixture` after preserving its evidence;
 8. obtain explicit Level 3 operator approval before merge.
 
 ## Exact next checkpoint
@@ -328,3 +328,34 @@ Performance advisor:
 - no correctness blocker reported.
 
 No unexpected schema, grant, RLS, migration, or Edge Function drift was found.
+
+
+## PASS — final Android regression
+
+Android CI run `36241181047` completed successfully on 2026-09-26 for branch snapshot `2772ebdcc9165c2b6aae6c30f875a1c87f185a7c`.
+
+Successful steps included:
+- unit tests;
+- internal debug build;
+- stable test APK signer verification;
+- instrumented image tests;
+- internal launch smoke test;
+- APK and rendered test-evidence artifact upload.
+
+No runtime source changed after the proven Phase 12F implementation checkpoint; subsequent branch changes through this snapshot were governance/evidence documentation. This run therefore provides the required final regression evidence for the current Phase 12F runtime content.
+
+## PASS — bounded Samsung reality gate complete
+
+The required Phase 12F physical evidence is now recorded:
+- real invitation delivery and deep-link acceptance;
+- accepted MEMBER cannot access Owner administration;
+- MEMBER sign-out preserves field workspace;
+- Owner access restores correctly;
+- accepted invitation reconciles into Membership list;
+- MEMBER → OWNER promotion;
+- OWNER → MEMBER demotion;
+- MEMBER revoke/reactivate;
+- final active Owner revoke blocked;
+- final active Owner demotion blocked.
+
+The remaining Phase 12F work is fixture cleanup and explicit Level 3 merge approval.
