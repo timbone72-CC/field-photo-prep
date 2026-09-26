@@ -87,8 +87,15 @@ The first real phone invitation then produced:
 
 **Real invitation delivery: PASS.**
 
-**Real invitation deep-link acceptance: FAIL at hosted redirect configuration.**
-The delivered verification URL fell back to `http://localhost:3000` after the invite callback added its dynamic FPP invitation ID. The Supabase Auth user was confirmed, but the FPP invitation remains PENDING and unlinked. No resend/recovery should be attempted until the redirect allowlist is corrected and this partial state is deliberately handled.
+**Real invitation deep-link acceptance: PASS after hosted redirect allowlist correction.**
+
+The first attempt exposed a valid hosted configuration defect: the dynamic invitation callback fell outside the redirect allowlist and fell back to localhost. The allowlist was corrected by adding `com.inandout.fieldphotoprep.internal://auth-callback*`. The partial disposable Auth user was safely removed, the same FPP invitation was resent, and the full Samsung acceptance path then completed successfully.
+
+Final live state for the reality fixture:
+- invitation `ACCEPTED`;
+- delivery `SENT`;
+- delivery attempts `2`;
+- Membership `MEMBER / ACTIVE`.
 
 ## Current advisor state
 
@@ -111,7 +118,7 @@ These advisor findings are recorded for final 12F/12M review; none is currently 
 
 Still required before Phase 12F can be called complete:
 1. prove Edge Function delivery-failure visibility and safe retry behavior;
-2. finish the real disposable invitation deep-link acceptance path (email delivery is PASS);
+2. real disposable invitation email/deep-link acceptance path — **PASS**;
 3. record the final RLS/grant/catalog + advisor snapshot;
 4. finish/record focused Android Owner-administration and invitation UI verification;
 5. run the appropriate final Android regression on the exact final runtime head;
@@ -121,7 +128,7 @@ Still required before Phase 12F can be called complete:
 
 ## Exact next checkpoint
 
-Correct the hosted Supabase Auth Redirect URLs so the internal FPP callback also matches the dynamic invitation query string. Then recover the existing partial invitation fixture deliberately before another acceptance attempt.
+Continue from the proven real invitation acceptance state. Next verify that the accepted MEMBER account cannot access Owner administration, then continue the remaining bounded Owner/member administration reality gates.
 
 With the existing Owner account:
 1. open the account screen;
