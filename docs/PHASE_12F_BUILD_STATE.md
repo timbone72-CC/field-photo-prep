@@ -117,7 +117,7 @@ These advisor findings are recorded for final 12F/12M review; none is currently 
 ## Remaining Phase 12F gates
 
 Still required before Phase 12F can be called complete:
-1. prove Edge Function delivery-failure visibility and safe retry behavior;
+1. Edge Function delivery-failure visibility and safe retry behavior — **PASS**;
 2. real disposable invitation email/deep-link acceptance path — **PASS**;
 3. record the final RLS/grant/catalog + advisor snapshot;
 4. finish/record focused Android Owner-administration and invitation UI verification;
@@ -261,3 +261,30 @@ Physical Samsung check on 2026-09-26:
 - `fpp_admin_audit` recorded `MEMBERSHIP_ROLE_CHANGED / REJECTED` for the attempted demotion.
 
 This confirms the real-device Owner administration path cannot demote the final active Owner.
+
+
+## PASS — invitation delivery failure remains visible and retryable
+
+Hosted disposable Race Fixture check on 2026-09-26:
+- created one disposable MEMBER invitation in `Phase 12F Race Fixture`;
+- first failed delivery record produced:
+  - invitation status `PENDING`;
+  - delivery status `FAILED`;
+  - delivery attempt count `1`;
+- same-role resend preparation returned `RESEND_READY`;
+- resend reused the exact same invitation UUID;
+- resend reset delivery state to `NOT_SENT` without resetting the prior attempt count;
+- second failed delivery produced:
+  - the same invitation UUID;
+  - delivery status `FAILED`;
+  - delivery attempt count `2`;
+- no duplicate invitation was created;
+- disposable invitation/audit evidence was then removed;
+- fixture returned to **0 invitations**.
+
+The deployed `fpp-owner-invite` source is already reconciled exactly to PR #74 and maps an Auth invite error to:
+- `fpp_admin_record_invitation_delivery(..., false)`;
+- response outcome `DELIVERY_FAILED`;
+- `retryable: true`.
+
+Together these prove failed delivery remains visible and a resend safely reuses the same pending invitation rather than creating a duplicate.
