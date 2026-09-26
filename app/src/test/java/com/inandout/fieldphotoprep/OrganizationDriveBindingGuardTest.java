@@ -1,6 +1,7 @@
 package com.inandout.fieldphotoprep;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -111,6 +112,24 @@ public final class OrganizationDriveBindingGuardTest {
                         "org-1",
                         FolderPrefs.ORGANIZATION_DRIVE_BINDING_VERSION,
                         true).state());
+    }
+
+    @Test
+    public void onlyOnlineValidatedStateMayCreateOrRebindWorkspace() throws Exception {
+        assertEquals(
+                "org-1",
+                OrganizationDriveBindingGuard.validatedOrganizationForBinding(
+                        validated("org-1")));
+
+        AuthorizationDecision grace = new AuthorizationDecision(
+                AuthorizationDecision.State.GRACE,
+                "user-1",
+                "org-1",
+                "MEMBER",
+                60L);
+        assertThrows(
+                java.io.IOException.class,
+                () -> OrganizationDriveBindingGuard.validatedOrganizationForBinding(grace));
     }
 
     private static AuthorizationDecision validated(String organizationId) {

@@ -3,6 +3,7 @@ package com.inandout.fieldphotoprep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -290,6 +291,68 @@ public final class FolderPrefsParentBindingInstrumentedTest {
 
             assertNull(binding.treeUri());
             assertEquals("workspace-root", binding.rootFolder().id());
+        } finally {
+            raw.edit().clear().commit();
+        }
+    }
+
+    @Test
+    public void sharedGuardRejectsWrongOrganizationWithoutChangingStoredBinding()
+            throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        raw.edit().clear().commit();
+        try {
+            FolderPrefs prefs = new FolderPrefs(context);
+            Uri tree = Uri.parse("content://com.example.documents/tree/photos");
+            prefs.setWorkspaceFolder(tree, new DriveFolder("workspace", "Photos"));
+            prefs.bindSelectedDriveRoot(tree, new DriveFolder("workspace", "Photos"), "org-1");
+
+            AuthorizationActionGuard authorization = new AuthorizationActionGuard(() ->
+                    new AuthorizationDecision(
+                            AuthorizationDecision.State.VALIDATED,
+                            "user-2",
+                            "org-2",
+                            "MEMBER",
+                            0L));
+            OrganizationDriveBindingGuard guard = new OrganizationDriveBindingGuard(
+                    prefs,
+                    authorization,
+                    ignored -> true);
+
+            assertThrows(java.io.IOException.class, guard::requireUsableTreeUri);
+            assertEquals("org-1", prefs.getDriveBinding().organizationId());
+            assertEquals("workspace", prefs.getDriveBinding().rootFolder().id());
+        } finally {
+            raw.edit().clear().commit();
+        }
+    }
+
+    @Test
+    public void sharedGuardRejectsLegacyUnboundWorkspace() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        raw.edit().clear().commit();
+        try {
+            FolderPrefs prefs = new FolderPrefs(context);
+            prefs.setWorkspaceFolder(
+                    Uri.parse("content://com.example.documents/tree/photos"),
+                    new DriveFolder("workspace", "Photos"));
+
+            AuthorizationActionGuard authorization = new AuthorizationActionGuard(() ->
+                    new AuthorizationDecision(
+                            AuthorizationDecision.State.VALIDATED,
+                            "user-1",
+                            "org-1",
+                            "OWNER",
+                            0L));
+            OrganizationDriveBindingGuard guard = new OrganizationDriveBindingGuard(
+                    prefs,
+                    authorization,
+                    ignored -> true);
+
+            assertThrows(java.io.IOException.class, guard::requireUsableTreeUri);
+            assertNull(prefs.getDriveBinding().organizationId());
         } finally {
             raw.edit().clear().commit();
         }

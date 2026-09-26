@@ -98,8 +98,13 @@ final class OrganizationDriveBindingGuard {
     }
 
     String requireValidatedOrganizationForBinding() throws IOException {
-        AuthorizationDecision decision = authorizationGuard.currentDecision();
-        if (decision.state() != AuthorizationDecision.State.VALIDATED
+        return validatedOrganizationForBinding(authorizationGuard.currentDecision());
+    }
+
+    static String validatedOrganizationForBinding(AuthorizationDecision decision)
+            throws IOException {
+        if (decision == null
+                || decision.state() != AuthorizationDecision.State.VALIDATED
                 || decision.organizationId() == null) {
             throw new IOException(
                     "Recheck the Field Photo Prep account online before connecting a Drive workspace.");
