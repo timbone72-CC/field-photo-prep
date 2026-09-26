@@ -262,12 +262,9 @@ public final class DrivePhotoReconciler {
             return Result.uncertain(
                     "Remote candidate identity, name, or MIME type does not match the expected photo.");
         }
-        if (candidate.sizeBytes() == 0L
-                || (candidate.sizeBytes() > 0L && candidate.sizeBytes() != expectedBytes)) {
-            return Result.uncertain(
-                    "Remote candidate byte size does not match the prepared local photo.");
-        }
 
+        // Provider size metadata is advisory during cloud synchronization. A stale 0 or old byte
+        // count must not override a stronger read-only SHA-256 proof of the exact remote content.
         final byte[] remoteHash;
         try {
             remoteHash = provider.sha256Remote(candidate.id());
@@ -289,9 +286,7 @@ public final class DrivePhotoReconciler {
             long expectedBytes) {
         return candidate == null
                 || !expectedName.equals(candidate.displayName())
-                || !DrivePhotoUploader.JPEG_MIME_TYPE.equals(candidate.mimeType())
-                || candidate.sizeBytes() == 0L
-                || (candidate.sizeBytes() > 0L && candidate.sizeBytes() != expectedBytes);
+                || !DrivePhotoUploader.JPEG_MIME_TYPE.equals(candidate.mimeType());
     }
 
     private List<RemoteDocument> settledChildren(String parentDocumentId) throws IOException {
@@ -437,9 +432,13 @@ public final class DrivePhotoReconciler {
             try {
                 accepted = resolver.refresh(childrenUri, Bundle.EMPTY, null) || accepted;
             } catch (RuntimeException ignored) {
-                // False return below keeps reconciliation fail-closed.
+                // A provider may not implement refresh; settled non-loading queries remain authoritative.
             }
-            return accepted;
+
+            // ContentResolver.refresh() is a best-effort hint. Android providers may return false
+            // simply because refresh is unsupported. Reconciliation authority comes from the two
+            // matching non-loading child snapshots below, not this optional hint's return value.
+            return true;
         }
 
         @Override
