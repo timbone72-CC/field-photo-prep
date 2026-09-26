@@ -339,3 +339,27 @@ Exact recovery-fix CI:
 Remaining physical/provider evidence is limited to the contract's final data-integrity checks:
 - existing queued-photo destination identities remain unchanged across a deliberate provider-root switch/recovery;
 - unrelated Drive content remains untouched.
+
+
+## Samsung reality gate — deliberate different provider-root switch PASS (navigation clearing)
+
+Physical Samsung evidence on 2026-09-26 using the exact green Phase 12H recovery build:
+
+- one disposable queued photo was captured under disposable destination:
+  - company: `FPP Phase 12H Test Company - DELETE`
+  - address: `200 PHASE 12H TEST ADDRESS`
+  - work order: `PHASE 12H QUEUE TEST - 2026-09-26`;
+- the photo remained local/protected and was not uploaded;
+- operator deliberately used **Change Workspace** through the Android SAF picker;
+- a different disposable provider root `FPP Phase 12H Switch Workspace - DELETE` was selected;
+- Home immediately cleared the previous company/address/work-order navigation;
+- the new workspace rendered with **Choose a company** and 0 properties;
+- no old provider-root navigation was silently reused.
+
+Automated regression coverage already proves that this different-provider-root binding operation does not rewrite queued `addressId` / `workOrderId` destination identity.
+
+Remaining physical proof:
+- switch back through SAF to the original `Photos` provider root;
+- reopen the disposable original company/address/work order;
+- verify the same one queued photo is still present;
+- compare the real HNP folder snapshot to prove unrelated Drive content was untouched.
