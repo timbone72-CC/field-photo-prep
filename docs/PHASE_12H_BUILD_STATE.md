@@ -194,3 +194,33 @@ Remaining physical 12H evidence:
 - prove a different Organization cannot silently inherit this workspace while Android still retains the old SAF permission;
 - verify deliberate reconnect still uses Android SAF;
 - preserve/verify queued-photo destination identities and unrelated Drive content.
+
+
+## Samsung reality gate — different-Organization isolation FAIL (caught before merge)
+
+Physical Samsung evidence on 2026-09-26 exposed a real lifecycle gap:
+
+- the existing Drive binding was tagged to the real Organization and Android retained the SAF permission;
+- `timbone72@gmail.com` was temporarily moved to one disposable ACTIVE Organization for the isolation test;
+- Auth UI correctly showed the new `Phase 12H Isolation Fixture` Organization;
+- after closing AuthActivity, Home incorrectly still displayed **HNP Jobs / Workspace: Photos** and the prior 25-property list.
+
+Backend fixture cleanup/restoration was completed immediately afterward:
+- the real `timbone72@gmail.com` Membership was restored to `MEMBER · ACTIVE`;
+- disposable fixture Membership and Organization were deleted;
+- real Organization remained ACTIVE with one ACTIVE OWNER.
+
+Root cause from source reconciliation:
+- `RuntimeAuthorizationManager.replaceAuthenticatedSession(...)` correctly stores and observes the new Organization;
+- `OrganizationDriveBindingGuard` correctly rejects a wrong-Organization binding when queried;
+- however, returning from `AuthActivity` resumes the existing `MainActivity`;
+- `MainActivity.onResume()` revalidated authorization but did not re-evaluate Drive binding state or clear the prior in-memory company/property/work-order lists;
+- therefore stale Home UI leaked the previous Organization's Drive navigation state until another render/action path re-evaluated the binding.
+
+Required fix:
+- on every MainActivity resume, re-evaluate the Organization/Drive binding;
+- when unusable/wrong-Organization, immediately clear in-memory Drive navigation lists/selections and render disconnected/quarantined state;
+- preserve persisted binding/provider IDs and queued destinations;
+- do not clear the saved old-Organization binding merely because another Organization is signed in.
+
+The different-Organization physical gate remains **FAIL** until rerun on a fixed green APK.
