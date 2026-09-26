@@ -135,3 +135,31 @@ Still required:
 - cleanup of the disposable Race Fixture only after its evidence is no longer needed.
 
 Do not claim Phase 12F complete from this document alone.
+
+
+## FAIL — real invitation deep-link callback
+
+Physical-device acceptance attempt on 2026-09-25 exposed a hosted Auth redirect configuration mismatch.
+
+Observed:
+- the Edge Function called Supabase Auth invite with the intended redirect:
+  `com.inandout.fieldphotoprep.internal://auth-callback?fpp_invitation_id=<uuid>`;
+- the delivered invitation email's verification URL instead contained:
+  `redirect_to=http://localhost:3000`;
+- tapping **Accept invitation** verified the Supabase invite successfully, then redirected Chrome to `localhost:3000`;
+- the Android app never received the callback;
+- Supabase Auth created/confirmed the invited Auth user;
+- the FPP invitation remained `PENDING`;
+- `fpp_invitations.auth_user_id` remained null.
+
+Recovery comparison:
+- password-recovery links using the bare internal callback
+  `com.inandout.fieldphotoprep.internal://auth-callback`
+  were previously proven to preserve that redirect and open the app.
+
+Root-cause boundary:
+- the invite adds dynamic `?fpp_invitation_id=...` to the callback;
+- Supabase redirect documentation requires the full `redirectTo` value to match an allowed Redirect URL pattern;
+- the hosted project is therefore falling back to its current Site URL `http://localhost:3000` for the invitation callback-with-query.
+
+Do not treat invitation acceptance as passed. Do not resend or mutate this fixture until the redirect allowlist is corrected and the partial accepted-Auth/PENDING-FPP state is deliberately recovered.
