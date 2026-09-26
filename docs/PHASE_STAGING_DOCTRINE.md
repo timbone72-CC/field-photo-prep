@@ -1,130 +1,102 @@
 # Field Photo Prep Phase Staging Doctrine
 
-> **Routing scope:** Staging philosophy for deciding how far development can proceed before a genuine physical-device or external reality gate. Some examples are historical to earlier phases; apply the permanent staging principles to current work and use the current phase build-state/design for phase-specific status.
+> **Routing scope:** Permanent staging philosophy for deciding how far approved work should proceed before a genuine physical-device or external reality gate.
 
 Date adopted: 2026-09-10
+Last simplified: 2026-09-25
 
 Status: **GOVERNED PROJECT OPERATING RULE**
+
+Historical Phase 6 → Phase 7 wording is preserved at:
+`docs/history/PHASE_STAGING_DOCTRINE_2026-09-10_ORIGINAL.md`
 
 ## Purpose
 
 Field Photo Prep is developed in large, evidence-based stages rather than alternating constantly between small code changes and repeated phone checks.
 
-The default development pattern is:
+Default pattern:
 
-`build everything that can be honestly proven without the phone → stage at the next genuine physical-device boundary → run the smallest required phone reality gate → accept the evidence → adjust only where reality requires it → continue the next phase as far as possible → stage again`
+**build everything that can be honestly proven without the real device/provider → stage at the next genuine external boundary → run the smallest required reality gate → accept the evidence → adjust only where reality requires it → continue**
 
-A phone gate is an evidence checkpoint, not an automatic reason to stop development permanently or to begin another round of fragmented one-step work.
+A reality gate is an evidence checkpoint, not a reason to fragment otherwise safe work.
 
-## Current transition: Phase 6 into Phase 7
+## Largest-safe-stage rule
 
-The current app is staged at the Phase 6 physical-device boundary.
-
-After the outstanding Phase 6 device gates are completed:
-
-1. consolidate the device evidence once;
-2. classify Phase 6 as PASS, BLOCKED, or FAIL under the master device-gate plan;
-3. if Phase 6 passes, use the actual Android/Google Drive provider evidence to finalize Phase 7 assumptions;
-4. adjust the Phase 7 plan only where the Phase 6 evidence shows a real need;
-5. proceed through Phase 7 in the largest safe, testable chunks practical;
-6. use JVM/unit, emulator/instrumentation, fake-provider, contract, and CI evidence for behavior that does not require a real phone;
-7. do not stop Phase 7 early merely because a later phone check will eventually be required;
-8. continue until further progress would require guessing about real Android, camera, Google Drive DocumentsProvider, device lifecycle, provider freshness, or another physical-device behavior;
-9. at that point, freeze the tested runtime, record the exact runtime SHA and CI evidence, perform the appropriate lean/checkpoint review, stage the APK and evidence, and create the next straight-line device reality gate;
-10. stop only at that genuine device-dependent boundary.
-
-This rule intentionally allows the Phase 7 staging point to move. The exact Phase 7 implementation and next device gate must be based on what the Phase 6 phone evidence actually proves.
-
-## Straight-line development rule
-
-Within an approved phase:
+Within approved scope:
 
 - settled decisions stay settled unless new evidence contradicts them;
-- do not repeatedly ask for authorization that the current approved scope already grants;
-- do not rerun complete test suites as paperwork when exact valid CI evidence already exists and relevant runtime behavior has not changed;
-- do not require one-command-at-a-time Bash interaction when commands can be safely batched or repository facts are already established;
-- do not stop after each small implementation slice merely to perform a phone test that is not yet required to make the next safe implementation decision;
-- do not invent provider behavior that only a phone can prove;
-- do not continue past a boundary where the next design decision materially depends on unverified real-provider/device behavior;
-- veer from the planned line only for a concrete unexpected result, failed assumption, new safety risk, or evidence that the planned design is wrong.
+- continue through the largest coherent batch whose ownership, rollback, and verification are understood;
+- use unit/JVM, instrumentation/emulator, fake-provider, contract, and CI evidence for claims those tools can honestly prove;
+- do not stop merely because a physical test will eventually be needed;
+- do not invent device/provider behavior that only reality can prove;
+- stop before the next design or safety decision would require guessing about that real behavior.
 
-## What may be decided on the spot
+This doctrine and `GOVERNANCE.md` use the same batch-sizing rule.
 
-An agent may make narrow implementation decisions inside the approved phase when they:
+## No-loop rule
 
-- stay within the documented behavior and contracts;
-- do not expand product scope;
-- do not weaken photo protection, destination identity, duplicate control, uncertainty handling, or Drive safety;
-- are covered by the planned testing boundary; and
-- do not create a new physical-device assumption.
+Do not:
+- repeatedly ask for authorization already granted by the approved scope;
+- rerun complete suites as paperwork when exact relevant evidence remains valid;
+- require one-command-at-a-time workstation interaction when safe commands can be batched;
+- repeat physical observations merely for confidence;
+- refresh/retry an uncertain remote operation until it appears to work.
 
-Examples include choosing a small helper shape, selecting the narrowest existing test seam, naming a local implementation detail, or consolidating harmless duplication when already authorized.
+Passing evidence closes that observation.
 
-## What requires stopping or replanning
+## Decisions that may stay inside the batch
 
-Stop the affected path and record the evidence when:
+An implementation decision may be made without stopping when it:
 
-- a real phone/provider result contradicts an assumption used by the next phase;
+- remains inside approved behavior/scope;
+- uses an existing responsibility/state owner;
+- does not weaken protected photos, destination identity, duplicate control, uncertainty handling, authorization, or Drive safety;
+- is covered by the selected rule packs and planned tests;
+- does not create a new unverified external/device assumption.
+
+Examples include a narrow helper shape, internal naming, test seam selection, or bounded cleanup already inside scope.
+
+## Genuine stop/replan boundaries
+
+Stop the affected path when:
+
+- real device/provider evidence contradicts an assumption required by the next step;
 - a required remote result becomes ambiguous;
-- continuing would require guessing whether Google Drive or Android behaves a certain way;
-- the approved scope would need to expand;
-- a new Level 3 behavior is discovered that is not covered by the current impact plan;
-- a required focused or final verification fails;
-- the runtime can no longer preserve the protected original, immutable destination, duplicate-prevention evidence, or fail-closed uncertainty rules.
+- continuing requires guessing about external behavior;
+- scope materially expands;
+- risk classification must increase;
+- a required focused/final verification fails;
+- external live state disagrees with the authoritative branch;
+- protected originals, immutable destinations, duplicate evidence, or fail-closed uncertainty can no longer be preserved;
+- explicit Level 3 merge approval is the only remaining gate.
 
-A stop should be targeted. Independent work may continue when it does not depend on the failed assumption and cannot hide or worsen the problem.
+A stop is targeted. Independent work may continue when it does not depend on the failed assumption and cannot hide or worsen it.
 
-## Staging standard at each genuine device boundary
+## Staging standard at a genuine reality boundary
 
-When a phase reaches the next legitimate phone-dependent boundary, stage it to the same standard used before the Phase 6 gate:
+Record only what is needed to resume safely:
 
-1. exact branch and runtime SHA;
-2. exact final automated-tested runtime head;
-3. final CI result and artifact identity/digest;
-4. implementation/impact records current;
-5. roadmap status current;
-6. lean/checkpoint review proportional to the amount of new architecture added;
-7. runtime frozen except for a separately governed fix;
-8. smallest straight-line device test plan written before the phone session;
-9. pass/block/fail and stop conditions defined;
-10. no-loop rules applied;
-11. device plan made a required read at the relevant execution and decision checkpoints.
+1. authoritative branch/PR;
+2. exact runtime/configuration head;
+3. governed rollback point;
+4. final applicable automated evidence;
+5. artifact identity when an installable/deployable artifact matters;
+6. active impact/build-state record;
+7. external state already changed;
+8. exact remaining physical/external claim;
+9. smallest safe reality-gate procedure;
+10. pass/block/fail and stop conditions.
 
-Do not create a large audit ritual when the phase added little architecture. The review should be proportional and should answer whether the implementation is still the smallest safe architecture for the workflow.
+Freeze the affected runtime except for a separately governed fix while the reality gate is pending.
 
-## Relationship to the current master device plan
+## Current-plan rule
 
-The current physical-device execution plan is:
+Use the current active phase/build-state record to determine today's device/external gate.
 
-`docs/MASTER_DEVICE_REALITY_GATE_PLAN_2026-09-10.md`
+Do not treat an old phase-specific device plan as current merely because it still exists in the repository.
 
-That file governs the outstanding Phase 3B, Phase 4, Phase 5, Phase 6A, and Phase 6B-H4 phone session.
-
-This staging doctrine governs what happens **after that evidence is collected**, especially the Phase 6 → Phase 7 transition and future phase/device-gate cycles.
-
-If Phase 6 phone evidence requires changes, update the Phase 7 design and staging point to match the evidence. Do not preserve an outdated plan merely because it was written earlier.
-
-## Phase 7 intent under this doctrine
-
-Phase 7 should be pushed as far as can be safely and honestly proven before the next phone gate. Candidate provider-independent work includes, subject to the actual Phase 6 evidence and approved Phase 7 design:
-
-- retry eligibility and state transitions;
-- reconciliation decision logic;
-- preservation of provisional/confirmed remote identity evidence;
-- deterministic-name matching rules;
-- exact-destination preservation;
-- per-photo isolation;
-- restart recovery;
-- cleanup eligibility after confirmed success;
-- cleanup-failure bookkeeping;
-- focused fake-provider tests;
-- JVM/instrumentation verification;
-- documentation and migration records.
-
-Provider-dependent claims remain behind the next physical-device gate where appropriate.
+Historical plans remain evidence of what was proven at the time.
 
 ## Governing principle
 
 **Build to evidence, not to fear. Stop where reality is required, not where another safety prompt could be invented.**
-
-The project should move in a straight line by default, with enough controlled flexibility to respond when actual device/provider evidence proves that the line needs to change.
