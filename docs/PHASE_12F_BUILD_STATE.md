@@ -119,7 +119,7 @@ These advisor findings are recorded for final 12F/12M review; none is currently 
 Still required before Phase 12F can be called complete:
 1. Edge Function delivery-failure visibility and safe retry behavior — **PASS**;
 2. real disposable invitation email/deep-link acceptance path — **PASS**;
-3. record the final RLS/grant/catalog + advisor snapshot;
+3. final RLS/grant/catalog + advisor snapshot — **PASS**;
 4. finish/record focused Android Owner-administration and invitation UI verification;
 5. run the appropriate final Android regression on the exact final runtime head;
 6. run the smallest required Samsung reality gate;
@@ -288,3 +288,43 @@ The deployed `fpp-owner-invite` source is already reconciled exactly to PR #74 a
 - `retryable: true`.
 
 Together these prove failed delivery remains visible and a resend safely reuses the same pending invitation rather than creating a duplicate.
+
+
+## PASS — final hosted RLS / grant / advisor snapshot
+
+Final hosted snapshot on 2026-09-26:
+
+Migration history remains exactly:
+- `20260925012939_phase_12c_identity_foundation`;
+- `20260925013000_phase_12c_invitation_fk_indexes`;
+- `20260925195816_phase_12f_owner_member_admin`;
+- `20260925195901_phase_12f_rpc_grant_hardening`.
+
+Edge Function:
+- `fpp-owner-invite` = ACTIVE;
+- version = 1;
+- JWT verification = enabled;
+- deployed source remains the reconciled Phase 12F source.
+
+Table authorization:
+- RLS enabled on `fpp_organizations`, `fpp_memberships`, `fpp_invitations`, and `fpp_admin_audit`;
+- authenticated table grants remain SELECT-only on Organizations, Memberships, and Invitations;
+- authenticated has no table grant on `fpp_admin_audit`;
+- no anon table grants were observed on the Phase 12 identity tables;
+- `fpp_admin_audit` intentionally has RLS enabled with no client policy.
+
+RPC/helper authorization:
+- the ten approved public SECURITY DEFINER RPCs are executable by authenticated/service_role and not anon;
+- `private.fpp_lock_active_organization`, `private.fpp_require_active_owner`, and `private.fpp_write_admin_audit` remain unavailable to authenticated/anon;
+- `private.fpp_is_active_member` and `private.fpp_is_active_owner` are intentionally executable by authenticated because Phase 12C RLS SELECT policies call those predicates.
+
+Security advisor:
+- INFO: audit table RLS enabled with no policy — intentional server-only audit design;
+- WARN: ten authenticated-callable SECURITY DEFINER RPCs — intentional narrow server-authorization surface;
+- WARN: leaked-password protection disabled — previously recorded project-plan limitation.
+
+Performance advisor:
+- INFO only: four unindexed foreign keys on `fpp_admin_audit`;
+- no correctness blocker reported.
+
+No unexpected schema, grant, RLS, migration, or Edge Function drift was found.
