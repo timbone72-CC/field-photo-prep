@@ -163,3 +163,35 @@ Root-cause boundary:
 - the hosted project is therefore falling back to its current Site URL `http://localhost:3000` for the invitation callback-with-query.
 
 Do not treat invitation acceptance as passed. Do not resend or mutate this fixture until the redirect allowlist is corrected and the partial accepted-Auth/PENDING-FPP state is deliberately recovered.
+
+
+## PASS — real invitation deep-link acceptance after redirect allowlist correction
+
+Physical Samsung acceptance retest on 2026-09-25:
+
+Hosted Auth configuration correction:
+- retained the existing exact internal callback;
+- added redirect pattern `com.inandout.fieldphotoprep.internal://auth-callback*` so invitation callbacks carrying the dynamic `fpp_invitation_id` query parameter remain allowlisted;
+- did not change the Site URL during this gate.
+
+Recovery of the first failed fixture:
+- the partially confirmed disposable Auth user had zero FPP Memberships;
+- that disposable Auth user was deleted;
+- the original FPP invitation remained PENDING with no linked Auth user;
+- resend reused the same FPP invitation UUID and increased delivery attempt count from 1 to 2.
+
+Retest evidence:
+- the fresh invited Auth identity began unconfirmed and unsigned-in;
+- Supabase preserved the full internal FPP callback on resend;
+- tapping the newest invitation opened the installed Android app directly at the invitation-specific Set Password screen;
+- after password creation, the app displayed **Invitation accepted and account verified**;
+- the connected identity was the invited email in the correct Organization with role MEMBER;
+- live backend state after completion:
+  - invitation status = `ACCEPTED`;
+  - delivery status = `SENT`;
+  - delivery attempt count = `2`;
+  - invitation `auth_user_id` populated;
+  - resulting Membership role = `MEMBER`;
+  - resulting Membership status = `ACTIVE`.
+
+This closes the real invitation email/deep-link acceptance gate.
