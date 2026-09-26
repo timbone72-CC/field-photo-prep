@@ -1,6 +1,7 @@
 package com.inandout.fieldphotoprep;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -171,6 +172,106 @@ public final class FolderPrefsParentBindingInstrumentedTest {
             raw.edit().clear().commit();
         }
     }
+    @Test
+    public void sameProviderRootConfirmationAddsOrganizationBindingWithoutClearingNavigation() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        raw.edit().clear().commit();
+        try {
+            FolderPrefs prefs = new FolderPrefs(context);
+            Uri tree = Uri.parse("content://com.example.documents/tree/photos");
+            prefs.setWorkspaceFolder(tree, new DriveFolder("workspace", "Photos"));
+            prefs.setCurrentCompany(new DriveFolder("company-hnp", "HNP Jobs"));
+            prefs.setCurrentAddress(new DriveFolder("address-hnp", "1607 Crestview Drive"));
+            prefs.setCurrentWorkOrder(new DriveFolder("work-hnp", "Grass Cut - 2026-09-26"));
+
+            assertEquals(0, prefs.getDriveBinding().version());
+            assertTrue(prefs.bindSelectedDriveRoot(
+                    tree,
+                    new DriveFolder("workspace", "Photos"),
+                    "org-1"));
+
+            FolderPrefs.DriveBinding binding = prefs.getDriveBinding();
+            assertEquals("org-1", binding.organizationId());
+            assertEquals(FolderPrefs.ORGANIZATION_DRIVE_BINDING_VERSION, binding.version());
+            assertEquals("workspace", binding.rootFolder().id());
+            assertEquals("company-hnp", prefs.getCurrentCompany().id());
+            assertEquals("address-hnp", prefs.getCurrentAddress().id());
+            assertEquals("work-hnp", prefs.getCurrentWorkOrder().id());
+        } finally {
+            raw.edit().clear().commit();
+        }
+    }
+
+    @Test
+    public void differentProviderRootClearsNavigationButDoesNotRewriteQueuedDestination()
+            throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        File root = new File(context.getCacheDir(), "org-binding-queued-photo");
+        deleteRecursively(root);
+        raw.edit().clear().commit();
+        try {
+            FolderPrefs prefs = new FolderPrefs(context);
+            prefs.setWorkspaceFolder(
+                    Uri.parse("content://com.example.documents/tree/photos-old"),
+                    new DriveFolder("workspace-old", "Photos"));
+            prefs.setCurrentCompany(new DriveFolder("company-hnp", "HNP Jobs"));
+            DriveFolder address = new DriveFolder("address-hnp", "1607 Crestview Drive");
+            DriveFolder workOrder = new DriveFolder("work-hnp", "Grass Cut - 2026-09-26");
+            prefs.setCurrentAddress(address);
+            prefs.setCurrentWorkOrder(workOrder);
+
+            PendingPhotoStore store = new PendingPhotoStore(
+                    root,
+                    () -> "22222222-2222-4222-8222-222222222222",
+                    () -> 2_000L);
+            PendingPhotoRecord before = store.beginCapture(address, workOrder);
+
+            assertFalse(prefs.bindSelectedDriveRoot(
+                    Uri.parse("content://com.example.documents/tree/photos-new"),
+                    new DriveFolder("workspace-new", "Photos"),
+                    "org-1"));
+
+            FolderPrefs.DriveBinding binding = prefs.getDriveBinding();
+            PendingPhotoRecord after = store.getById(before.id());
+            assertEquals("org-1", binding.organizationId());
+            assertEquals("workspace-new", binding.rootFolder().id());
+            assertNull(prefs.getCurrentCompany());
+            assertNull(prefs.getCurrentAddress());
+            assertNull(prefs.getCurrentWorkOrder());
+            assertEquals("address-hnp", after.addressId());
+            assertEquals("work-hnp", after.workOrderId());
+            assertEquals(PendingPhotoRecord.State.CAPTURING, after.state());
+        } finally {
+            raw.edit().clear().commit();
+            deleteRecursively(root);
+        }
+    }
+
+    @Test
+    public void replacingWorkspaceWithoutOrganizationConfirmationClearsOldBindingTag() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        raw.edit().clear().commit();
+        try {
+            FolderPrefs prefs = new FolderPrefs(context);
+            Uri first = Uri.parse("content://com.example.documents/tree/photos-1");
+            prefs.setWorkspaceFolder(first, new DriveFolder("workspace-1", "Photos"));
+            prefs.bindSelectedDriveRoot(first, new DriveFolder("workspace-1", "Photos"), "org-1");
+            assertEquals("org-1", prefs.getDriveBinding().organizationId());
+
+            prefs.setWorkspaceFolder(
+                    Uri.parse("content://com.example.documents/tree/photos-2"),
+                    new DriveFolder("workspace-2", "Other Photos"));
+
+            assertNull(prefs.getDriveBinding().organizationId());
+            assertEquals(0, prefs.getDriveBinding().version());
+        } finally {
+            raw.edit().clear().commit();
+        }
+    }
+
     private static void deleteRecursively(File file) {
         if (file == null || !file.exists()) {
             return;
