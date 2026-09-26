@@ -14,20 +14,26 @@ This file is the durable handoff point for the active Phase 12F implementation.
 
 Do not resume Phase 12F from PR #73 or `phase-12f/owner-member-administration` unless that line is explicitly re-audited.
 
-## Last proven implementation checkpoint
+## Proven implementation checkpoint
 
-The last runtime/backend implementation head before this documentation-only reconciliation is:
+The Phase 12F Android/backend runtime checkpoint is:
 
-- `a0f12f75d08d596a5bfc53169e879a31fbb392dd`
+- runtime/backend implementation commit: `a0f12f75d08d596a5bfc53169e879a31fbb392dd`
 - Android CI run `36190542857`: **PASS**
 
-Documentation-only commits after that checkpoint do not expand runtime behavior.
+Subsequent governance, CI-workflow and documentation integration did not change Phase 12F Android runtime source. The integrated branch snapshot `05a7c761bd56f41eb4923da87e50349349a53b54` also passed Android CI run `36203850206`.
+
+Exact-head phone-test artifact from run `36203850206`:
+- artifact: `field-photo-prep-internal-apk`
+- artifact ID: `10892887267`
+- workflow artifact digest: `sha256:c1673340bba4ba3a1e761eecf4727be1deb0f8aaf3cbad96d6f499dd807f8059`
 
 ## Source-of-truth reconciliation
 
 Dedicated original-FPP Supabase project:
 - project ref: `vtyiktvqhbgabawotkrj`
 - project: Field Photo Prep
+- project status rechecked 2026-09-25: **ACTIVE_HEALTHY**
 
 Live migration history currently contains exactly:
 - `20260925012939_phase_12c_identity_foundation`
@@ -42,7 +48,7 @@ Live Edge Function:
 - ACTIVE
 - version 1
 - JWT verification enabled
-- deployed `index.ts` text rechecked against PR #74 source on 2026-09-25: **exact match**
+- deployed `index.ts` remains an exact match to PR #74 source
 
 Do not create a second Phase 12F backend or renumber the already-applied Phase 12F migration history.
 
@@ -64,9 +70,17 @@ Using only disposable Phase 12F fixtures:
 Permanent evidence:
 - `docs/PHASE_12F_BACKEND_VERIFICATION_2026-09-25.md`
 
+## Current live invitation baseline
+
+Immediately before the physical invitation gate:
+- persisted `fpp_invitations` rows: **0**
+- matching `fpp-owner-invite` / delivery log events in the inspected prior 24-hour window: **0**
+
+Therefore no real invitation-delivery/deep-link pass has yet been recorded. The next invitation can be treated as the clean Phase 12F reality fixture.
+
 ## Current advisor state
 
-Security advisor:
+Security advisor rechecked 2026-09-25:
 - INFO: `public.fpp_admin_audit` has RLS enabled with no client policy — intentional server-write-only design;
 - WARN: ten authenticated-callable `SECURITY DEFINER` RPCs — intentional public RPC surface only while each operation performs its exact server-side authorization checks;
 - WARN: leaked-password protection disabled — known project-plan limitation already recorded.
@@ -95,11 +109,18 @@ Still required before Phase 12F can be called complete:
 
 ## Exact next checkpoint
 
-Continue from PR #74 only.
+Install the exact-head Phase 12F internal APK from Android CI run `36203850206` on the Samsung test phone.
 
-First finish the remaining hosted invitation-delivery/email evidence against the existing backend. Do not redesign or redeploy the backend unless that evidence finds an actual defect.
+With the existing Owner account:
+1. open the account screen;
+2. confirm **Manage Members** is visible;
+3. open **Manage Members**;
+4. send one MEMBER invitation to a disposable email address the operator can open on that same phone;
+5. confirm the invitation row shows its delivery status;
+6. open the received invitation link on the phone;
+7. set the invited account password and confirm the app finishes invitation activation without borrowing the prior Owner identity.
 
-Then finish the narrow Android Owner-administration/invitation gate and stop at the Level 3 merge decision.
+After that reality result is known, inspect Supabase invitation state/logs, record the result, then run the bounded delivery-failure/retry gate. Do not merge during this checkpoint.
 
 ## Working rule
 
