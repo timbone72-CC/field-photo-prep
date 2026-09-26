@@ -159,6 +159,15 @@ public final class MainActivity extends Activity {
         }
 
         OrganizationDriveBindingGuard.Result binding = driveBindingGuard.current();
+        if (binding.state() == OrganizationDriveBindingGuard.State.NO_WORKSPACE) {
+            // Ordinary no-workspace state does not represent cross-Organization leakage.
+            // Preserve the current local screen/navigation state when returning from Photos or
+            // Account so existing Work Orders UI behavior is unchanged.
+            renderSavedMaster();
+            setNotBusy();
+            return;
+        }
+
         if (!binding.isUsable()) {
             // These are process-memory navigation caches only. Persisted provider identity,
             // Organization binding metadata, SAF grants, and queued-photo destinations remain
