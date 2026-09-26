@@ -222,3 +222,14 @@ Physical Samsung check on 2026-09-26:
 - live backend verification matched the Android UI exactly.
 
 This confirms the Owner revocation path disables the Membership without deleting the identity or accepted invitation record.
+
+
+## PASS — Owner reactivates revoked MEMBER
+
+Physical Samsung check on 2026-09-26:
+- `timbone72@gmail.com` changed from `MEMBER / REVOKED` back to `MEMBER / ACTIVE`;
+- original Owner remained `OWNER / ACTIVE`;
+- Owner administration restored the expected active-member role and revoke controls;
+- live backend verification matched the Android UI exactly.
+
+This confirms revocation is reversible through the intended Owner-only reactivation path without recreating the Membership or invitation.
