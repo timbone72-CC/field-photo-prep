@@ -309,3 +309,33 @@ Exact current green runtime CI:
 - signer verification PASS;
 - instrumented UI/image tests PASS;
 - launch smoke test PASS.
+
+
+## Samsung reality gate — return-to-owning-Organization recovery PASS
+
+Physical Samsung proof on 2026-09-26 using runtime head
+`b6ef7197a624802ed03bc97ad54b0b8bf9c77402`:
+
+- `timbone72@gmail.com` was restored to its real `MEMBER · ACTIVE` Membership in
+  `In And Out Cleaner Inspections LLC`;
+- a fresh sign-in resolved the correct real Organization and Membership;
+- after installing the recovery-fix APK, Home automatically recovered the saved owning-Organization Drive binding;
+- stale cross-Organization warning text cleared;
+- **HNP Jobs / Workspace: Photos** returned as connected;
+- the existing property list reloaded automatically with **25 properties**;
+- no Drive reconnect or rebinding was required;
+- no saved binding/provider identity was overwritten during the isolation/recovery cycle.
+
+Exact recovery-fix CI:
+- runtime head `b6ef7197a624802ed03bc97ad54b0b8bf9c77402`;
+- Android CI run `36252029473`;
+- governance PASS;
+- unit tests PASS;
+- internal APK build PASS;
+- signer verification PASS;
+- instrumented UI/image tests PASS;
+- launch smoke test PASS.
+
+Remaining physical/provider evidence is limited to the contract's final data-integrity checks:
+- existing queued-photo destination identities remain unchanged across a deliberate provider-root switch/recovery;
+- unrelated Drive content remains untouched.
