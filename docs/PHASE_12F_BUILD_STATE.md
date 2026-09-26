@@ -189,3 +189,14 @@ Physical Samsung check on 2026-09-26:
 - no duplicate active Membership was displayed.
 
 This confirms the Owner administration screen reconciles accepted invitation state into the active Membership list correctly.
+
+
+## PASS — Owner promotes MEMBER to OWNER
+
+Physical Samsung check on 2026-09-26:
+- original Owner remained `OWNER / ACTIVE`;
+- `timbone72@gmail.com` changed from `MEMBER / ACTIVE` to `OWNER / ACTIVE`;
+- Owner administration refreshed to show both active Owners;
+- live backend verification confirmed exactly two ACTIVE OWNER Memberships for the two tested identities.
+
+This confirms the Owner role-promotion path updates both Android UI and hosted Membership state consistently.
