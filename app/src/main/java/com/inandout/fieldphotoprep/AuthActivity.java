@@ -35,10 +35,12 @@ public final class AuthActivity extends Activity {
     private ProgressBar progress;
     private Button primary;
     private Button secondary;
+    private Button manageMembers;
     private Button close;
 
     private Mode mode = Mode.LOGIN;
     private SupabaseAuthClient.AuthTokens pendingRecoveryTokens;
+    private String pendingInvitationId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +74,7 @@ public final class AuthActivity extends Activity {
         progress = findViewById(R.id.auth_progress);
         primary = findViewById(R.id.auth_primary);
         secondary = findViewById(R.id.auth_secondary);
+        manageMembers = findViewById(R.id.auth_manage_members);
         close = findViewById(R.id.auth_close);
         close.setOnClickListener(v -> finish());
     }
@@ -117,9 +120,17 @@ public final class AuthActivity extends Activity {
                         redirect.expiresAtEpochSeconds());
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = tokens;
+                    pendingInvitationId = redirect.kind() == AuthRedirectParser.Kind.INVITE
+                            ? redirect.invitationId()
+                            : null;
+                    if (redirect.kind() == AuthRedirectParser.Kind.INVITE
+                            && (pendingInvitationId == null || pendingInvitationId.trim().isEmpty())) {
+                        showLogin("The invitation link was missing its Field Photo Prep invitation identity.");
+                        return;
+                    }
                     showPasswordSetup(
                             redirect.kind() == AuthRedirectParser.Kind.INVITE
-                                    ? "Invitation accepted. Choose a password for this account."
+                                    ? "Invitation verified. Choose a password to finish joining this organization."
                                     : "Choose a new password for this account.");
                 });
             } catch (IOException e) {
@@ -131,10 +142,12 @@ public final class AuthActivity extends Activity {
     private void showLogin(String message) {
         mode = Mode.LOGIN;
         pendingRecoveryTokens = null;
+        pendingInvitationId = null;
         title.setText("Field Photo Prep Account");
         status.setText(message == null
                 ? "Sign in to your Field Photo Prep organization."
                 : message);
+        manageMembers.setVisibility(View.GONE);
         email.setVisibility(View.VISIBLE);
         password.setVisibility(View.VISIBLE);
         confirmPassword.setVisibility(View.GONE);
@@ -151,6 +164,7 @@ public final class AuthActivity extends Activity {
 
     private void showRecoveryRequest() {
         mode = Mode.RECOVERY_REQUEST;
+        manageMembers.setVisibility(View.GONE);
         title.setText("Reset Password");
         status.setText("Enter the account email. The reset email will open this Field Photo Prep build.");
         email.setVisibility(View.VISIBLE);
@@ -167,6 +181,7 @@ public final class AuthActivity extends Activity {
 
     private void showPasswordSetup(String message) {
         mode = Mode.PASSWORD_SETUP;
+        manageMembers.setVisibility(View.GONE);
         title.setText("Set Password");
         status.setText(message);
         email.setVisibility(View.GONE);
@@ -227,6 +242,12 @@ public final class AuthActivity extends Activity {
         primary.setVisibility(View.VISIBLE);
         primary.setOnClickListener(v -> recheckStoredSession(state));
         secondary.setOnClickListener(v -> signOutSafely(state));
+
+        AuthorizationDecision current = authorizationManager.currentDecision();
+        boolean mayAdmin = current.allowsMemberAdministration();
+        manageMembers.setVisibility(mayAdmin ? View.VISIBLE : View.GONE);
+        manageMembers.setOnClickListener(v ->
+                startActivity(new Intent(this, MemberAdminActivity.class)));
         setBusy(false);
     }
 
@@ -304,28 +325,51 @@ public final class AuthActivity extends Activity {
 
         setBusy(true);
         status.setText("Updating password…");
+        String invitationId = pendingInvitationId;
         executor.execute(() -> {
             boolean passwordUpdated = false;
+            boolean invitationActivated = false;
             try {
                 authClient.updatePassword(tokens.accessToken(), first);
                 passwordUpdated = true;
+
+                if (invitationId != null) {
+                    authClient.acceptInvitation(tokens.accessToken(), invitationId);
+                    invitationActivated = true;
+                }
 
                 SupabaseAuthClient.AuthTokens signedIn = authClient.signInWithPassword(
                         tokens.email(),
                         first);
                 AuthSessionState state = authClient.validateMembership(signedIn);
                 replaceAuthenticatedSessionSafely(state);
+                boolean joined = invitationActivated;
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = null;
-                    showConnected(state, "Password updated and account verified.");
+                    pendingInvitationId = null;
+                    showConnected(
+                            state,
+                            joined
+                                    ? "Invitation accepted and account verified."
+                                    : "Password updated and account verified.");
                 });
             } catch (Exception e) {
                 boolean changed = passwordUpdated;
+                boolean joined = invitationActivated;
                 runOnUiThread(() -> {
                     if (changed) {
-                        showLogin(
-                                "Password was updated, but automatic sign-in did not finish. "
-                                        + "Sign in with the new password.");
+                        String message;
+                        if (joined) {
+                            message = "Invitation was accepted and the password was updated, "
+                                    + "but automatic sign-in did not finish. Sign in with the new password.";
+                        } else if (invitationId != null) {
+                            message = "Password was updated, but the invitation could not be activated: "
+                                    + e.getMessage();
+                        } else {
+                            message = "Password was updated, but automatic sign-in did not finish. "
+                                    + "Sign in with the new password.";
+                        }
+                        showLogin(message);
                         email.setText(tokens.email());
                     } else {
                         setBusy(false);
@@ -479,6 +523,7 @@ public final class AuthActivity extends Activity {
         progress.setVisibility(busy ? View.VISIBLE : View.GONE);
         primary.setEnabled(!busy);
         secondary.setEnabled(!busy);
+        manageMembers.setEnabled(!busy);
         email.setEnabled(!busy);
         password.setEnabled(!busy);
         confirmPassword.setEnabled(!busy);

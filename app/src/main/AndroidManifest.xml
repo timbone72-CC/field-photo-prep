@@ -32,6 +32,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".MemberAdminActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".AuthActivity"
             android:configChanges="orientation|screenSize"
             android:exported="true"

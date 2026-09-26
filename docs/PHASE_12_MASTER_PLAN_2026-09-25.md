@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — PHASE 12E NEXT**
+Status: **APPROVED MASTER PLAN — 12E COMPLETE / 12F IN PROGRESS**
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Phase 12 adds durable FPP User/Organization identity and release-readiness contr
 
 This master plan turns the previously loose “later Phase 12 slices” into one ordered program so later work does not invent overlapping account-state, Drive-binding, diagnostics, invitation, or release behavior one subphase at a time.
 
-The plan governs the remaining Phase 12 work after the completed 12A–12D foundation.
+The plan governs the remaining Phase 12 work after the completed 12A–12E foundation.
 
 ## Governing sources
 
@@ -122,7 +122,7 @@ Delivered and physically proven:
 
 Default order:
 
-**12E Runtime authorization enforcement → 12F Owner/member administration → 12G First-run/new-device flow → 12H Organization/Drive binding protection → 12I App Status & Diagnostics → 12J Recovery/account-state UX → 12K Production identity/release path → 12L Clean-install/new-user reality gates → 12M Phase 12 closeout**
+**12F Owner/member administration → 12H Organization/Drive binding protection → 12G First-run/new-device flow → 12I App Status & Diagnostics → 12J Recovery/account-state UX → 12K Production identity/release path → 12L Clean-install/new-user reality gates → 12M Phase 12 closeout**
 
 Design work may overlap only where dependencies are explicit and runtime ownership does not overlap.
 
@@ -130,7 +130,7 @@ Design work may overlap only where dependencies are explicit and runtime ownersh
 
 # Phase 12E — Runtime Authorization Enforcement
 
-Status: **NEXT**
+Status: **COMPLETE — merged to main 2026-09-25**
 
 ## Goal
 
