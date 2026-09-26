@@ -247,3 +247,25 @@ Exact corrected Android CI:
 - APK/test evidence artifact upload: PASS
 
 Next checkpoint: rerun only the previously failed physical different-Organization isolation gate on the corrected APK.
+
+
+## Samsung reality gate — cross-Organization stale-UI regression fixed
+
+Physical Samsung retest on 2026-09-26 using corrected runtime commit
+`79e505e1703624b81d56b1810063a1904df9fd76`:
+
+- disposable `Phase 12H Isolation Fixture` was recreated for `timbone72@gmail.com`;
+- real Organization retained one ACTIVE OWNER;
+- app returned to Home under the different Organization;
+- prior **HNP Jobs / Workspace: Photos** UI was no longer visible;
+- property count was 0;
+- Home rendered Drive disconnected with **Connect Drive**;
+- message required Field Photo Prep account recheck before Drive use;
+- no prior property/navigation list leaked from the owning Organization.
+
+This confirms the lifecycle stale-UI bug caught in the first reality attempt is fixed.
+
+The different-Organization isolation gate is not yet marked fully PASS because this screenshot is in an authorization-recheck-required state. Final proof still requires:
+- revalidate the disposable Organization;
+- return to Home;
+- verify the old HNP/Photos binding remains unavailable after fresh authorization.
