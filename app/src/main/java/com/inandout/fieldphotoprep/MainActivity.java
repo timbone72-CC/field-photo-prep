@@ -53,6 +53,7 @@ public final class MainActivity extends Activity {
     private DriveClient driveClient;
     private AuthorizationActionGuard authorizationGuard;
     private OrganizationDriveBindingGuard driveBindingGuard;
+    private OrganizationDriveBindingGuard.State lastDriveBindingState;
     private final List<DriveFolder> companyFolders = new ArrayList<>();
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
@@ -159,6 +160,9 @@ public final class MainActivity extends Activity {
         }
 
         OrganizationDriveBindingGuard.Result binding = driveBindingGuard.current();
+        OrganizationDriveBindingGuard.State previousState = lastDriveBindingState;
+        lastDriveBindingState = binding.state();
+
         if (binding.state() == OrganizationDriveBindingGuard.State.NO_WORKSPACE) {
             // Ordinary no-workspace state does not represent cross-Organization leakage.
             // Preserve the current local screen/navigation state when returning from Photos or
@@ -179,6 +183,17 @@ public final class MainActivity extends Activity {
             selectedWorkOrder = null;
             showAddressScreen(false);
             showHomeInlineMessage(binding.message());
+            renderPropertyCountAndEmptyState();
+            return;
+        }
+
+        clearHomeInlineMessage();
+        if (DriveBindingResumePolicy.shouldReload(previousState, binding.state())) {
+            if (folderPrefs.hasWorkspace()) {
+                refreshCompanyFolders(true, false);
+            } else {
+                refreshAddressFolders();
+            }
             return;
         }
 
@@ -430,6 +445,7 @@ private void buildLegacyWorkOrderUi() {
 
     private void restoreSavedDriveIfUsable() {
         OrganizationDriveBindingGuard.Result binding = driveBindingGuard.current();
+        lastDriveBindingState = binding.state();
         if (!binding.isUsable()) {
             showHomeInlineMessage(binding.message());
             renderSavedMaster();
