@@ -233,3 +233,17 @@ Physical Samsung check on 2026-09-26:
 - live backend verification matched the Android UI exactly.
 
 This confirms revocation is reversible through the intended Owner-only reactivation path without recreating the Membership or invitation.
+
+
+## PASS — real-device last-Owner revoke protection
+
+Physical Samsung check on 2026-09-26:
+- organization state before the attempt:
+  - `inandoutinspections2026@gmail.com` = `OWNER / ACTIVE`;
+  - `timbone72@gmail.com` = `MEMBER / ACTIVE`;
+- Owner tapped **REVOKE** on the original Owner Membership;
+- Android administration screen remained unchanged;
+- live backend state remained exactly one ACTIVE OWNER and one ACTIVE MEMBER;
+- `fpp_admin_audit` recorded `MEMBERSHIP_REVOKED / REJECTED` for the attempted Owner revocation.
+
+This confirms the real-device Owner administration path cannot revoke the final active Owner.
