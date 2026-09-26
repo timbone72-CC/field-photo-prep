@@ -569,7 +569,7 @@ Governing design:
 - `docs/PHASE_12_MASTER_PLAN_2026-09-25.md`.
 
 Current status:
-- Phase 12A Identity Model v1 is approved;
+- Phase 12A Identity Model v1 is complete as the approved design foundation;
 - Phase 12B dedicated Supabase authentication architecture is approved and merged;
 - Phase 12C dedicated Supabase backend foundation is complete and merged;
 - Phase 12D Android auth/session foundation is complete and merged;
@@ -579,7 +579,7 @@ Current status:
 - Team remains a separate product/backend;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
 
-### Phase 12A — Identity model — DESIGN APPROVED / NOT IMPLEMENTED
+### Phase 12A — Identity model — COMPLETE (DESIGN PHASE)
 
 Approved model:
 - permanent User identity independent of email;
@@ -730,13 +730,17 @@ Canonical implementation:
 - core Owner authorization, Organization isolation, invitation idempotency/acceptance, cancellation/expiry, and concurrent last-Owner hosted tests pass;
 - last runtime/backend implementation checkpoint `a0f12f75d08d596a5bfc53169e879a31fbb392dd` passed Android CI run `36190542857`.
 
+Completed verification:
+- invitation delivery-failure visibility and safe retry: PASS;
+- real disposable invitation email/deep-link acceptance: PASS;
+- final backend RLS/grant/catalog/advisor snapshot: PASS;
+- focused Android Owner/member administration verification: PASS;
+- Samsung invitation/member/role/revoke/reactivate/last-Owner reality gates: PASS;
+- final Android regression on current Phase 12F runtime content: Android CI run `36241181047` PASS at branch snapshot `2772ebdcc9165c2b6aae6c30f875a1c87f185a7c`.
+
 Still required before completion:
-- invitation delivery-failure/retry evidence through the Edge Function;
-- one real disposable invitation email/deep-link acceptance;
-- final backend RLS/grant/catalog/advisor snapshot;
-- focused Android Owner-admin/invitation verification and final regression;
-- smallest required Samsung reality gate;
-- explicit Level 3 operator merge approval.
+- remove the remaining disposable Phase 12F Race Fixture after preserving its evidence;
+- obtain explicit Level 3 operator merge approval.
 
 Durable handoff:
 - `docs/PHASE_12F_BUILD_STATE.md`
