@@ -85,7 +85,10 @@ The first real phone invitation then produced:
 - a received invitation email;
 - an approved internal callback containing the exact FPP invitation UUID.
 
-**Real invitation delivery: PASS.** Deep-link/app acceptance remains unproven until the operator opens the received link and completes the next bounded gate.
+**Real invitation delivery: PASS.**
+
+**Real invitation deep-link acceptance: FAIL at hosted redirect configuration.**
+The delivered verification URL fell back to `http://localhost:3000` after the invite callback added its dynamic FPP invitation ID. The Supabase Auth user was confirmed, but the FPP invitation remains PENDING and unlinked. No resend/recovery should be attempted until the redirect allowlist is corrected and this partial state is deliberately handled.
 
 ## Current advisor state
 
@@ -118,7 +121,7 @@ Still required before Phase 12F can be called complete:
 
 ## Exact next checkpoint
 
-Install the exact-head Phase 12F internal APK from Android CI run `36203850206` on the Samsung test phone.
+Correct the hosted Supabase Auth Redirect URLs so the internal FPP callback also matches the dynamic invitation query string. Then recover the existing partial invitation fixture deliberately before another acceptance attempt.
 
 With the existing Owner account:
 1. open the account screen;
