@@ -363,3 +363,18 @@ Remaining physical proof:
 - reopen the disposable original company/address/work order;
 - verify the same one queued photo is still present;
 - compare the real HNP folder snapshot to prove unrelated Drive content was untouched.
+
+
+### Reality-gate evidence correction — provider-root selection label
+
+Follow-up screenshot review showed the first deliberate provider-root switch did clear prior navigation,
+but the displayed root name matched the disposable `FPP Phase 12H Test Company - DELETE` folder rather
+than conclusively proving that the separately-created `FPP Phase 12H Switch Workspace - DELETE` root
+was selected.
+
+Therefore:
+- retain the physical evidence that selecting a **different provider root** cleared the old
+  company/address/work-order navigation and left 0 properties;
+- do **not** claim that the dedicated switch-workspace folder itself was the selected root;
+- final recovery proof still requires explicitly selecting the original `Photos` workspace via SAF
+  and verifying the queued photo under its original disposable destination.
