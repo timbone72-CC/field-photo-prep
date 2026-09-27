@@ -179,7 +179,7 @@ final class RecoveryGuidancePolicy {
             return "No unresolved protected local photo work is reported.";
         }
 
-        return "Protected local work remains on this device: "
+        String text = "Protected local work remains on this device: "
                 + unresolved + " unresolved record"
                 + (unresolved == 1 ? "" : "s")
                 + ", " + queue.protectedOriginals() + " protected original"
@@ -187,6 +187,13 @@ final class RecoveryGuidancePolicy {
                 + ", and " + cleanup + " confirmed-upload cleanup item"
                 + (cleanup == 1 ? "" : "s")
                 + ". Account or Drive recovery will not delete or reassign it.";
+        if (queue.signOutBlocking() > 0) {
+            text += " Sign out is blocked while " + queue.signOutBlocking()
+                    + " protected item"
+                    + (queue.signOutBlocking() == 1 ? "" : "s")
+                    + " still require safe completion, reconciliation, or cleanup.";
+        }
+        return text;
     }
 
     private static String driveBlockedText(OrganizationDriveBindingGuard.State state) {

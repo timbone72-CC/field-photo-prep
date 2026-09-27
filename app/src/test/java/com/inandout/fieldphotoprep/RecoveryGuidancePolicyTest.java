@@ -20,6 +20,7 @@ public final class RecoveryGuidancePolicyTest {
         assertEquals("Sign In", guidance.actionLabel());
         assertTrue(guidance.blockedNow().contains("sign-in"));
         assertTrue(guidance.protectedData().contains("will not delete or reassign"));
+        assertTrue(guidance.protectedData().contains("Sign out is blocked"));
     }
 
     @Test

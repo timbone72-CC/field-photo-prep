@@ -93,6 +93,7 @@ final class AppStatusCollector {
             int uploaded = 0;
             int protectedOriginals = 0;
             int cleanupPending = 0;
+            int signOutBlocking = 0;
 
             for (PendingPhotoRecord record : scan.records()) {
                 switch (record.state()) {
@@ -121,11 +122,32 @@ final class AppStatusCollector {
                 if (hasOriginal) {
                     protectedOriginals++;
                 }
-                if (record.state() == PendingPhotoRecord.State.UPLOADED
-                        && (hasOriginal || hasPreparedCopy(record))) {
-                    cleanupPending++;
+
+                switch (record.state()) {
+                    case CAPTURING:
+                        if (hasOriginal) {
+                            signOutBlocking++;
+                        }
+                        break;
+                    case WAITING:
+                    case UPLOADING:
+                    case FAILED:
+                    case UNCERTAIN:
+                        signOutBlocking++;
+                        break;
+                    case UPLOADED:
+                        if (hasOriginal || hasPreparedCopy(record)) {
+                            cleanupPending++;
+                            signOutBlocking++;
+                        }
+                        break;
+                    default:
+                        throw new IOException("Unsupported protected-photo state.");
                 }
             }
+
+            int unreadable = scan.corruptMetadataFiles().size();
+            signOutBlocking += unreadable;
 
             return new AppStatusSnapshot.QueueCounts(
                     capturing,
@@ -136,7 +158,8 @@ final class AppStatusCollector {
                     uploaded,
                     protectedOriginals,
                     cleanupPending,
-                    scan.corruptMetadataFiles().size());
+                    unreadable,
+                    signOutBlocking);
         } catch (IOException | RuntimeException error) {
             // Diagnostics must never mutate/repair local state merely to make a status screen work.
             // Fail closed into an explicit unavailable state without copying raw error details.

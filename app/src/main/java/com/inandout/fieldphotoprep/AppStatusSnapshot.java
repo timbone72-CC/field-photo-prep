@@ -26,6 +26,7 @@ final class AppStatusSnapshot {
         private final int protectedOriginals;
         private final int cleanupPending;
         private final int unreadable;
+        private final int signOutBlocking;
         private final boolean readable;
 
         QueueCounts(
@@ -48,6 +49,32 @@ final class AppStatusSnapshot {
                     protectedOriginals,
                     cleanupPending,
                     unreadable,
+                    capturing + waiting + uploading + failed + uncertain + cleanupPending + unreadable,
+                    true);
+        }
+
+        QueueCounts(
+                int capturing,
+                int waiting,
+                int uploading,
+                int failed,
+                int uncertain,
+                int uploaded,
+                int protectedOriginals,
+                int cleanupPending,
+                int unreadable,
+                int signOutBlocking) {
+            this(
+                    capturing,
+                    waiting,
+                    uploading,
+                    failed,
+                    uncertain,
+                    uploaded,
+                    protectedOriginals,
+                    cleanupPending,
+                    unreadable,
+                    signOutBlocking,
                     true);
         }
 
@@ -61,6 +88,7 @@ final class AppStatusSnapshot {
                 int protectedOriginals,
                 int cleanupPending,
                 int unreadable,
+                int signOutBlocking,
                 boolean readable) {
             this.capturing = requireNonNegative(capturing, "capturing");
             this.waiting = requireNonNegative(waiting, "waiting");
@@ -72,11 +100,12 @@ final class AppStatusSnapshot {
                     requireNonNegative(protectedOriginals, "protectedOriginals");
             this.cleanupPending = requireNonNegative(cleanupPending, "cleanupPending");
             this.unreadable = requireNonNegative(unreadable, "unreadable");
+            this.signOutBlocking = requireNonNegative(signOutBlocking, "signOutBlocking");
             this.readable = readable;
         }
 
         static QueueCounts unavailable() {
-            return new QueueCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, false);
+            return new QueueCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
         }
 
         int capturing() { return capturing; }
@@ -88,6 +117,7 @@ final class AppStatusSnapshot {
         int protectedOriginals() { return protectedOriginals; }
         int cleanupPending() { return cleanupPending; }
         int unreadable() { return unreadable; }
+        int signOutBlocking() { return signOutBlocking; }
         boolean readable() { return readable; }
 
         int unresolved() {

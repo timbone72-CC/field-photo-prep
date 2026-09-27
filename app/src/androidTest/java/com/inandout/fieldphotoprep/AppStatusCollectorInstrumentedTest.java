@@ -89,6 +89,7 @@ public final class AppStatusCollectorInstrumentedTest {
             assertEquals(1, counts.uploaded());
             assertEquals(6, counts.protectedOriginals());
             assertEquals(1, counts.cleanupPending());
+            assertEquals(6, counts.signOutBlocking());
 
             assertEquals(PendingPhotoRecord.State.CAPTURING, store.getById(capturing.id()).state());
             assertEquals(PendingPhotoRecord.State.WAITING, store.getById(waiting.id()).state());
