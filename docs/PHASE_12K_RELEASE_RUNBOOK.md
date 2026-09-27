@@ -29,6 +29,8 @@ Expected modern working package: `com.inandout.fieldphotoprep.internal`.
 
 If the first command returns no APK path, there is no currently installed unsuffixed production-package app on that device and the first permanent production signer may be established.
 
+**Phase 12K observed result:** PASS. User 0 showed only `com.inandout.fieldphotoprep.internal` and the unrelated Team internal package; `adb shell dumpsys package com.inandout.fieldphotoprep` reported `Unable to find package`. Secure Folder exists as Android user 150, but the global package lookup still reports the unsuffixed production package absent.
+
 If `com.inandout.fieldphotoprep` is present, **do not uninstall it yet**. Read its version and signer:
 
 ```bash

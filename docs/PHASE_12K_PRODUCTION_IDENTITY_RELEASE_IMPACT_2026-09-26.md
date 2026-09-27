@@ -62,7 +62,12 @@ Historical signer/package audit:
 - the suspected versionCode 18 / 0.13-field-ui CI artifact is confirmed as `field-photo-prep-internal-apk`, not a production artifact;
 - nevertheless, an older pre-split test-signed unsuffixed package may still exist on a device unless explicitly proven absent.
 
-Therefore a read-only device package/signer check is required before generating the permanent production signer.
+The read-only device package/signer check is now complete:
+- Android user list shows user 0 (`Tim Rush`) and Secure Folder user 150;
+- visible FPP packages are `com.inandout.fieldphotoprep.internal` and `com.inandout.fieldphotoprep.team.internal`;
+- `adb shell dumpsys package com.inandout.fieldphotoprep` returns `Unable to find package`.
+
+Because Android PackageManager has no unsuffixed production package registered, there is no installed production signer/update lineage to preserve on this device. Phase 12K may establish the first permanent production signer.
 
 ## Approved implementation scope
 
@@ -139,11 +144,10 @@ Required to create a real signed production candidate:
 - dedicated FPP Supabase URL and active publishable key;
 - production callback `com.inandout.fieldphotoprep://auth-callback`.
 
-Required before creating the permanent production signer:
-- confirm whether `com.inandout.fieldphotoprep` is currently installed on the physical Android device;
-- if present, extract/read its signer fingerprint and version without uninstalling it;
-- if its signer is not the known stable test fingerprint, stop and treat it as a potentially existing production signer;
-- if it is the known stable test signer, confirm no protected live work depends on that old package before any removal.
+Required before creating the permanent production signer: **PASS**.
+- physical Android device checked;
+- unsuffixed `com.inandout.fieldphotoprep` is absent;
+- no legacy production-package signer lineage needs to be recovered.
 
 Required before merge:
 - code/config verification;

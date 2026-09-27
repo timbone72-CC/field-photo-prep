@@ -67,12 +67,16 @@ Then perform the read-only physical package check:
 
 Historical audit confirms the stable test signer briefly used the unsuffixed package before commit `ceda1509b0b2c94b602b76b312c828ff89f727bb` added the `.internal` debug suffix. The later versionCode 18 CI artifact is confirmed internal, but absence/presence of an older unsuffixed device package must be proven before a new permanent production key is created.
 
-Only after that gate may the operator establish/recover the real production signer outside the repository, configure the required GitHub secrets, and run the manual signed candidate workflow.
+That device gate is now **PASS**. No existing `com.inandout.fieldphotoprep` installation/signature was found.
+
+Next: establish the **first permanent production signer** outside the repository on the operator-controlled Linux laptop, record its certificate SHA-256 fingerprint, back it up securely, then configure GitHub production-signing secrets and run the manual signed candidate workflow.
 
 ## External-state status
 
 - Supabase project URL/key: **VERIFIED**;
 - production redirect allowlist: **UNVERIFIED — reality gate**;
+- physical package continuity gate: **PASS** — device user 0 (`Tim Rush`) shows only `com.inandout.fieldphotoprep.internal` plus the unrelated Team internal package; `adb shell dumpsys package com.inandout.fieldphotoprep` reports the package absent;
+- Secure Folder exists as Android user 150, but PackageManager global lookup reports the unsuffixed production package absent, so no installed production-package identity exists to preserve;
 - production signing key: **NOT PRESENT IN REPO BY DESIGN**;
 - GitHub production signing secrets: **NOT ASSUMED/NOT VERIFIED**;
 - production-suitable external SMTP: **DEFERRED until outside-user/public distribution**.
