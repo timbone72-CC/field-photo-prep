@@ -122,6 +122,10 @@ public final class AuthActivity extends Activity {
             return;
         }
 
+        if (FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(redirect.kind())) {
+            returnToMainAfterAuthentication = true;
+        }
+
         setBusy(true);
         status.setText("Verifying the authentication link…");
         executor.execute(() -> {
@@ -240,6 +244,9 @@ public final class AuthActivity extends Activity {
         if (FirstRunNavigationPolicy.shouldReturnToMain(
                 returnToMainAfterAuthentication,
                 decision)) {
+            Intent main = new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(main);
             finish();
             return;
         }

@@ -30,6 +30,18 @@ public final class FirstRunNavigationPolicyTest {
     }
 
     @Test
+    public void invitationRedirectContinuesIntoFirstRunOnboarding() {
+        assertTrue(FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(
+                AuthRedirectParser.Kind.INVITE));
+        assertFalse(FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(
+                AuthRedirectParser.Kind.RECOVERY));
+        assertFalse(FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(
+                AuthRedirectParser.Kind.NONE));
+        assertFalse(FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(
+                AuthRedirectParser.Kind.ERROR));
+    }
+
+    @Test
     public void successfulRequiredEntryReturnsToMainOnlyAfterValidation() {
         assertTrue(FirstRunNavigationPolicy.shouldReturnToMain(
                 true,

@@ -85,11 +85,28 @@ Focused automated coverage:
 
 During this slice, overlapping commit `6d2cd275eb4cd5e0a1922d46e88a618036f0af1b` advanced the same authoritative branch while another edit was in progress. Its first CI run `36284696569` failed because existing UI tests were left STOPPED behind the newly expected AuthActivity. The branch was reconciled in place rather than creating a second line. The retained design uses one required first-entry gate and preserves read/recovery access after the gate is closed.
 
-### Next checkpoint after this slice passes
+## Invited-user continuation
 
-`VALIDATED identity + NO_WORKSPACE → existing deliberate Connect Drive action`
+The same Level 2 orchestration now covers the cold-start invitation path:
 
-Do not change 12H binding persistence or SAF/provider semantics.
+- an accepted/validated invitation is marked as an onboarding entry;
+- after authoritative `VALIDATED` Membership, AuthActivity explicitly opens/reuses `MainActivity` with `CLEAR_TOP | SINGLE_TOP` and finishes;
+- this does not infer or grant Drive access;
+- on a new device, MainActivity reaches the existing `NO_WORKSPACE` state and presents the existing deliberate Connect Drive path;
+- recovery links are not automatically treated as invitation onboarding unless they originated from an already-required auth entry;
+- no Supabase, Drive-binding, SAF, queue, or photo semantics changed.
+
+Existing code already owns the next transition:
+- `OrganizationDriveBindingGuard.NO_WORKSPACE` renders **Connect Drive**;
+- `chooseMasterFolder()` requires an online `VALIDATED` Organization before opening Android SAF;
+- `NextActionGuide` already guides `workspaceConnected=false` to **Next: Connect Google Drive**;
+- 12H tests already prove only `VALIDATED` may create/rebind a workspace.
+
+Therefore 12G does not add another Drive setup implementation.
+
+### Next checkpoint after final exact-head CI
+
+Reconcile Phase 12G evidence and determine whether any additional non-destructive UI smoke is needed before marking the 12G runtime slice ready for merge review. The final clean-install/new-user physical claim remains deferred to 12L.
 
 ## Verification status
 

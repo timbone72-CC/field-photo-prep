@@ -14,10 +14,14 @@ final class FirstRunNavigationPolicy {
                 && decision.state() == AuthorizationDecision.State.SIGN_IN_REQUIRED;
     }
 
+    static boolean continuesOnboardingAfterRedirect(AuthRedirectParser.Kind redirectKind) {
+        return redirectKind == AuthRedirectParser.Kind.INVITE;
+    }
+
     static boolean shouldReturnToMain(
-            boolean requiredEntry,
+            boolean onboardingEntry,
             AuthorizationDecision decision) {
-        return requiredEntry
+        return onboardingEntry
                 && decision != null
                 && decision.state() == AuthorizationDecision.State.VALIDATED;
     }
