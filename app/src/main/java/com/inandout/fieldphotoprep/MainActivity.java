@@ -143,6 +143,13 @@ public final class MainActivity extends Activity {
             return false;
         }
 
+        // onCreate normally restores a usable saved Drive binding below. Required authentication
+        // intentionally interrupts that path, so retain the pre-auth binding state here. When
+        // AuthActivity returns with VALIDATED identity, the existing resume policy can distinguish
+        // a formerly authorization-blocked binding from an ordinary already-usable resume and
+        // reload the provider-backed company/property state exactly once.
+        lastDriveBindingState = driveBindingGuard.current().state();
+
         Intent intent = new Intent(this, AuthActivity.class);
         intent.putExtra(AuthActivity.EXTRA_REQUIRED_ENTRY, true);
         startActivity(intent);
