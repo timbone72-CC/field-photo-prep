@@ -170,13 +170,13 @@ public final class HomeDriveOptionsInstrumentedTest {
     private static List<AccessibilityNodeInfo> awaitText(
             Instrumentation instrumentation,
             String text) throws InterruptedException {
-        for (int attempt = 0; attempt < 40; attempt++) {
+        for (int attempt = 0; attempt < 150; attempt++) {
             instrumentation.waitForIdleSync();
             List<AccessibilityNodeInfo> nodes = findText(instrumentation, text);
             if (!nodes.isEmpty()) {
                 return nodes;
             }
-            Thread.sleep(50);
+            Thread.sleep(100);
         }
         return findText(instrumentation, text);
     }
@@ -184,11 +184,17 @@ public final class HomeDriveOptionsInstrumentedTest {
     private static List<AccessibilityNodeInfo> findText(
             Instrumentation instrumentation,
             String text) {
-        AccessibilityNodeInfo root = instrumentation.getUiAutomation().getRootInActiveWindow();
-        if (root == null) {
+        try {
+            AccessibilityNodeInfo root =
+                    instrumentation.getUiAutomation().getRootInActiveWindow();
+            if (root == null) {
+                return List.of();
+            }
+            return root.findAccessibilityNodeInfosByText(text);
+        } catch (RuntimeException ignored) {
+            // Treat a transient UiAutomation reconnect as "not visible yet"; awaitText retries.
             return List.of();
         }
-        return root.findAccessibilityNodeInfosByText(text);
     }
 
     private static AccessibilityNodeInfo clickableAncestor(AccessibilityNodeInfo node) {

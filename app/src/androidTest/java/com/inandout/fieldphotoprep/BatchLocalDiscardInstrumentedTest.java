@@ -173,13 +173,19 @@ public final class BatchLocalDiscardInstrumentedTest {
     private static AccessibilityNodeInfo awaitText(
             Instrumentation instrumentation,
             String text) throws Exception {
-        for (int attempt = 0; attempt < 40; attempt++) {
+        for (int attempt = 0; attempt < 150; attempt++) {
             instrumentation.waitForIdleSync();
-            AccessibilityNodeInfo root = instrumentation.getUiAutomation().getRootInActiveWindow();
-            if (root != null && !root.findAccessibilityNodeInfosByText(text).isEmpty()) {
-                return root;
+            try {
+                AccessibilityNodeInfo root =
+                        instrumentation.getUiAutomation().getRootInActiveWindow();
+                if (root != null && !root.findAccessibilityNodeInfosByText(text).isEmpty()) {
+                    return root;
+                }
+            } catch (RuntimeException ignored) {
+                // The GitHub emulator can briefly reconnect UiAutomation after ADB comes online.
+                // Keep requiring the same dialog text; only tolerate the transient test transport.
             }
-            Thread.sleep(50);
+            Thread.sleep(100);
         }
         return null;
     }

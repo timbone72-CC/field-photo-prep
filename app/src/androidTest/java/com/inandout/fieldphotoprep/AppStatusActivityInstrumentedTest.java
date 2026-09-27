@@ -50,18 +50,27 @@ public final class AppStatusActivityInstrumentedTest {
                 TextView title = activity.findViewById(R.id.app_status_title);
                 TextView account = activity.findViewById(R.id.app_status_account);
                 TextView drive = activity.findViewById(R.id.app_status_drive);
-                Button recheck = activity.findViewById(R.id.app_status_recheck);
-                Button connect = activity.findViewById(R.id.app_status_connect_drive);
+                TextView safe = activity.findViewById(R.id.app_status_recovery_safe);
+                TextView blocked = activity.findViewById(R.id.app_status_recovery_blocked);
+                TextView protectedText =
+                        activity.findViewById(R.id.app_status_recovery_protected);
+                TextView next = activity.findViewById(R.id.app_status_recovery_next);
+                Button recovery = activity.findViewById(R.id.app_status_recovery_action);
                 Button copy = activity.findViewById(R.id.app_status_copy_support);
 
                 assertEquals("App Status", title.getText().toString());
                 assertTrue(account.getText().toString().contains("State: Sign in required"));
                 assertTrue(drive.getText().toString().contains("State: Account recheck required")
                         || drive.getText().toString().contains("State: Not connected"));
-                assertEquals("Sign In", recheck.getText().toString());
-                assertEquals(View.GONE, connect.getVisibility());
+                assertTrue(safe.getText().toString().startsWith("Safe now:"));
+                assertTrue(blocked.getText().toString().contains("sign-in"));
+                assertTrue(protectedText.getText().toString().startsWith("Protected:"));
+                assertTrue(next.getText().toString().contains("Sign In"));
+                assertEquals("Sign In", recovery.getText().toString());
+                assertEquals(View.VISIBLE, recovery.getVisibility());
                 assertTrue(copy.isEnabled());
                 assertFalse(account.getText().toString().contains("content://"));
+                assertFalse(protectedText.getText().toString().contains("content://"));
             });
         }
     }

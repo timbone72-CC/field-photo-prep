@@ -194,6 +194,13 @@ public final class AppStatusSnapshotTest {
     }
 
     @Test
+    public void exactSignOutBlockingCountIsPreserved() {
+        AppStatusSnapshot.QueueCounts counts =
+                new AppStatusSnapshot.QueueCounts(3, 2, 1, 1, 1, 5, 4, 2, 1, 6);
+        assertEquals(6, counts.signOutBlocking());
+    }
+
+    @Test
     public void queueCountsRejectNegativeValues() {
         assertThrows(
                 IllegalArgumentException.class,

@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — 12F / 12H / 12G COMPLETE / 12I IMPLEMENTATION & EVIDENCE COMPLETE**
+Status: **APPROVED MASTER PLAN — 12F / 12H / 12G / 12I COMPLETE / 12J IMPLEMENTATION & EVIDENCE COMPLETE**
 
 ## Purpose
 
@@ -388,7 +388,7 @@ Prove:
 
 # Phase 12I — App Status & Diagnostics
 
-Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — governed closeout on PR #82**
+Status: **COMPLETE — merged through PR #82 on 2026-09-26**
 
 ## Goal
 
@@ -442,6 +442,8 @@ Runtime implementation should wait until the 12E authorization-state owner is st
 ---
 
 # Phase 12J — Recovery & Account-State UX
+
+Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — governed closeout on PR #83**
 
 ## Goal
 
