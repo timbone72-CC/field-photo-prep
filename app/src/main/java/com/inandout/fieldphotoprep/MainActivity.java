@@ -167,16 +167,6 @@ public final class MainActivity extends Activity {
     }
 
     @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        if (intent != null
-                && intent.getBooleanExtra(EXTRA_OPEN_DRIVE_PICKER_FROM_STATUS, false)) {
-            pendingStatusConnectDrive = true;
-        }
-    }
-
-    @Override
     protected void onResume() {
         super.onResume();
         FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
@@ -254,6 +244,10 @@ public final class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (intent != null
+                && intent.getBooleanExtra(EXTRA_OPEN_DRIVE_PICKER_FROM_STATUS, false)) {
+            pendingStatusConnectDrive = true;
+        }
         String destination = intent.getStringExtra("field_tab");
         if ("home".equals(destination)) {
             showAddressScreen(true);
