@@ -51,21 +51,49 @@ Must remain unchanged:
 - immutable queued destinations;
 - Home / Work Orders / Photos workflow.
 
-## Exact next checkpoint
+## Implemented checkpoints
 
-Build a pure `RecoveryGuidancePolicy` first.
+### Pure recovery guidance
 
-It must map the already-owned 12I snapshot to:
+`RecoveryGuidancePolicy` maps the existing 12I snapshot into:
 - safe-now text;
 - blocked-now text;
 - protected-data text;
-- one next-action enum/label.
+- one primary next-action classification.
 
-No Activity/UI change until focused policy tests prove all auth/Drive/queue precedence and safety language.
+Focused unit coverage passed before UI integration.
+
+### Exact sign-out protection
+
+The existing read-only diagnostics collector now reports the exact protected-item count that matches the existing sign-out guard semantics:
+- non-empty CAPTURING original;
+- WAITING / UPLOADING / FAILED / UNCERTAIN record;
+- UPLOADED record with local cleanup pending;
+- unreadable metadata.
+
+No queue/photo record is changed to compute this count.
+
+### App Status recovery surface
+
+App Status now renders:
+- **Safe now**;
+- **Blocked now**;
+- **Protected**;
+- **Next action**.
+
+Its action button delegates only to existing owners:
+- Sign In → `AuthActivity`;
+- Recheck Account → `RuntimeAuthorizationManager`;
+- Connect Drive → existing `MainActivity` / 12H SAF path;
+- Open Photos → existing `MainActivity` Photos path, whose Reconcile All Uncertain workflow scans the durable global UNCERTAIN backlog and checks each stored work-order destination without blind retry.
+
+Revoked/no-membership guidance tells the operator to contact an Organization Owner first; the follow-up button is explicitly **Recheck After Access Is Restored**.
 
 ## Verification status
 
-- preflight docs: PASS — exactly four intended Phase 12J status/preflight documentation files changed from governed main;
-- runtime tests: not run — no runtime changes yet;
-- physical/provider gate: not required at preflight;
+- preflight docs: PASS;
+- pure recovery-policy unit gate: PASS;
+- exact sign-out protection model unit gate: PASS;
+- final App Status UI/runtime CI: pending on the final runtime head;
+- physical/provider gate: not required unless Drive/provider semantics change;
 - Level 3 merge approval: N/A.

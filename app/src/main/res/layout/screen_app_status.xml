@@ -30,6 +30,50 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
+            android:text="Recovery"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/app_status_recovery_safe"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/app_status_recovery_blocked"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/app_status_recovery_protected"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/app_status_recovery_next"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/app_status_recovery_action"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
             android:text="Account"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -40,13 +84,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:textSize="15sp" />
-
-        <Button
-            android:id="@+id/app_status_recheck"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Recheck Account" />
 
         <TextView
             android:layout_width="match_parent"
@@ -62,14 +99,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:textSize="15sp" />
-
-        <Button
-            android:id="@+id/app_status_connect_drive"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Connect Drive"
-            android:visibility="gone" />
 
         <TextView
             android:layout_width="match_parent"
