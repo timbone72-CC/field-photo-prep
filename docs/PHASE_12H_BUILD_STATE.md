@@ -11,7 +11,7 @@ This file is the durable handoff point for Phase 12H — Organization ↔ Drive 
 - draft PR: **#80 — Phase 12H: organization Drive binding protection**
 - change level: **Level 3**
 - merge approval: **PENDING**
-- runtime implementation: **FIRST AUTOMATED BATCH PASS**
+- runtime implementation: **COMPLETE — FINAL REALITY GATE PASS**
 
 Do not implement 12H on the old Phase 12F branch and do not modify `main` directly.
 
@@ -378,3 +378,56 @@ Therefore:
 - do **not** claim that the dedicated switch-workspace folder itself was the selected root;
 - final recovery proof still requires explicitly selecting the original `Photos` workspace via SAF
   and verifying the queued photo under its original disposable destination.
+
+
+## Samsung + provider reality gate — original workspace recovery and data-integrity PASS
+
+Final Phase 12H recovery/data-integrity evidence on 2026-09-26:
+
+- Android SAF was used to explicitly reselect the original `Photos` workspace;
+- Home returned to **HNP Jobs / Workspace: Photos** with **25 properties**;
+- the disposable original destination was reopened successfully:
+  - company: `FPP Phase 12H Test Company - DELETE`;
+  - address: `200 PHASE 12H TEST ADDRESS`;
+  - work order: `PHASE 12H QUEUE TEST - 2026-09-26`;
+- the same queued item was still present as **1 photo** under that original destination after the provider-root switch/recovery;
+- the queued photo was not uploaded, retried, cleared, or reassigned during the check;
+- existing automated coverage continues to prove that workspace rebinding does not rewrite queued `addressId` / `workOrderId` destination identity.
+
+Read-only live Google Drive provider verification against the connected Drive account additionally confirmed:
+
+- the real **HNP Jobs** provider folder is present;
+- it contains **25 direct property folders**, matching the recovered app count;
+- the provider listing showed the existing HNP property folders rather than a newly-created replacement tree;
+- no Phase 12H operation required a mutation inside HNP Jobs to restore the workspace.
+
+This closes the remaining Phase 12H physical/provider evidence:
+1. legacy workspace quarantine — PASS;
+2. explicit same-Organization confirmation through Android SAF — PASS;
+3. same-Organization restart reuse — PASS;
+4. different-Organization isolation with retained SAF permission — PASS;
+5. reconnect/recovery uses Android SAF — PASS;
+6. queued-photo destination preservation across provider-root switch/recovery — PASS;
+7. unrelated HNP Drive hierarchy remains available and was not replaced by the 12H flow — PASS.
+
+## Phase 12H merge checkpoint
+
+Runtime implementation and required automated/physical/provider evidence are complete.
+
+Authoritative tested runtime head remains:
+`b6ef7197a624802ed03bc97ad54b0b8bf9c77402`
+
+Exact recovery-fix Android CI:
+- run `36252029473`;
+- governance PASS;
+- unit tests PASS;
+- internal APK build PASS;
+- signer verification PASS;
+- instrumented UI/image tests PASS;
+- launch smoke test PASS.
+
+Any commits after that runtime head are documentation/evidence reconciliation only unless explicitly documented otherwise.
+
+**Level 3 merge approval remains PENDING.**
+
+Do not merge PR #80 until the operator gives explicit merge approval.
