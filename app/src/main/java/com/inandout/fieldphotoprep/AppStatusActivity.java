@@ -118,6 +118,9 @@ public final class AppStatusActivity extends Activity {
         statusMessage.setVisibility(View.VISIBLE);
         authorizationManager.revalidateAsync().whenComplete((decision, error) ->
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
                     recheckButton.setEnabled(true);
                     refreshStatus(error == null
                             ? "Account status refreshed."
