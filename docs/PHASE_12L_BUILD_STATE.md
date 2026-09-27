@@ -81,3 +81,14 @@ Gate A clean/no-session launch: **PARTIAL PASS**.
 - ordinary authenticated field use therefore remains gated behind FPP sign-in as designed.
 
 Remaining Gate A sub-check: physically confirm `com.inandout.fieldphotoprep.internal` is still installed/unchanged after clearing production. That separation proof may also be reused for Gate F.
+
+## Gate B — returning Owner identity
+
+Gate B returning Owner identity: **PARTIAL PASS**.
+- fresh production package accepted the controlled Owner sign-in;
+- app reached Home after authentication;
+- Home shows Google Drive `Not connected` with explicit `Connect Drive` action;
+- no Drive workspace was silently restored or inferred by FPP authentication;
+- property state is fresh/empty on this production install.
+
+Remaining Gate B proof: capture App Status after fresh sign-in to confirm account `VALIDATED`, expected Organization, and role `OWNER` on this cleared production package.
