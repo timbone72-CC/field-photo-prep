@@ -129,7 +129,36 @@ public final class MainActivity extends Activity {
         showAddressScreen(false);
         renderSavedMaster();
 
+        // Offer required authentication once for a fresh Home entry. If the operator closes
+        // AuthActivity to inspect protected/read-only recovery state, Android recreation (for
+        // example rotation) must not immediately force the same gate back on top. Phase 12E
+        // action guards still fail closed for capture and Drive mutations.
+        if (savedInstanceState == null
+                && launchRequiredAuthenticationIfNeeded(app.authorizationManager())) {
+            return;
+        }
         restoreSavedDriveIfUsable();
+    }
+
+    private boolean launchRequiredAuthenticationIfNeeded(
+            RuntimeAuthorizationManager authorizationManager) {
+        if (authorizationManager == null
+                || !FirstRunNavigationPolicy.requiresAuthentication(
+                        authorizationManager.currentDecision())) {
+            return false;
+        }
+
+        // onCreate normally restores a usable saved Drive binding below. Required authentication
+        // intentionally interrupts that path, so retain the pre-auth binding state here. When
+        // AuthActivity returns with VALIDATED identity, the existing resume policy can distinguish
+        // a formerly authorization-blocked binding from an ordinary already-usable resume and
+        // reload the provider-backed company/property state exactly once.
+        lastDriveBindingState = driveBindingGuard.current().state();
+
+        Intent intent = new Intent(this, AuthActivity.class);
+        intent.putExtra(AuthActivity.EXTRA_REQUIRED_ENTRY, true);
+        startActivity(intent);
+        return true;
     }
 
     @Override

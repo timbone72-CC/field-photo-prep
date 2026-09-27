@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — 12F COMPLETE / 12H IN PROGRESS**
+Status: **APPROVED MASTER PLAN — 12F / 12H COMPLETE / 12G IMPLEMENTATION & EVIDENCE COMPLETE**
 
 ## Purpose
 
@@ -297,6 +297,8 @@ changes authoritative Membership/Invitation state and can revoke authorization.
 
 # Phase 12G — First-Run / New-Device Flow
 
+Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — governed closeout on PR #81**
+
 ## Goal
 
 Make a new install understandable and safe without assuming any Drive identity is portable from another phone.
@@ -337,7 +339,7 @@ The final clean-install/new-user reality claim belongs to 12L so development doe
 
 # Phase 12H — Organization ↔ Drive Binding Protection
 
-Status: **IN PROGRESS — pre-implementation on `phase-12h/organization-drive-binding-protection`**
+Status: **COMPLETE — merged through PR #80 on 2026-09-26**
 
 ## Goal
 

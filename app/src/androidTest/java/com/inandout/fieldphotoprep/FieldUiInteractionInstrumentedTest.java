@@ -56,6 +56,7 @@ public final class FieldUiInteractionInstrumentedTest {
         Intent intent = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(intent)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             scenario.onActivity(activity -> {
                 try {
                     bindSingleProperty(activity, property);

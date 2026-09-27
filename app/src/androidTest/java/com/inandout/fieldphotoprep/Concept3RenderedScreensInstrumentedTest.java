@@ -60,6 +60,7 @@ public final class Concept3RenderedScreensInstrumentedTest {
             photos.add(store.getById(photo.id()));
         }
         try (ActivityScenario<MainActivity> main = ActivityScenario.launch(new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             main.onActivity(activity -> {
                 try {
                     @SuppressWarnings("unchecked") List<DriveFolder> visible = (List<DriveFolder>) field(activity, "propertyFolders");

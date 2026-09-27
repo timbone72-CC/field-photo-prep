@@ -82,6 +82,7 @@ public final class GuidedNextActionInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(
                 new Intent(context, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             scenario.onActivity(activity -> {
                 try {
                     setField(activity, "selectedAddress", property);

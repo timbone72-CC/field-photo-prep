@@ -16,6 +16,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class AuthActivity extends Activity {
+    static final String EXTRA_REQUIRED_ENTRY =
+            "com.inandout.fieldphotoprep.extra.REQUIRED_ENTRY";
+
     private enum Mode {
         LOGIN,
         RECOVERY_REQUEST,
@@ -41,6 +44,7 @@ public final class AuthActivity extends Activity {
     private Mode mode = Mode.LOGIN;
     private SupabaseAuthClient.AuthTokens pendingRecoveryTokens;
     private String pendingInvitationId;
+    private boolean returnToMainAfterAuthentication;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,6 +84,10 @@ public final class AuthActivity extends Activity {
     }
 
     private void handleIntent(Intent intent) {
+        if (intent != null && intent.getBooleanExtra(EXTRA_REQUIRED_ENTRY, false)) {
+            returnToMainAfterAuthentication = true;
+        }
+
         String data = intent == null ? null : intent.getDataString();
         if (data == null || data.trim().isEmpty()) {
             AuthSessionState state = authorizationManager.storedSession();
@@ -87,7 +95,11 @@ public final class AuthActivity extends Activity {
                 showLogin(null);
             } else {
                 AuthorizationDecision decision = authorizationManager.currentDecision();
-                showConnected(state, storedSessionMessage(decision));
+                if (FirstRunNavigationPolicy.requiresAuthentication(decision)) {
+                    showLogin("Sign in again to continue Field Photo Prep work.");
+                } else {
+                    completeAuthenticatedEntry(state, storedSessionMessage(decision));
+                }
             }
             return;
         }
@@ -108,6 +120,10 @@ public final class AuthActivity extends Activity {
                     ? "The authentication link was incomplete or is not for this app."
                     : redirect.errorMessage());
             return;
+        }
+
+        if (FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(redirect.kind())) {
+            returnToMainAfterAuthentication = true;
         }
 
         setBusy(true);
@@ -223,7 +239,22 @@ public final class AuthActivity extends Activity {
         }
     }
 
+    private void completeAuthenticatedEntry(AuthSessionState state, String message) {
+        AuthorizationDecision decision = authorizationManager.currentDecision();
+        if (FirstRunNavigationPolicy.shouldReturnToMain(
+                returnToMainAfterAuthentication,
+                decision)) {
+            Intent main = new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(main);
+            finish();
+            return;
+        }
+        showConnected(state, message);
+    }
+
     private void showConnected(AuthSessionState state, String message) {
+        AuthorizationDecision current = authorizationManager.currentDecision();
         mode = Mode.CONNECTED;
         title.setText("Account Connected");
         status.setText(message
@@ -243,7 +274,6 @@ public final class AuthActivity extends Activity {
         primary.setOnClickListener(v -> recheckStoredSession(state));
         secondary.setOnClickListener(v -> signOutSafely(state));
 
-        AuthorizationDecision current = authorizationManager.currentDecision();
         boolean mayAdmin = current.allowsMemberAdministration();
         manageMembers.setVisibility(mayAdmin ? View.VISIBLE : View.GONE);
         manageMembers.setOnClickListener(v ->
@@ -268,7 +298,9 @@ public final class AuthActivity extends Activity {
                         passwordValue);
                 AuthSessionState state = authClient.validateMembership(tokens);
                 replaceAuthenticatedSessionSafely(state);
-                runOnUiThread(() -> showConnected(state, "Signed in successfully."));
+                runOnUiThread(() -> completeAuthenticatedEntry(
+                        state,
+                        "Signed in successfully."));
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     setBusy(false);
@@ -347,7 +379,7 @@ public final class AuthActivity extends Activity {
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = null;
                     pendingInvitationId = null;
-                    showConnected(
+                    completeAuthenticatedEntry(
                             state,
                             joined
                                     ? "Invitation accepted and account verified."

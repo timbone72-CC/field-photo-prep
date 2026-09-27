@@ -41,6 +41,7 @@ public final class MultiCompanyDeviceFindingRegressionInstrumentedTest {
         Intent intent = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(intent)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             scenario.onActivity(activity -> {
                 try {
                     EditText input = activity.findViewById(R.id.work_order_name_input);
@@ -78,6 +79,7 @@ public final class MultiCompanyDeviceFindingRegressionInstrumentedTest {
             });
 
             scenario.recreate();
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
             scenario.onActivity(activity -> {
                 EditText input = activity.findViewById(R.id.work_order_name_input);
@@ -100,6 +102,7 @@ public final class MultiCompanyDeviceFindingRegressionInstrumentedTest {
         Intent intent = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(intent)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             scenario.onActivity(activity -> {
                 try {
                     TextView status = activity.findViewById(R.id.home_status_text);
