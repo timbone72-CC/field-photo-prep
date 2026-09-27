@@ -143,3 +143,20 @@ Observed state:
 - local signed production APK and physical callback/install gates PASS.
 
 Resolution: do not weaken or duplicate the workflow merely to force a pre-merge run. After PR #84 is merged and the workflow exists on `main`, run the manual Production Release Candidate workflow with `previous_production_version_code=36` as the post-merge release-path activation check. This platform sequencing constraint is not a Phase 12K merge blocker because the documented merge gate already requires source/tooling CI, signed artifact evidence, callback/install reality evidence, and explicit Level-3 approval—not a pre-merge `workflow_dispatch` run.
+
+## Production support-status baseline
+
+Production support-status baseline: **PASS**.
+- app version: `0.28.0`;
+- account state: `VALIDATED`;
+- role: `OWNER`;
+- grace: not applicable;
+- last validation: `2026-09-27T11:54Z`;
+- Drive state: `NO_WORKSPACE` — expected for the fresh production package before Drive workspace selection/binding;
+- camera permission: `NOT_GRANTED` — expected before first production camera use;
+- queue CAPTURING/WAITING/UPLOADING/FAILED/UNCERTAIN/UPLOADED: all `0`;
+- protected originals: `0`;
+- cleanup pending: `0`;
+- unreadable local records: `0`.
+
+This confirms the first production baseline contains no hidden queued/protected work and the production account remains validated with OWNER authorization after the recovery callback test.

@@ -325,3 +325,15 @@ Observed flow:
 ## Production signer off-laptop backup
 
 **PASS**. An encrypted removable-media backup was created and verified by decrypting it through SHA-256. The recovered keystore hash is `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6`, exactly matching the original production keystore hash. No keystore bytes or passphrases are stored in the repository.
+
+## Production diagnostics baseline
+
+Physical production app diagnostics after successful auth recovery:
+- version `0.28.0`;
+- account `VALIDATED`, role `OWNER`;
+- Drive `NO_WORKSPACE` (expected before production workspace binding);
+- camera permission not yet granted (expected before camera use);
+- all queue states zero;
+- protected originals / cleanup pending / unreadable local records all zero.
+
+Result: **PASS** for a clean first-production baseline. No protected local work exists in this new production package before Drive/camera setup.
