@@ -22,7 +22,7 @@ public final class AppStatusCollectorInstrumentedTest {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         File fixture = new File(context.getCacheDir(), "app-status-" + UUID.randomUUID());
         PendingPhotoStore store = new PendingPhotoStore(new File(fixture, "pending"));
-        PhotoPreparer preparer = new PhotoPreparer(new File(fixture, "prepared"));
+        File preparedRoot = new File(fixture, "prepared");
         DriveFolder address = new DriveFolder("status-address", "STATUS_TEST_ADDRESS");
         DriveFolder workOrder = new DriveFolder("status-work", "STATUS TEST - 2026-09-26");
 
@@ -75,7 +75,7 @@ public final class AppStatusCollectorInstrumentedTest {
                     prefs,
                     bindingGuard,
                     store,
-                    preparer,
+                    preparedRoot,
                     "status-test");
 
             AppStatusSnapshot.QueueCounts counts = collector.collect().queueCounts();
