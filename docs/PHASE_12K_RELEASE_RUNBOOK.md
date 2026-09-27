@@ -91,6 +91,8 @@ keytool -list -v \
 
 Store an encrypted/offline backup of the keystore and its recovery information before distributing any APK signed by it.
 
+**Phase 12K observed backup result:** PASS. An AES-256 symmetric GPG backup was written to removable USB media and verified by decrypting it through SHA-256. The recovered hash `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6` exactly matches the original production keystore.
+
 ## 3. Local signed release build
 
 Set sensitive values only in the current shell/session or another secure local secret mechanism:

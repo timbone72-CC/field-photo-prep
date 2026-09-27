@@ -324,3 +324,7 @@ Observed flow:
 4. password update succeeded;
 5. app returned to Account Connected with the expected organization and OWNER role;
 6. no localhost/browser dead end and no internal-package redirect occurred.
+
+## Production signer off-laptop backup
+
+**PASS**. An encrypted removable-media backup was created and verified by decrypting it through SHA-256. The recovered keystore hash is `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6`, exactly matching the original production keystore hash. No keystore bytes or passphrases are stored in the repository.

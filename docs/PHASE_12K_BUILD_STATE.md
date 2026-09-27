@@ -121,3 +121,12 @@ Production callback reality gate: **PASS**.
 - verified role: `OWNER`;
 - no localhost/browser dead end observed;
 - no `.internal` package takeover observed.
+
+## Production signer backup evidence
+
+Off-laptop production signer backup: **PASS**.
+- encrypted backup created on removable USB media;
+- backup filename: `FPP-production-signer-backup-2026-09-27.jks.gpg`;
+- decrypted backup SHA-256: `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6`;
+- decrypted backup hash exactly matches the original production keystore creation hash;
+- backup passphrase/private keystore material remain outside git and were not shared in chat.
