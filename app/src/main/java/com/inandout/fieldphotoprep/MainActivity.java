@@ -155,11 +155,6 @@ public final class MainActivity extends Activity {
         FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
         RuntimeAuthorizationManager manager = app.authorizationManager();
 
-        if (manager != null
-                && routeToRequiredAuthenticationIfNeeded(manager.currentDecision())) {
-            return;
-        }
-
         // Re-evaluate immediately from the stored session before rendering any Drive state.
         // This is essential when AuthActivity replaced the current User/Organization while this
         // MainActivity instance remained underneath it on the Android back stack.
@@ -168,25 +163,12 @@ public final class MainActivity extends Activity {
         if (manager != null) {
             manager.revalidateAsync().whenComplete((decision, error) ->
                     runOnUiThread(() -> {
-                        if (isFinishing() || isDestroyed()) {
-                            return;
+                        if (!isFinishing() && !isDestroyed()) {
+                            reconcileDriveBindingForCurrentOrganization();
                         }
-                        if (routeToRequiredAuthenticationIfNeeded(decision)) {
-                            return;
-                        }
-                        reconcileDriveBindingForCurrentOrganization();
                     }));
         }
         refreshProtectedPhotoCounts();
-    }
-
-    private boolean routeToRequiredAuthenticationIfNeeded(
-            AuthorizationDecision decision) {
-        if (!FirstRunNavigationPolicy.requiresAuthentication(decision)) {
-            return false;
-        }
-        startActivity(AuthActivity.requiredGateIntent(this));
-        return true;
     }
 
     private void reconcileDriveBindingForCurrentOrganization() {

@@ -24,6 +24,8 @@ public final class FirstRunNavigationPolicyTest {
                 decision(AuthorizationDecision.State.NO_MEMBERSHIP)));
         assertFalse(FirstRunNavigationPolicy.requiresAuthentication(
                 decision(AuthorizationDecision.State.REVOKED)));
+        assertFalse(FirstRunNavigationPolicy.requiresAuthentication(
+                decision(AuthorizationDecision.State.DRIVE_DISCONNECTED)));
         assertFalse(FirstRunNavigationPolicy.requiresAuthentication(null));
     }
 

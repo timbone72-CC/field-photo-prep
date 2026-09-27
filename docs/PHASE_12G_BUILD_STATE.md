@@ -66,35 +66,30 @@ Must remain unchanged:
 
 Implemented on this branch after the documentation preflight:
 
-- `MainActivity.onResume()` now routes `SIGN_IN_REQUIRED` through the existing `AuthActivity` before Drive/Home resume work continues;
-- the same routing check runs again after the existing serialized account revalidation, so a stale stored session that becomes `SIGN_IN_REQUIRED` cannot remain in ordinary Home flow;
-- `AuthActivity` receives a narrow required-gate intent marker only for this launcher route;
-- after that required route reaches authoritative `VALIDATED` identity, `AuthActivity` finishes and returns to the existing `MainActivity`;
-- non-sign-in blocked/degraded states remain owned by the existing authorization/recovery behavior and are not redefined by 12G;
+- fresh `MainActivity` entry checks the authoritative Phase 12E decision before restoring Drive UI;
+- `SIGN_IN_REQUIRED` opens the existing `AuthActivity` with a narrow, in-memory required-entry marker;
+- `AuthActivity` uses its existing sign-in/invitation/recovery owner; it does not create a second auth path;
+- after that required entry reaches authoritative `VALIDATED`, AuthActivity finishes back to the existing MainActivity;
+- closing AuthActivity without authentication leaves existing read/recovery Home reachable; 12G does not create an on-resume auth loop;
+- MainActivity then resumes its existing Phase 12E revalidation and Phase 12H binding reconciliation;
 - no Drive binding, `FolderPrefs`, Supabase, queue, photo, or provider identity semantics changed.
 
 Focused automated coverage:
-- no decision / `SIGN_IN_REQUIRED` requires the existing auth route;
-- `VALIDATED` completes the required gate;
-- GRACE, RECHECK_REQUIRED, NO_MEMBERSHIP, REVOKED, and DRIVE_DISCONNECTED do not create a second 12G recovery state machine.
+- `SIGN_IN_REQUIRED` requires the existing auth route;
+- `VALIDATED` completes a required entry only when that entry marker is present;
+- GRACE, RECHECK_REQUIRED, NO_MEMBERSHIP, REVOKED, and DRIVE_DISCONNECTED do not create a second 12G recovery state machine;
+- emulator no-session launcher coverage proves MainActivity opens the real AuthActivity;
+- unrelated pre-existing MainActivity UI tests explicitly dismiss the real auth Activity rather than using a production authentication bypass.
 
-Verification: **PENDING CI** on the exact runtime head.
+### Reconciliation note
+
+During this slice, overlapping commit `6d2cd275eb4cd5e0a1922d46e88a618036f0af1b` advanced the same authoritative branch while another edit was in progress. Its first CI run `36284696569` failed because existing UI tests were left STOPPED behind the newly expected AuthActivity. The branch was reconciled in place rather than creating a second line. The retained design uses one required first-entry gate and preserves read/recovery access after the gate is closed.
 
 ### Next checkpoint after this slice passes
-
-Inspect and implement only the next 12G transition:
 
 `VALIDATED identity + NO_WORKSPACE → existing deliberate Connect Drive action`
 
 Do not change 12H binding persistence or SAF/provider semantics.
-
-## Exact next checkpoint
-
-After the required-authentication slice passes, continue with only:
-
-`VALIDATED identity + NO_WORKSPACE → existing deliberate Connect Drive action`
-
-Use the existing 12H binding guard and existing SAF picker. Do not add new persistence or provider-selection semantics.
 
 ## Verification status
 

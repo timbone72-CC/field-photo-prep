@@ -41,6 +41,7 @@ public final class HomeDriveOptionsInstrumentedTest {
         Intent intent = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(intent)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             scenario.onActivity(activity -> {
                 View overflow = activity.findViewById(R.id.home_drive_options_button);
                 overflow.setVisibility(View.VISIBLE);
@@ -138,6 +139,7 @@ public final class HomeDriveOptionsInstrumentedTest {
         Intent intent = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(intent)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             scenario.onActivity(activity -> {
                 try {
                     Method renderSelector = MainActivity.class.getDeclaredMethod(

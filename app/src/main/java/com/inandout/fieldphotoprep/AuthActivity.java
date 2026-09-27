@@ -19,14 +19,6 @@ public final class AuthActivity extends Activity {
     static final String EXTRA_REQUIRED_ENTRY =
             "com.inandout.fieldphotoprep.extra.REQUIRED_ENTRY";
 
-    static final String EXTRA_REQUIRED_AUTH_GATE =
-            "com.inandout.fieldphotoprep.extra.REQUIRED_AUTH_GATE";
-
-    static Intent requiredGateIntent(Activity source) {
-        return new Intent(source, AuthActivity.class)
-                .putExtra(EXTRA_REQUIRED_AUTH_GATE, true);
-    }
-
     private enum Mode {
         LOGIN,
         RECOVERY_REQUEST,
@@ -106,7 +98,7 @@ public final class AuthActivity extends Activity {
                 if (FirstRunNavigationPolicy.requiresAuthentication(decision)) {
                     showLogin("Sign in again to continue Field Photo Prep work.");
                 } else {
-                    showConnected(state, storedSessionMessage(decision));
+                    completeAuthenticatedEntry(state, storedSessionMessage(decision));
                 }
             }
             return;
@@ -256,12 +248,6 @@ public final class AuthActivity extends Activity {
 
     private void showConnected(AuthSessionState state, String message) {
         AuthorizationDecision current = authorizationManager.currentDecision();
-        if (getIntent().getBooleanExtra(EXTRA_REQUIRED_AUTH_GATE, false)
-                && FirstRunNavigationPolicy.completesRequiredAuthentication(current)) {
-            finish();
-            return;
-        }
-
         mode = Mode.CONNECTED;
         title.setText("Account Connected");
         status.setText(message

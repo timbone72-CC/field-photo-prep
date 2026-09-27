@@ -38,6 +38,7 @@ public final class WorkOrderChildDiscoveryUiInstrumentedTest {
                     "address-1611", "1611_NW_SMITH_AVE");
 
             try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
                 scenario.onActivity(activity -> {
                     try {
                         @SuppressWarnings("unchecked")
