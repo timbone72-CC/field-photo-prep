@@ -67,13 +67,26 @@ jobs:
         with:
           gradle-version: '9.6.0'
 
-      - name: Unit tests
+      - name: Unit tests and production identity checks
         if: steps.scope.outputs.runtime == 'true'
-        run: gradle test
+        run: gradle :app:verifyProductionReleaseIdentity test
 
       - name: Internal debug build
         if: steps.scope.outputs.runtime == 'true'
         run: gradle assembleDebug
+
+      - name: Verify production release fails closed without signing inputs
+        if: steps.scope.outputs.runtime == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gradle :app:assembleRelease > release-fail-closed.txt 2>&1; then
+            cat release-fail-closed.txt
+            echo "Production release unexpectedly built without external signing inputs." >&2
+            exit 1
+          fi
+          cat release-fail-closed.txt
+          grep -Fq "Missing required production signing environment" release-fail-closed.txt
 
       - name: Verify stable test APK signer
         if: steps.scope.outputs.runtime == 'true'
@@ -102,6 +115,21 @@ jobs:
           if actual != expected:
               sys.exit(1)
           PY
+
+      - name: Verify APK evidence tooling against internal package
+        if: steps.scope.outputs.runtime == 'true'
+        env:
+          FPP_EXPECTED_PACKAGE: com.inandout.fieldphotoprep.internal
+          FPP_EXPECTED_VERSION_CODE: '37'
+          FPP_EXPECTED_VERSION_NAME: 0.28.0-internal
+          FPP_EXPECTED_AUTH_REDIRECT_SCHEME: com.inandout.fieldphotoprep.internal
+          FPP_EXPECTED_AUTH_REDIRECT_HOST: auth-callback
+          FPP_EXPECTED_SUPABASE_URL: https://vtyiktvqhbgabawotkrj.supabase.co
+          FPP_EXPECTED_SUPABASE_PUBLISHABLE_KEY: sb_publishable_QXGedlj5wCmMpV2HncZp9A_kfgLzuAQ
+          FPP_EXPECTED_CERT_SHA256: 2c0a9616fd819333ed98b33593fbe597e120e95936103c6b7a76270e985d3fba
+          FPP_SOURCE_COMMIT: ${{ github.sha }}
+          FPP_EVIDENCE_PATH: verification-reports/internal-apk-verifier.txt
+        run: bash scripts/verify-release-apk.sh app/build/outputs/apk/debug/app-debug.apk
 
       - name: Enable KVM
         if: steps.scope.outputs.runtime == 'true'
@@ -139,4 +167,5 @@ jobs:
             app/build/outputs/androidTest-results
             app/build/test-results/testDebugUnitTest
             apk-signer.txt
+            release-fail-closed.txt
           if-no-files-found: error
