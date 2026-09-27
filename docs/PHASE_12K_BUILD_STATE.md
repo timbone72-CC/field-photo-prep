@@ -81,23 +81,23 @@ Verified artifact:
 - signer SHA-256: `8ba1dc6ae4907274a7ddb16662a46a7bb52a0fca5dbeadeb478001052fd2a1c2`;
 - APK SHA-256: `3e0785965531a56a4e5abc98ae09f070d1e69dcf1c8099e7804f96c85bfbe098`.
 
-Next: complete final CI on this governed head, then install the signed APK on the physical Android device as the first production baseline and run the production callback reality gate. GitHub production-signing secrets/manual candidate workflow remain to be configured before controlled distribution.
+Final source/tooling CI, first-production install, callback reality gate, signer backup, and GitHub signing-secret configuration are complete. The manual Production Release Candidate workflow is intentionally a post-merge activation check because GitHub requires the workflow file to exist on the default branch before first `workflow_dispatch`.
 
 ## External-state status
 
 - Supabase project URL/key: **VERIFIED**;
-- production redirect allowlist: **UNVERIFIED — reality gate**;
+- production redirect/callback reality gate: **PASS** on the signed production package;
 - physical package continuity gate: **PASS** — device user 0 (`Tim Rush`) shows only `com.inandout.fieldphotoprep.internal` plus the unrelated Team internal package; `adb shell dumpsys package com.inandout.fieldphotoprep` reports the package absent;
 - Secure Folder exists as Android user 150, but PackageManager global lookup reports the unsuffixed production package absent, so no installed production-package identity exists to preserve;
 - production signing identity: **ESTABLISHED LOCALLY / NOT PRESENT IN REPO**;
 - production certificate SHA-256: `8B:A1:DC:6A:E4:90:72:74:A7:DD:B1:66:62:A4:6A:7B:B5:2A:0F:CA:5D:BE:AD:EB:47:80:01:05:2F:D2:A1:C2`;
 - production keystore file SHA-256 at creation: `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6`;
-- GitHub production signing secrets: **NOT ASSUMED/NOT VERIFIED**;
+- GitHub production signing secrets: **CONFIGURED** — all five required repository secret names verified present;
 - production-suitable external SMTP: **DEFERRED until outside-user/public distribution**.
 
 ## Merge approval
 
-**PENDING — DO NOT MERGE**
+**APPROVED — operator explicitly approved Phase 12K merge on 2026-09-27.**
 
 ## Physical production install evidence
 

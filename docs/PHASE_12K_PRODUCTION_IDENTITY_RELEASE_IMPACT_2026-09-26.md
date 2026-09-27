@@ -283,12 +283,9 @@ Must remain unchanged:
 
 ## Explicit pre-merge approval
 
-Status: **PENDING**
+Status: **APPROVED — 2026-09-27**
 
-No merge of Phase 12K is authorized until:
-1. all required evidence is recorded;
-2. remaining structural assumptions are verified;
-3. the operator explicitly approves the Level-3 merge.
+Operator explicitly approved the Level-3 Phase 12K merge after reviewing the completed production signer, signed APK, physical install, callback recovery, off-laptop backup, GitHub signing-secret, and CI evidence. No scope expansion was authorized.
 
 ## Local signed production candidate evidence
 
@@ -311,7 +308,7 @@ PASS on the operator Android device:
 - `com.inandout.fieldphotoprep` resolves to an installed APK path;
 - `dumpsys package` reports versionCode `37`, versionName `0.28.0`.
 
-This establishes the first production-package install baseline using the permanent signer recorded above. Production auth callback reality verification remains pending.
+This establishes the first production-package install baseline using the permanent signer recorded above. Production auth callback reality verification subsequently passed as recorded below.
 
 ## Production auth callback reality result
 

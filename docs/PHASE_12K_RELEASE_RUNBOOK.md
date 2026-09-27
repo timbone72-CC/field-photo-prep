@@ -258,4 +258,4 @@ Before merging PR #84, the build-state record must contain:
 - install/update continuity result appropriate to the actual existing production state;
 - explicit operator approval: **APPROVED**.
 
-Until then PR #84 remains Draft and Level-3 merge approval remains **PENDING**.
+**Phase 12K operator approval result:** APPROVED on 2026-09-27. After final required checks on the approval-only head pass, PR #84 may be marked ready and merged. The first manual `Production Release Candidate` workflow run remains a post-merge activation check because GitHub requires that new workflow to exist on the default branch before first dispatch.
