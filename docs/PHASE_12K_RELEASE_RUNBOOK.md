@@ -57,6 +57,13 @@ Do this on the operator-controlled Linux machine, **not** in GitHub Actions and 
 
 Only after the package/signer check above proves a new signer is safe should a first production signer be created.
 
+**Phase 12K signer established:**
+- alias: `field-photo-prep-production`;
+- certificate SHA-256: `8B:A1:DC:6A:E4:90:72:74:A7:DD:B1:66:62:A4:6A:7B:B5:2A:0F:CA:5D:BE:AD:EB:47:80:01:05:2F:D2:A1:C2`;
+- keystore file SHA-256 at creation: `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6`.
+
+The JKS format warning from `keytool` is informational. Do not migrate this established keystore format during Phase 12K merely to remove the warning; doing so would add unnecessary signing-path change while the current JKS is supported by the Android/Gradle signing configuration.
+
 For a confirmed first production baseline, a suitable local command is:
 
 ```bash

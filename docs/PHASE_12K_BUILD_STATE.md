@@ -69,7 +69,9 @@ Historical audit confirms the stable test signer briefly used the unsuffixed pac
 
 That device gate is now **PASS**. No existing `com.inandout.fieldphotoprep` installation/signature was found.
 
-Next: establish the **first permanent production signer** outside the repository on the operator-controlled Linux laptop, record its certificate SHA-256 fingerprint, back it up securely, then configure GitHub production-signing secrets and run the manual signed candidate workflow.
+First permanent production signer is now established outside the repository on the operator-controlled Linux laptop.
+
+Next: build and verify the first signed production APK locally using the recorded signer, then configure GitHub production-signing secrets and run the manual signed candidate workflow. Before broader distribution, retain a secure backup of the keystore and password recovery information.
 
 ## External-state status
 
@@ -77,7 +79,9 @@ Next: establish the **first permanent production signer** outside the repository
 - production redirect allowlist: **UNVERIFIED — reality gate**;
 - physical package continuity gate: **PASS** — device user 0 (`Tim Rush`) shows only `com.inandout.fieldphotoprep.internal` plus the unrelated Team internal package; `adb shell dumpsys package com.inandout.fieldphotoprep` reports the package absent;
 - Secure Folder exists as Android user 150, but PackageManager global lookup reports the unsuffixed production package absent, so no installed production-package identity exists to preserve;
-- production signing key: **NOT PRESENT IN REPO BY DESIGN**;
+- production signing identity: **ESTABLISHED LOCALLY / NOT PRESENT IN REPO**;
+- production certificate SHA-256: `8B:A1:DC:6A:E4:90:72:74:A7:DD:B1:66:62:A4:6A:7B:B5:2A:0F:CA:5D:BE:AD:EB:47:80:01:05:2F:D2:A1:C2`;
+- production keystore file SHA-256 at creation: `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6`;
 - GitHub production signing secrets: **NOT ASSUMED/NOT VERIFIED**;
 - production-suitable external SMTP: **DEFERRED until outside-user/public distribution**.
 

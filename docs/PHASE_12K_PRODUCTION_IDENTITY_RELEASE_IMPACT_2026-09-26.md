@@ -104,6 +104,12 @@ Production remains:
 
 The production candidate versionCode must be greater than governed-base versionCode `36`. The planned 12K candidate is `37`.
 
+Permanent production signer established on the operator-controlled Linux laptop:
+- alias: `field-photo-prep-production`;
+- certificate SHA-256: `8B:A1:DC:6A:E4:90:72:74:A7:DD:B1:66:62:A4:6A:7B:B5:2A:0F:CA:5D:BE:AD:EB:47:80:01:05:2F:D2:A1:C2`;
+- keystore file SHA-256 at creation: `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6`;
+- keystore bytes and passwords remain outside git and are not recorded in this repository.
+
 ### 3. Manual controlled release-candidate workflow
 
 Add a manual-only GitHub Actions workflow that:
@@ -136,7 +142,7 @@ The runbook must preserve:
 ## Required data
 
 Required to create a real signed production candidate:
-- one secured production keystore;
+- one secured production keystore — **SATISFIED LOCALLY**;
 - its alias/passwords;
 - expected certificate SHA-256 fingerprint;
 - 12K source commit;
