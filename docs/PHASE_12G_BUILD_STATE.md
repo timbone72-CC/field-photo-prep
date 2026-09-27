@@ -14,7 +14,7 @@ Status: **PRE-IMPLEMENTATION — AUTHORITATIVE LINE ESTABLISHED**
 ## Authoritative implementation line
 
 - branch: `phase-12g/first-run-new-device-flow`;
-- PR: pending creation immediately after this documentation checkpoint;
+- PR: #81 — `Phase 12G: first-run and new-device flow` (Draft);
 - competing 12G branch/PR at takeover: none;
 - unrelated draft PR #39 does not overlap this scope.
 
@@ -74,7 +74,7 @@ Then implement only that first-run navigation boundary and its focused tests.
 
 ## Verification status
 
-- documentation/preflight diff: pending commit/PR checks;
+- documentation/preflight diff: PASS — exactly five intended documentation files changed from governed main;
 - runtime focused tests: not run — no runtime code changed;
 - complete Android CI: not required for the preflight documentation commit except the repository's normal Markdown-only CI path;
 - physical Samsung/provider gate: not required for this checkpoint;
