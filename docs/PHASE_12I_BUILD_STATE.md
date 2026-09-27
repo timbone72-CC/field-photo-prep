@@ -13,7 +13,7 @@ Status: **PRE-IMPLEMENTATION — AUTHORITATIVE LINE ESTABLISHED**
 ## Authoritative implementation line
 
 - branch: `phase-12i/app-status-diagnostics`;
-- PR: pending creation immediately after this documentation checkpoint;
+- PR: #82 — `Phase 12I: app status and diagnostics` (Draft);
 - competing 12I branch/PR at takeover: none;
 - unrelated draft PR #39 does not overlap this scope.
 
@@ -81,7 +81,7 @@ Only after that focused model passes should the App Status screen/navigation be 
 
 ## Verification status
 
-- preflight diff: pending commit/PR review;
+- preflight diff: PASS — exactly four intended Phase 12 status/preflight documentation files changed from governed main;
 - runtime focused tests: not run — no runtime code changed;
 - full Android CI: not required for the preflight documentation checkpoint beyond repository policy;
 - physical/provider gate: not required at preflight;
