@@ -796,7 +796,7 @@ Read-only operator status for:
 
 Diagnostics must consume the authoritative 12E/12H state rather than create a second state machine, and copied support status excludes tokens, provider IDs, SAF URIs, customer addresses/photos, and other sensitive content.
 
-### Phase 12J — Recovery/account-state UX — PLANNED
+### Phase 12J — Recovery/account-state UX — COMPLETE
 
 Clear guidance for:
 - temporary offline grace;
@@ -809,7 +809,9 @@ Clear guidance for:
 
 Recovery guidance must never delete or silently redirect protected work.
 
-### Phase 12K — Production identity/release path — PLANNED
+### Phase 12K — Production identity/release path — COMPLETE
+
+PR #84 merged to `main` at `c7970238e00139415a417f669d86915c4260154e`. Production package/signing/callback reality gates passed, the production signer has a verified encrypted off-laptop backup, and post-merge Production Release Candidate run `36316384072` reproduced and verified the signed v37 candidate from `main`.
 
 - separately secured production signing;
 - production callback/update continuity;
@@ -818,7 +820,7 @@ Recovery guidance must never delete or silently redirect protected work.
 - revisit verified Android App Links if an owned HTTPS domain and external distribution make them worthwhile;
 - no forced Play Store/public-distribution decision.
 
-### Phase 12L — Clean-install/new-user reality gates — PLANNED
+### Phase 12L — Clean-install/new-user reality gates — IN PROGRESS
 
 - prove clean/no-session behavior on real Android;
 - prove invited/new user identity flow;
@@ -832,7 +834,7 @@ Final source-of-truth, security, privacy, RLS, backup, diagnostics-data-boundary
 
 Default remaining sequence:
 
-**12F → 12H → 12G → 12I → 12J → 12K → 12L → 12M**
+**12L → 12M**
 
 Safe design work may overlap where recorded in the master plan, but multiple runtime branches must not independently take ownership of startup/auth/Drive-binding state.
 

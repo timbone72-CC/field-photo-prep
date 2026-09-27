@@ -2,17 +2,17 @@
 
 Date: 2026-09-26
 
-Status: **PRE-IMPLEMENTATION — LEVEL 3 AUTHORITATIVE LINE ESTABLISHED**
+Status: **COMPLETE — MERGED AND POST-MERGE RELEASE PATH ACTIVATED**
 
 ## Governed base
 
-- main/rollback: `c502260b7207d75a1349581a2f72b397e7fa5e70`;
-- Phase 12J merged through PR #83.
+- original rollback/base: `c502260b7207d75a1349581a2f72b397e7fa5e70`;
+- Phase 12K merged through PR #84 to `main` at `c7970238e00139415a417f669d86915c4260154e`.
 
 ## Authoritative line
 
-- branch: `phase-12k/production-identity-release-path`;
-- PR: #84 — `Phase 12K: production identity and release path` (Draft);
+- completed branch: `phase-12k/production-identity-release-path`;
+- PR: #84 — `Phase 12K: production identity and release path` — **MERGED**;
 - competing 12K branch/PR at takeover: none;
 - unrelated Draft PR #39 remains outside 12K.
 
@@ -31,7 +31,7 @@ Explicit operator approval is required before merge.
 - governed-base versionCode: `36`;
 - internal stable test signer is intentionally non-production and remains unchanged;
 - git ignores ordinary `*.jks` / `*.keystore`;
-- no production signer/workflow currently exists;
+- permanent production signer and manual release-candidate workflow now exist; private signing material remains outside git;
 - live dedicated FPP Supabase project URL and active modern publishable key match Android source;
 - Supabase Auth redirect allowlist is not readable through the connected management API and remains a reality gate.
 
@@ -143,3 +143,25 @@ Observed state:
 - local signed production APK and physical callback/install gates PASS.
 
 Resolution: do not weaken or duplicate the workflow merely to force a pre-merge run. After PR #84 is merged and the workflow exists on `main`, run the manual Production Release Candidate workflow with `previous_production_version_code=36` as the post-merge release-path activation check. This platform sequencing constraint is not a Phase 12K merge blocker because the documented merge gate already requires source/tooling CI, signed artifact evidence, callback/install reality evidence, and explicit Level-3 approval—not a pre-merge `workflow_dispatch` run.
+
+## Post-merge activation closeout
+
+Phase 12K post-merge activation is **PASS**.
+
+- merge commit / source commit: `c7970238e00139415a417f669d86915c4260154e`;
+- post-merge Android CI run `36316289354`: **SUCCESS**;
+- Production Release Candidate run `36316384072`: **SUCCESS**;
+- package: `com.inandout.fieldphotoprep`;
+- versionCode: `37`;
+- versionName: `0.28.0`;
+- callback: `com.inandout.fieldphotoprep://auth-callback`;
+- Supabase project ref: `vtyiktvqhbgabawotkrj`;
+- publishable client key present: yes;
+- signer SHA-256: `8ba1dc6ae4907274a7ddb16662a46a7bb52a0fca5dbeadeb478001052fd2a1c2`;
+- GitHub-built APK SHA-256: `49a02f6fe4d1a8becacae305966e46145bdaa9cb63cea105947763d3e24ad0dd`;
+- private artifact: `field-photo-prep-production-candidate-v37`, artifact ID `10931335308`;
+- uploaded artifact archive digest: `sha256:ec9097e8544be5b2b96abae4975610b5484939a4d55d13900ee2f0edb9afcae0`.
+
+The GitHub-built APK hash is recorded independently from the earlier local candidate hash. Both candidates passed the same package/callback/client-config/signer verification; byte-for-byte reproducibility was not a Phase 12K requirement.
+
+Phase 12K is closed. The next authoritative phase is **12L — Clean-Install / New-User Reality Gates**.

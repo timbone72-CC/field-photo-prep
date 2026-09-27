@@ -486,7 +486,7 @@ Any new mutation/recovery action that changes protected data, authorization, or 
 
 # Phase 12K — Production Identity / Release Path
 
-Status: **IN PROGRESS — Level 3 pre-implementation on `phase-12k/production-identity-release-path`**
+Status: **COMPLETE — PR #84 merged to main 2026-09-27 at `c7970238e00139415a417f669d86915c4260154e`; post-merge Production Release Candidate run `36316384072` PASS**
 
 ## Goal
 
@@ -525,6 +525,8 @@ Signing/deployment/update changes require explicit pre-merge approval and post-i
 ---
 
 # Phase 12L — Clean-Install / New-User Reality Gates
+
+Status: **IN PROGRESS — authoritative evidence line `phase-12l/clean-install-new-user-reality-gates`**
 
 ## Goal
 

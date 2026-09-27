@@ -70,6 +70,18 @@ Do not:
 
 The applicable rule pack and `INTEGRATION_CONTRACT.md` define the exact reality gate when Drive/provider behavior is affected.
 
+## Production release and clean-install evidence
+
+When a claim depends on Android production identity, signing, installation, or clean/new-user state:
+
+- verify the production APK's package, version, auth callback, dedicated Supabase publishable-client configuration, production signer fingerprint, and APK SHA-256 against the exact source commit used to build it;
+- for first install/update continuity, use the real production package on physical Android and preserve existing protected work; never uninstall/clear a live package merely to bypass a signer/version problem;
+- for clean-install/no-session/new-user evidence, prefer a disposable package/profile/device that contains no protected work over clearing the operator's working field package;
+- prove FPP authentication does not silently restore or infer an Android SAF Drive binding; workspace connection remains an explicit system-picker action on that installation;
+- use disposable account/Organization/invitation fixtures where account-boundary behavior requires them, and clean those fixtures after evidence is accepted;
+- do not claim cross-device provider-ID/SAF portability from an emulator, another package on the same phone, or a work-profile/Secure Folder. That claim requires a suitable second physical device/provider context;
+- record limitations explicitly when a physical arrangement cannot prove a claim instead of simulating portability.
+
 ## Failure gate
 
 - A required test failure stops verification, merge, publication, and deployment for that change.

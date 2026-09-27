@@ -1,0 +1,126 @@
+# Phase 12L — Clean-Install / New-User Reality Gate Plan
+
+Date: 2026-09-27
+
+## Goal
+
+Prove the assembled Phase 12 identity/release behavior on real Android without risking the operator's working field package or pretending that same-device evidence proves cross-device provider portability.
+
+## Governed base
+
+- `main`: `c7970238e00139415a417f669d86915c4260154e`;
+- Phase 12K: COMPLETE;
+- post-merge Production Release Candidate run `36316384072`: PASS;
+- unrelated Draft PR #39 remains outside Phase 12L.
+
+## Classification
+
+The authoritative 12L line is **Level 1 documentation/evidence work** unless a runtime or backend defect is discovered.
+
+12L itself does not authorize a runtime fix. Any defect that requires code, schema, permissions, Drive semantics, signing, or backend mutation returns to a separately governed branch at the appropriate Level 2/3 classification.
+
+## Contract reconciliation
+
+Before starting the physical gates:
+
+- `CONTRACT.md` is reconciled with the approved Phase 12K production package/signing/update invariants;
+- `TESTING_CONTRACT.md` is reconciled with production release and clean-install evidence rules;
+- `CHANGE_CONTROL_CONTRACT.md` already classifies deployment/signing work as Level 3 and requires post-install verification — no change needed;
+- `INTEGRATION_CONTRACT.md` already requires deliberate SAF/provider selection and forbids silent provider/account switching — no change needed;
+- `GOVERNANCE.md`, `PROJECT_PROFILE.md`, and `RULE_INDEX.md` already route release/signing, external-state parity, physical gates, and new-phase work correctly — no change needed.
+
+These changes codify behavior already approved/proven in 12K; they do not expand runtime scope.
+
+## Safest physical test arrangement
+
+Use the separately installed **production package** `com.inandout.fieldphotoprep` as the disposable 12L clean-state surface.
+
+The working field package `com.inandout.fieldphotoprep.internal` is protected and must **not** be cleared, uninstalled, or repurposed for clean-install testing.
+
+Before clearing/uninstalling production package data, physically confirm in that production package:
+
+1. no protected local photos;
+2. no WAITING / UPLOADING / FAILED / UNCERTAIN work that would be stranded;
+3. no production-package-only Drive binding or business state that must be retained.
+
+If any of those are present, STOP and choose another safe test surface.
+
+## Reality gates
+
+### Gate A — clean/no-session production launch
+
+After the production package is made safely fresh:
+
+- launch shows/signals sign-in required;
+- ordinary field work is not authorized before FPP authentication;
+- no prior FPP session is silently restored;
+- internal package state remains unchanged.
+
+### Gate B — returning Owner identity
+
+Sign in with the controlled Owner account and prove:
+
+- ACTIVE Membership validates;
+- only the authorized Organization is loaded;
+- role is OWNER;
+- FPP sign-in alone does **not** establish a Drive workspace binding.
+
+### Gate C — deliberate Drive binding
+
+From the fresh production package:
+
+- Drive remains disconnected until operator action;
+- workspace selection goes through Android's SAF/system picker;
+- the selected workspace/provider identity belongs only to that installation/package context;
+- signing into FPP did not infer the Drive account from the FPP Auth email.
+
+Use a safe/disposable workspace context where a write is required. Do not use live customer content merely to prove the picker.
+
+### Gate D — invited user end-to-end
+
+Use a disposable invitation/account fixture and the existing Owner administration path:
+
+- invite as MEMBER first unless evidence requires OWNER separately;
+- accept/activate the invitation through the supported flow;
+- sign in on the fresh production package;
+- validate exact Organization and role;
+- prove invitation acceptance did not silently grant/inherit Drive access;
+- clean up the disposable Membership/Auth/Invitation fixture after evidence is accepted.
+
+If OWNER-specific invitation behavior differs materially from MEMBER, test a disposable OWNER invitation separately; otherwise reuse the already-proven role-administration/backend coverage and do not repeat equivalent physical steps merely for ceremony.
+
+### Gate E — account transition / boundary safety
+
+Using safe disposable identity state:
+
+- sign-out obeys the protected-work guard;
+- allowed sign-out does not delete Drive business data or protected local evidence;
+- signing in as another identity does not silently reuse a Drive binding for an unauthorized/different Organization;
+- no Organization boundary is crossed by stale navigation/provider identity.
+
+If a second Organization or no-membership identity is needed to prove rejection, create only a disposable fixture through approved server-side/admin paths and remove it afterward.
+
+### Gate F — production/internal separation
+
+Prove on the device:
+
+- production package and internal package remain separate;
+- production uses production callback/signer identity;
+- internal uses its existing internal package/test identity;
+- clearing/testing production does not clear or alter internal app data.
+
+## Second-phone limitation
+
+A second physical Android device is not required to complete claims that do not depend on provider-ID portability.
+
+If no suitable second phone is available:
+
+- do not claim SAF/provider IDs are portable;
+- do not treat Secure Folder, another Android user/profile, emulator, or the internal package as second-device portability proof;
+- record the outstanding Phase 8C cross-device portability limitation explicitly.
+
+## Evidence/stop rule
+
+Record each physical observation once. Reuse already-valid 12K recovery/package evidence where the underlying behavior is unchanged.
+
+Any unexpected account/Drive/protected-work behavior is a STOP condition for the affected gate. Preserve evidence and open a separately governed defect line rather than patching runtime behavior inside this documentation/evidence branch.
