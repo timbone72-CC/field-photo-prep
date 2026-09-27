@@ -57,6 +57,8 @@ public final class HomeDriveOptionsInstrumentedTest {
                     findText(instrumentation, "Edit Company").isEmpty());
             assertTrue("Unsafe binding must not expose Change Workspace",
                     findText(instrumentation, "Change Workspace").isEmpty());
+            assertFalse("Home overflow must keep App Status reachable while Drive is blocked",
+                    awaitText(instrumentation, "App Status").isEmpty());
             assertFalse("Home overflow must keep Account reachable while Drive is blocked",
                     awaitText(instrumentation, "Account").isEmpty());
             assertTrue("Blocked Drive options must not invent a Settings surface",

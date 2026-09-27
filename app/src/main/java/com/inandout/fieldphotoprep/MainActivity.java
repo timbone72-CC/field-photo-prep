@@ -43,6 +43,8 @@ import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_MASTER_FOLDER = 1001;
+    static final String EXTRA_OPEN_DRIVE_PICKER_FROM_STATUS =
+            "com.inandout.fieldphotoprep.extra.OPEN_DRIVE_PICKER_FROM_STATUS";
 
     private enum Screen {
         ADDRESSES,
@@ -68,6 +70,7 @@ public final class MainActivity extends Activity {
     private boolean createBlockedUntilRefresh;
     private boolean companyWriteBlockedUntilRefresh;
     private boolean busy;
+    private boolean pendingStatusConnectDrive;
 
     private FrameLayout appRoot;
     private View homeRoot;
@@ -125,6 +128,8 @@ public final class MainActivity extends Activity {
                 folderPrefs,
                 authorizationGuard,
                 this::hasPersistedReadPermission);
+        pendingStatusConnectDrive = getIntent() != null
+                && getIntent().getBooleanExtra(EXTRA_OPEN_DRIVE_PICKER_FROM_STATUS, false);
         buildUi();
         showAddressScreen(false);
         renderSavedMaster();
@@ -181,6 +186,11 @@ public final class MainActivity extends Activity {
                     }));
         }
         refreshProtectedPhotoCounts();
+
+        if (pendingStatusConnectDrive) {
+            pendingStatusConnectDrive = false;
+            chooseMasterFolder();
+        }
     }
 
     private void reconcileDriveBindingForCurrentOrganization() {
@@ -234,6 +244,10 @@ public final class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (intent != null
+                && intent.getBooleanExtra(EXTRA_OPEN_DRIVE_PICKER_FROM_STATUS, false)) {
+            pendingStatusConnectDrive = true;
+        }
         String destination = intent.getStringExtra("field_tab");
         if ("home".equals(destination)) {
             showAddressScreen(true);
@@ -388,6 +402,9 @@ private void openSavedPhotosFromHome() {
                             break;
                         case "Edit Company":
                             showEditCompanyDialog();
+                            break;
+                        case "App Status":
+                            startActivity(new Intent(this, AppStatusActivity.class));
                             break;
                         case "Account":
                             startActivity(new Intent(this, AuthActivity.class));

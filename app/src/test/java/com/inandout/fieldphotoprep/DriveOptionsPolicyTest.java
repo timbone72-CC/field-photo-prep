@@ -8,28 +8,28 @@ public final class DriveOptionsPolicyTest {
     @Test
     public void unsafeBindingExposesOnlyAccountRecovery() {
         assertArrayEquals(
-                new CharSequence[]{"Account"},
+                new CharSequence[]{"App Status", "Account"},
                 DriveOptionsPolicy.items(false, true, true));
     }
 
     @Test
     public void usableWorkspaceWithCompanyKeepsNormalCompanyActions() {
         assertArrayEquals(
-                new CharSequence[]{"Add Company", "Edit Company", "Change Workspace", "Account"},
+                new CharSequence[]{"Add Company", "Edit Company", "Change Workspace", "App Status", "Account"},
                 DriveOptionsPolicy.items(true, true, true));
     }
 
     @Test
     public void usableWorkspaceWithoutCompanyKeepsChooserAndAddActions() {
         assertArrayEquals(
-                new CharSequence[]{"Choose Company", "Add Company", "Change Workspace", "Account"},
+                new CharSequence[]{"Choose Company", "Add Company", "Change Workspace", "App Status", "Account"},
                 DriveOptionsPolicy.items(true, true, false));
     }
 
     @Test
     public void usableLegacySingleCompanyStateKeepsSetupAndAccountActions() {
         assertArrayEquals(
-                new CharSequence[]{"Set Up Companies", "Account"},
+                new CharSequence[]{"Set Up Companies", "App Status", "Account"},
                 DriveOptionsPolicy.items(true, false, false));
     }
 }
