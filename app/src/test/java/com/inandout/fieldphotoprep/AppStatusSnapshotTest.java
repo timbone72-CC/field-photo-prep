@@ -152,6 +152,48 @@ public final class AppStatusSnapshotTest {
     }
 
     @Test
+    public void connectDriveIsAvailableOnlyForValidatedNonUsableBinding() {
+        AppStatusSnapshot validatedDisconnected = AppStatusSnapshot.from(
+                new AuthorizationDecision(
+                        AuthorizationDecision.State.VALIDATED,
+                        "user",
+                        "org",
+                        "MEMBER",
+                        0L),
+                null,
+                OrganizationDriveBindingGuard.State.NO_WORKSPACE,
+                null,
+                zeroCounts(),
+                "test",
+                true);
+        assertTrue(validatedDisconnected.canConnectDrive());
+        assertFalse(snapshotDrive(OrganizationDriveBindingGuard.State.USABLE).canConnectDrive());
+        assertFalse(snapshot(AuthorizationDecision.State.GRACE).canConnectDrive());
+        assertTrue(snapshot(AuthorizationDecision.State.SIGN_IN_REQUIRED).requiresSignIn());
+    }
+
+    @Test
+    public void unavailableQueueNeverPretendsCountsAreZero() {
+        AppStatusSnapshot snapshot = AppStatusSnapshot.from(
+                new AuthorizationDecision(
+                        AuthorizationDecision.State.VALIDATED,
+                        "user",
+                        "org",
+                        "MEMBER",
+                        0L),
+                null,
+                OrganizationDriveBindingGuard.State.USABLE,
+                null,
+                AppStatusSnapshot.QueueCounts.unavailable(),
+                "test",
+                true);
+
+        assertFalse(snapshot.queueCounts().readable());
+        assertTrue(snapshot.supportSummary().contains("Queue status: UNAVAILABLE"));
+        assertFalse(snapshot.supportSummary().contains("Queue WAITING: 0"));
+    }
+
+    @Test
     public void queueCountsRejectNegativeValues() {
         assertThrows(
                 IllegalArgumentException.class,

@@ -26,6 +26,7 @@ final class AppStatusSnapshot {
         private final int protectedOriginals;
         private final int cleanupPending;
         private final int unreadable;
+        private final boolean readable;
 
         QueueCounts(
                 int capturing,
@@ -37,6 +38,30 @@ final class AppStatusSnapshot {
                 int protectedOriginals,
                 int cleanupPending,
                 int unreadable) {
+            this(
+                    capturing,
+                    waiting,
+                    uploading,
+                    failed,
+                    uncertain,
+                    uploaded,
+                    protectedOriginals,
+                    cleanupPending,
+                    unreadable,
+                    true);
+        }
+
+        private QueueCounts(
+                int capturing,
+                int waiting,
+                int uploading,
+                int failed,
+                int uncertain,
+                int uploaded,
+                int protectedOriginals,
+                int cleanupPending,
+                int unreadable,
+                boolean readable) {
             this.capturing = requireNonNegative(capturing, "capturing");
             this.waiting = requireNonNegative(waiting, "waiting");
             this.uploading = requireNonNegative(uploading, "uploading");
@@ -47,6 +72,11 @@ final class AppStatusSnapshot {
                     requireNonNegative(protectedOriginals, "protectedOriginals");
             this.cleanupPending = requireNonNegative(cleanupPending, "cleanupPending");
             this.unreadable = requireNonNegative(unreadable, "unreadable");
+            this.readable = readable;
+        }
+
+        static QueueCounts unavailable() {
+            return new QueueCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, false);
         }
 
         int capturing() { return capturing; }
@@ -58,6 +88,7 @@ final class AppStatusSnapshot {
         int protectedOriginals() { return protectedOriginals; }
         int cleanupPending() { return cleanupPending; }
         int unreadable() { return unreadable; }
+        boolean readable() { return readable; }
 
         int unresolved() {
             return capturing + waiting + uploading + failed + uncertain + unreadable;
@@ -156,6 +187,15 @@ final class AppStatusSnapshot {
     String appVersion() { return appVersion; }
     boolean cameraPermissionGranted() { return cameraPermissionGranted; }
 
+    boolean requiresSignIn() {
+        return authorizationState == AuthorizationDecision.State.SIGN_IN_REQUIRED;
+    }
+
+    boolean canConnectDrive() {
+        return authorizationState == AuthorizationDecision.State.VALIDATED
+                && driveState != OrganizationDriveBindingGuard.State.USABLE;
+    }
+
     String accountLabel() {
         switch (authorizationState) {
             case VALIDATED:
@@ -235,6 +275,10 @@ final class AppStatusSnapshot {
         output.append("Camera permission: ")
                 .append(cameraPermissionGranted ? "GRANTED" : "NOT_GRANTED")
                 .append('\n');
+        if (!queueCounts.readable()) {
+            output.append("Queue status: UNAVAILABLE");
+            return output.toString();
+        }
         output.append("Queue CAPTURING: ").append(queueCounts.capturing()).append('\n');
         output.append("Queue WAITING: ").append(queueCounts.waiting()).append('\n');
         output.append("Queue UPLOADING: ").append(queueCounts.uploading()).append('\n');
