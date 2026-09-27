@@ -2,7 +2,7 @@
 
 Date: 2026-09-26
 
-Status: **PRE-IMPLEMENTATION — AUTHORITATIVE LINE ESTABLISHED**
+Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — GOVERNED CLOSEOUT ON PR #83**
 
 ## Governed base
 
@@ -89,11 +89,59 @@ Its action button delegates only to existing owners:
 
 Revoked/no-membership guidance tells the operator to contact an Organization Owner first; the follow-up button is explicitly **Recheck After Access Is Restored**.
 
+## Final runtime evidence
+
+Authoritative final runtime head:
+
+`01abcb1d4db758e5a225809571e6d4eccc2084b5`
+
+Exact Android CI:
+- run `36289018466`;
+- unit tests: **PASS**;
+- internal APK build: **PASS**;
+- stable test signer verification: **PASS**;
+- instrumented UI/image tests: **PASS**;
+- internal launch smoke: **PASS**;
+- artifacts/evidence upload: **PASS**.
+
+Focused evidence proves:
+- SIGN_IN_REQUIRED gives a Sign In next action while protected work remains visible;
+- RECHECK_REQUIRED gives Recheck Account and does not expose Drive rebinding;
+- REVOKED and NO_MEMBERSHIP direct the operator to an Organization Owner first and preserve protected local work;
+- GRACE explains what remains safe inside the offline window and what still requires online validation;
+- every unusable 12H Drive-binding state has deterministic safe/blocked/protected guidance;
+- UNCERTAIN outranks ordinary Drive recovery and explicitly says **do not retry blindly**;
+- the existing Photos **Reconcile All Uncertain** path scans the durable global UNCERTAIN backlog and checks each photo against its stored work-order destination without creating/changing/deleting a Drive file;
+- unreadable protected local records fail closed with no mutation action;
+- the diagnostics collector reports the exact protected-item count that blocks sign-out, matching the existing sign-out guard semantics;
+- recovery guidance never suggests deleting app data/photos, automatic Organization switching, destination reassignment, or automatic Drive workspace selection;
+- App Status renders **Safe now / Blocked now / Protected / Next action** and delegates actions only to existing owners.
+
+## External-state / reality boundary
+
+- Supabase schema/RLS/RPC/Edge Functions: **unchanged**;
+- FPP authorization policy/state ownership: **unchanged**;
+- Google Drive content/permissions/provider semantics: **unchanged**;
+- Organization↔Drive binding persistence/semantics: **unchanged**;
+- queue/photo/upload/retry/reconciliation semantics: **unchanged**;
+- sign-out protected-work guard: **unchanged**;
+- operator Samsung state: no destructive/reset gate required;
+- real Drive reality gate: **not required**, because 12J added no provider operation or Drive semantic.
+
+## Closeout
+
+- classification remained **Level 2**;
+- no Level 3 surface was introduced;
+- PR #83 is the governed closeout line;
+- Level 3 merge approval: **N/A**;
+- after governed merge, the next Phase 12 slice is **12K — Production Identity / Release Path**, which is separately classified **Level 3**.
+
 ## Verification status
 
-- preflight docs: PASS;
-- pure recovery-policy unit gate: PASS;
-- exact sign-out protection model unit gate: PASS;
-- final App Status UI/runtime CI: pending on the final runtime head;
-- physical/provider gate: not required unless Drive/provider semantics change;
-- Level 3 merge approval: N/A.
+- preflight docs: **PASS**;
+- pure recovery-policy unit coverage: **PASS**;
+- exact sign-out protection coverage: **PASS**;
+- App Status recovery UI/navigation coverage: **PASS**;
+- complete Android CI on exact final runtime head: **PASS** — run `36289018466`;
+- physical/provider gate: **not required for the claims made by 12J**;
+- Level 3 merge approval: **N/A**.

@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — 12F / 12H / 12G / 12I COMPLETE / 12J IN PROGRESS**
+Status: **APPROVED MASTER PLAN — 12F / 12H / 12G / 12I COMPLETE / 12J IMPLEMENTATION & EVIDENCE COMPLETE**
 
 ## Purpose
 
@@ -443,7 +443,7 @@ Runtime implementation should wait until the 12E authorization-state owner is st
 
 # Phase 12J — Recovery & Account-State UX
 
-Status: **IN PROGRESS — pre-implementation on `phase-12j/recovery-account-state-ux`**
+Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — governed closeout on PR #83**
 
 ## Goal
 
