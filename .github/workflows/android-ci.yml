@@ -67,9 +67,9 @@ jobs:
         with:
           gradle-version: '9.6.0'
 
-      - name: Unit tests
+      - name: Unit tests and production identity checks
         if: steps.scope.outputs.runtime == 'true'
-        run: gradle test
+        run: gradle :app:verifyProductionReleaseIdentity test
 
       - name: Internal debug build
         if: steps.scope.outputs.runtime == 'true'
@@ -102,6 +102,21 @@ jobs:
           if actual != expected:
               sys.exit(1)
           PY
+
+      - name: Verify APK evidence tooling against internal package
+        if: steps.scope.outputs.runtime == 'true'
+        env:
+          FPP_EXPECTED_PACKAGE: com.inandout.fieldphotoprep.internal
+          FPP_EXPECTED_VERSION_CODE: '37'
+          FPP_EXPECTED_VERSION_NAME: 0.28.0-internal
+          FPP_EXPECTED_AUTH_REDIRECT_SCHEME: com.inandout.fieldphotoprep.internal
+          FPP_EXPECTED_AUTH_REDIRECT_HOST: auth-callback
+          FPP_EXPECTED_SUPABASE_URL: https://vtyiktvqhbgabawotkrj.supabase.co
+          FPP_EXPECTED_SUPABASE_PUBLISHABLE_KEY: sb_publishable_QXGedlj5wCmMpV2HncZp9A_kfgLzuAQ
+          FPP_EXPECTED_CERT_SHA256: 2c0a9616fd819333ed98b33593fbe597e120e95936103c6b7a76270e985d3fba
+          FPP_SOURCE_COMMIT: ${{ github.sha }}
+          FPP_EVIDENCE_PATH: verification-reports/internal-apk-verifier.txt
+        run: bash scripts/verify-release-apk.sh app/build/outputs/apk/debug/app-debug.apk
 
       - name: Enable KVM
         if: steps.scope.outputs.runtime == 'true'

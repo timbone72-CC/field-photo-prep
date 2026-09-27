@@ -2,7 +2,27 @@ plugins {
     id 'com.android.application'
 }
 
+def productionApplicationId = 'com.inandout.fieldphotoprep'
+def productionVersionCode = 37
+def productionVersionName = '0.28.0'
+def supabaseUrl = 'https://vtyiktvqhbgabawotkrj.supabase.co'
+def supabasePublishableKey = 'sb_publishable_QXGedlj5wCmMpV2HncZp9A_kfgLzuAQ'
+def productionAuthRedirectScheme = productionApplicationId
+def productionAuthRedirectHost = 'auth-callback'
 def stableTestKeystore = rootProject.file('ci/field-photo-prep-test.jks')
+
+def requiredReleaseSigningEnvironment = [
+        'FPP_RELEASE_STORE_FILE',
+        'FPP_RELEASE_STORE_PASSWORD',
+        'FPP_RELEASE_KEY_ALIAS',
+        'FPP_RELEASE_KEY_PASSWORD',
+        'FPP_RELEASE_CERT_SHA256'
+]
+def missingReleaseSigningEnvironment = requiredReleaseSigningEnvironment.findAll {
+    def value = System.getenv(it)
+    value == null || value.trim().isEmpty()
+}
+def hasReleaseSigningEnvironment = missingReleaseSigningEnvironment.isEmpty()
 
 android {
     namespace 'com.inandout.fieldphotoprep'
@@ -13,17 +33,17 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.inandout.fieldphotoprep'
+        applicationId productionApplicationId
         minSdk 26
         targetSdk 36
-        versionCode 36
-        versionName '0.27.1-auth-session-hardening'
+        versionCode productionVersionCode
+        versionName productionVersionName
 
-        buildConfigField 'String', 'SUPABASE_URL', '"https://vtyiktvqhbgabawotkrj.supabase.co"'
-        buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_QXGedlj5wCmMpV2HncZp9A_kfgLzuAQ"'
-        buildConfigField 'String', 'AUTH_REDIRECT_SCHEME', '"com.inandout.fieldphotoprep"'
-        buildConfigField 'String', 'AUTH_REDIRECT_HOST', '"auth-callback"'
-        manifestPlaceholders = [authRedirectScheme: 'com.inandout.fieldphotoprep']
+        buildConfigField 'String', 'SUPABASE_URL', '"' + supabaseUrl + '"'
+        buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"' + supabasePublishableKey + '"'
+        buildConfigField 'String', 'AUTH_REDIRECT_SCHEME', '"' + productionAuthRedirectScheme + '"'
+        buildConfigField 'String', 'AUTH_REDIRECT_HOST', '"' + productionAuthRedirectHost + '"'
+        manifestPlaceholders = [authRedirectScheme: productionAuthRedirectScheme]
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -35,6 +55,15 @@ android {
             keyAlias 'field-photo-prep-test'
             keyPassword 'field-photo-prep-test'
         }
+
+        if (hasReleaseSigningEnvironment) {
+            productionRelease {
+                storeFile file(System.getenv('FPP_RELEASE_STORE_FILE'))
+                storePassword System.getenv('FPP_RELEASE_STORE_PASSWORD')
+                keyAlias System.getenv('FPP_RELEASE_KEY_ALIAS')
+                keyPassword System.getenv('FPP_RELEASE_KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
@@ -45,11 +74,84 @@ android {
             buildConfigField 'String', 'AUTH_REDIRECT_SCHEME', '"com.inandout.fieldphotoprep.internal"'
             manifestPlaceholders = [authRedirectScheme: 'com.inandout.fieldphotoprep.internal']
         }
+
+        release {
+            debuggable false
+            minifyEnabled false
+            if (hasReleaseSigningEnvironment) {
+                signingConfig signingConfigs.productionRelease
+            }
+        }
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+tasks.register('verifyProductionReleaseIdentity') {
+    group = 'verification'
+    description = 'Verifies source-controlled production package/auth/Supabase release identity.'
+
+    doLast {
+        if (productionApplicationId != 'com.inandout.fieldphotoprep') {
+            throw new GradleException('Production application ID changed unexpectedly.')
+        }
+        if (productionVersionCode <= 36) {
+            throw new GradleException('Production versionCode must advance beyond governed baseline 36.')
+        }
+        if (productionAuthRedirectScheme != productionApplicationId
+                || productionAuthRedirectHost != 'auth-callback') {
+            throw new GradleException('Production auth callback identity is not the approved package://auth-callback value.')
+        }
+        if (supabaseUrl != 'https://vtyiktvqhbgabawotkrj.supabase.co') {
+            throw new GradleException('Release points at an unexpected Supabase project URL.')
+        }
+        if (!supabasePublishableKey.startsWith('sb_publishable_')) {
+            throw new GradleException('Android release must use a modern Supabase publishable key.')
+        }
+        def loweredKey = supabasePublishableKey.toLowerCase()
+        if (loweredKey.contains('service_role') || loweredKey.startsWith('sb_secret_')) {
+            throw new GradleException('Secret/service-role Supabase material must never be embedded in Android.')
+        }
+        println "Verified production identity: ${productionApplicationId} v${productionVersionCode} (${productionVersionName})"
+        println "Verified production callback: ${productionAuthRedirectScheme}://${productionAuthRedirectHost}"
+        println "Verified dedicated Supabase project URL with publishable client key."
+    }
+}
+
+tasks.register('verifyProductionReleaseSigningInputs') {
+    group = 'verification'
+    description = 'Fails closed unless all external production signing inputs are present and structurally valid.'
+
+    doLast {
+        if (!missingReleaseSigningEnvironment.isEmpty()) {
+            throw new GradleException(
+                    'Missing required production signing environment: '
+                            + missingReleaseSigningEnvironment.join(', '))
+        }
+
+        def signingFile = file(System.getenv('FPP_RELEASE_STORE_FILE'))
+        if (!signingFile.isFile()) {
+            throw new GradleException('FPP_RELEASE_STORE_FILE does not point to a readable keystore file.')
+        }
+
+        def fingerprint = System.getenv('FPP_RELEASE_CERT_SHA256')
+                .replace(':', '')
+                .trim()
+                .toLowerCase()
+        if (!(fingerprint ==~ /[0-9a-f]{64}/)) {
+            throw new GradleException(
+                    'FPP_RELEASE_CERT_SHA256 must be exactly one SHA-256 certificate fingerprint.')
+        }
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'preReleaseBuild') {
+        task.dependsOn(tasks.named('verifyProductionReleaseIdentity'))
+        task.dependsOn(tasks.named('verifyProductionReleaseSigningInputs'))
     }
 }
 
