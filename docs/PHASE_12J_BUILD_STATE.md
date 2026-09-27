@@ -12,7 +12,7 @@ Status: **PRE-IMPLEMENTATION — AUTHORITATIVE LINE ESTABLISHED**
 ## Authoritative implementation line
 
 - branch: `phase-12j/recovery-account-state-ux`;
-- PR: pending creation immediately after this documentation checkpoint;
+- PR: #83 — `Phase 12J: recovery and account-state UX` (Draft);
 - competing 12J branch/PR at takeover: none;
 - unrelated draft PR #39 does not overlap this scope.
 
@@ -65,7 +65,7 @@ No Activity/UI change until focused policy tests prove all auth/Drive/queue prec
 
 ## Verification status
 
-- preflight docs: pending commit/PR verification;
+- preflight docs: PASS — exactly four intended Phase 12J status/preflight documentation files changed from governed main;
 - runtime tests: not run — no runtime changes yet;
 - physical/provider gate: not required at preflight;
 - Level 3 merge approval: N/A.
