@@ -555,7 +555,7 @@ Permanent record:
 
 The prior Phase 11 `IN PROGRESS` labels were stale documentation and were corrected by the 2026-09-24 source-of-truth reconciliation.
 
-## Phase 12 — User Identity & Release Readiness — 12E COMPLETE / 12F IN PROGRESS
+## Phase 12 — User Identity & Release Readiness — 12F COMPLETE / 12H IN PROGRESS
 
 Goal:
 add durable FPP User/Organization identity and release-readiness controls without conflating FPP sign-in with Google Drive authorization or turning FPP into a second job/photo database.
@@ -574,7 +574,8 @@ Current status:
 - Phase 12C dedicated Supabase backend foundation is complete and merged;
 - Phase 12D Android auth/session foundation is complete and merged;
 - Phase 12E runtime authorization enforcement is complete, Samsung-validated, and merged through the governed Level 3 gate;
-- Phase 12F Owner/member administration and invitation lifecycle is active on PR #74; superseded PR #73 is closed and must not be used as a continuation point;
+- Phase 12F Owner/member administration and invitation lifecycle is complete and merged through PR #74; superseded PR #73 remains closed and must not be used as a continuation point;
+- Phase 12H Organization ↔ Drive binding protection is active in pre-implementation on `phase-12h/organization-drive-binding-protection`;
 - current personal-Drive production remains valid and unchanged;
 - Team remains a separate product/backend;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
@@ -720,15 +721,16 @@ Evidence:
 - Samsung online/offline-within-grace/revalidation, capture/preparation, exact Drive upload, protected-work sign-out block, and sign-out/sign-in gates passed;
 - explicit Level 3 merge approval recorded.
 
-### Phase 12F — Owner/member administration — IN PROGRESS
+### Phase 12F — Owner/member administration — COMPLETE
 
 Canonical implementation:
-- draft PR #74, `phase-12f/membership-invitation-lifecycle`;
-- superseded draft PR #73 is closed and not merged;
-- live Phase 12F Supabase migration history has been reconciled into PR #74 source control;
-- deployed `fpp-owner-invite` Edge Function source has been rechecked as an exact text match to PR #74;
-- core Owner authorization, Organization isolation, invitation idempotency/acceptance, cancellation/expiry, and concurrent last-Owner hosted tests pass;
-- last runtime/backend implementation checkpoint `a0f12f75d08d596a5bfc53169e879a31fbb392dd` passed Android CI run `36190542857`.
+- PR #74, `phase-12f/membership-invitation-lifecycle`, merged to `main`;
+- merge commit: `5e3580d3ab769015b7f3c6168022a5def2f308c2`;
+- approved final PR head: `696bda87a236cf3b70ee8ea16e3231fdfe16e6e7`;
+- superseded PR #73 is closed and not merged;
+- live Phase 12F Supabase migration history is reconciled into source control;
+- deployed `fpp-owner-invite` Edge Function source matches the merged Phase 12F source;
+- core Owner authorization, Organization isolation, invitation idempotency/acceptance, cancellation/expiry, concurrent last-Owner protection, and failure/retry behavior passed.
 
 Completed verification:
 - invitation delivery-failure visibility and safe retry: PASS;
@@ -743,8 +745,11 @@ Completed cleanup:
 - fixture Organization, Memberships, Invitations, audit rows, and two `.example.invalid` Auth users verified at zero;
 - real `In And Out Cleaner Inspections LLC` Organization remained present with one ACTIVE OWNER.
 
-Still required before completion:
-- obtain explicit Level 3 operator merge approval.
+Completion:
+- explicit Level 3 operator merge approval recorded on 2026-09-26;
+- required governance check passed;
+- Android CI run `36241916951` passed on the exact approved PR head;
+- PR #74 merged to `main` at `5e3580d3ab769015b7f3c6168022a5def2f308c2`.
 
 Durable handoff:
 - `docs/PHASE_12F_BUILD_STATE.md`
@@ -758,12 +763,22 @@ Durable handoff:
 - invited-user setup;
 - no portable provider IDs or silent Drive-account inference.
 
-### Phase 12H — Organization ↔ Drive binding protection — PLANNED
+### Phase 12H — Organization ↔ Drive binding protection — IN PROGRESS (PRE-IMPLEMENTATION)
 
+Active line:
+- branch: `phase-12h/organization-drive-binding-protection`;
+- rollback base: merged Phase 12F `5e3580d3ab769015b7f3c6168022a5def2f308c2`;
+- impact: `docs/PHASE_12H_ORGANIZATION_DRIVE_BINDING_IMPACT_2026-09-26.md`;
+- build state: `docs/PHASE_12H_BUILD_STATE.md`;
+- Level 3 merge approval remains pending.
+
+Scope:
 - bind the local Drive workspace deliberately to the active FPP Organization;
 - prevent another Organization from silently reusing that binding;
+- quarantine legacy untagged Drive state until explicit same-Organization/provider confirmation;
 - preserve queued immutable destinations;
-- do not compare Auth email to Drive email as an authorization rule.
+- do not compare Auth email to Drive email as an authorization rule;
+- no Supabase Drive-identity mirror and no second auth/binding state machine.
 
 ### Phase 12I — App Status & Diagnostics — PLANNED
 

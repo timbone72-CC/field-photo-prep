@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — 12E COMPLETE / 12F IN PROGRESS**
+Status: **APPROVED MASTER PLAN — 12F COMPLETE / 12H IN PROGRESS**
 
 ## Purpose
 
@@ -237,6 +237,8 @@ The physical gate does not need to wait 72 real hours; the exact time boundary i
 
 # Phase 12F — Owner / Member Administration
 
+Status: **COMPLETE — merged to main 2026-09-26 at `5e3580d3ab769015b7f3c6168022a5def2f308c2`**
+
 ## Goal
 
 Allow ACTIVE Owners to manage Organization access without putting privileged Supabase credentials in Android.
@@ -334,6 +336,8 @@ The final clean-install/new-user reality claim belongs to 12L so development doe
 ---
 
 # Phase 12H — Organization ↔ Drive Binding Protection
+
+Status: **IN PROGRESS — pre-implementation on `phase-12h/organization-drive-binding-protection`**
 
 ## Goal
 

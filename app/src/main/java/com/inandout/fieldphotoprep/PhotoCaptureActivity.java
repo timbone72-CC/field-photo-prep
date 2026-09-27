@@ -52,6 +52,7 @@ public final class PhotoCaptureActivity extends Activity {
     private PendingPhotoStore photoStore;
     private PhotoPreparer photoPreparer;
     private AuthorizationActionGuard authorizationGuard;
+    private OrganizationDriveBindingGuard driveBindingGuard;
     private DriveFolder address;
     private DriveFolder workOrder;
     private String pendingCaptureId;
@@ -92,6 +93,10 @@ public final class PhotoCaptureActivity extends Activity {
         FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
         authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
         folderPrefs = new FolderPrefs(this);
+        driveBindingGuard = new OrganizationDriveBindingGuard(
+                folderPrefs,
+                authorizationGuard,
+                this::hasPersistedReadPermission);
         photoStore = new PendingPhotoStore(new File(getFilesDir(), "pending_photos"));
         photoPreparer = new PhotoPreparer(new File(getFilesDir(), "prepared_photos"));
         address = folderPrefs.getCurrentAddress();
@@ -161,6 +166,16 @@ public final class PhotoCaptureActivity extends Activity {
         }
         super.onDestroy();
     }
+
+private boolean hasPersistedReadPermission(android.net.Uri treeUri) {
+    for (android.content.UriPermission permission :
+            getContentResolver().getPersistedUriPermissions()) {
+        if (treeUri.equals(permission.getUri()) && permission.isReadPermission()) {
+            return true;
+        }
+    }
+    return false;
+}
 
 private void buildUi() {
     setContentView(R.layout.screen_photos);
@@ -274,6 +289,7 @@ private void buildUi() {
 
         PendingPhotoRecord record;
         try {
+            driveBindingGuard.requireUsableTreeUri();
             authorizationGuard.requireNewCapture();
             record = photoStore.beginCapture(address, workOrder);
         } catch (Exception error) {
@@ -1053,7 +1069,7 @@ private File thumbnailSource(PendingPhotoRecord record) {
         try {
             DrivePhotoUploader uploader = new DrivePhotoUploader(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri(),
+                    driveBindingGuard.requireUsableTreeUri(),
                     authorizationGuard);
             PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                     photoStore,
@@ -1522,7 +1538,7 @@ private File thumbnailSource(PendingPhotoRecord record) {
         try {
             DrivePhotoUploader uploader = new DrivePhotoUploader(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri(),
+                    driveBindingGuard.requireUsableTreeUri(),
                     authorizationGuard);
             PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                     photoStore,
@@ -1633,11 +1649,11 @@ private File thumbnailSource(PendingPhotoRecord record) {
         try {
             DrivePhotoUploader uploader = new DrivePhotoUploader(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri(),
+                    driveBindingGuard.requireUsableTreeUri(),
                     authorizationGuard);
             DrivePhotoReconciler reconciler = new DrivePhotoReconciler(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri());
+                    driveBindingGuard.requireUsableTreeUri());
             PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                     photoStore,
                     photoPreparer,
@@ -1764,11 +1780,11 @@ private File thumbnailSource(PendingPhotoRecord record) {
         try {
             DrivePhotoUploader uploader = new DrivePhotoUploader(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri(),
+                    driveBindingGuard.requireUsableTreeUri(),
                     authorizationGuard);
             DrivePhotoReconciler reconciler = new DrivePhotoReconciler(
                     getContentResolver(),
-                    folderPrefs.getMasterTreeUri());
+                    driveBindingGuard.requireUsableTreeUri());
             PhotoUploadCoordinator coordinator = new PhotoUploadCoordinator(
                     photoStore,
                     photoPreparer,
