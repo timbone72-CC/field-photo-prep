@@ -428,6 +428,8 @@ Exact recovery-fix Android CI:
 
 Any commits after that runtime head are documentation/evidence reconciliation only unless explicitly documented otherwise.
 
-**Level 3 merge approval remains PENDING.**
+**Level 3 merge approval: APPROVED by the operator on 2026-09-26.**
 
-Do not merge PR #80 until the operator gives explicit merge approval.
+PR #80 was merged to `main` on 2026-09-26. Governed merge commit: `7b4c2017e9fa013929247751039db08cdae9418f`.
+
+Phase 12H is complete. The next authoritative Phase 12 runtime slice is Phase 12G on `phase-12g/first-run-new-device-flow`.
