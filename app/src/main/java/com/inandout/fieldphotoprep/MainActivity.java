@@ -129,7 +129,12 @@ public final class MainActivity extends Activity {
         showAddressScreen(false);
         renderSavedMaster();
 
-        if (launchRequiredAuthenticationIfNeeded(app.authorizationManager())) {
+        // Offer required authentication once for a fresh Home entry. If the operator closes
+        // AuthActivity to inspect protected/read-only recovery state, Android recreation (for
+        // example rotation) must not immediately force the same gate back on top. Phase 12E
+        // action guards still fail closed for capture and Drive mutations.
+        if (savedInstanceState == null
+                && launchRequiredAuthenticationIfNeeded(app.authorizationManager())) {
             return;
         }
         restoreSavedDriveIfUsable();
