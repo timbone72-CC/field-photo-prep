@@ -54,3 +54,20 @@ Before making the production package fresh, inspect the installed **production**
 Do **not** clear/uninstall `com.inandout.fieldphotoprep.internal`.
 
 Once the production-package precondition is clean, begin Gate A from `docs/PHASE_12L_REALITY_GATE_PLAN_2026-09-27.md`.
+
+## Production pre-clear safety evidence
+
+Production pre-clear safety gate: **PASS**.
+
+Observed production support status before any clear/uninstall:
+- app version: `0.28.0`;
+- account state: `VALIDATED`;
+- role: `OWNER`;
+- Drive state: `NO_WORKSPACE`;
+- camera permission: `NOT_GRANTED`;
+- queue CAPTURING / WAITING / UPLOADING / FAILED / UNCERTAIN / UPLOADED: all `0`;
+- protected originals: `0`;
+- cleanup pending: `0`;
+- unreadable local records: `0`.
+
+Conclusion: the production package contains no protected local work, unresolved upload state, or production-only Drive workspace binding that needs preservation. It is safe to clear **only** `com.inandout.fieldphotoprep` for Gate A. The working `com.inandout.fieldphotoprep.internal` package remains protected and must not be cleared or uninstalled.
