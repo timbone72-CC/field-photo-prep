@@ -109,3 +109,15 @@ Physical first-production install: **PASS**.
 - existing `.internal` package was not removed or replaced.
 
 Next required reality gate: real Supabase password-recovery link must return through `com.inandout.fieldphotoprep://auth-callback` into the production package and complete the existing recovery flow without a localhost/browser dead end.
+
+## Production callback reality evidence
+
+Production callback reality gate: **PASS**.
+- real Supabase password-recovery email opened the signed production package `com.inandout.fieldphotoprep`;
+- app displayed the production `Set Password` flow;
+- password update completed successfully;
+- app returned to `Account Connected`;
+- verified account organization: `In And Out Cleaner Inspections LLC`;
+- verified role: `OWNER`;
+- no localhost/browser dead end observed;
+- no `.internal` package takeover observed.

@@ -172,6 +172,8 @@ The workflow does not publish the candidate publicly.
 
 ## 7. Production callback reality gate
 
+**Phase 12K observed callback result:** PASS. A real Supabase password-recovery link returned into the signed production package, completed password update, and returned to Account Connected for `In And Out Cleaner Inspections LLC` with OWNER role. No localhost/browser dead end or `.internal` redirect was observed.
+
 The connected Supabase management interface used during 12K does not expose the Auth redirect allowlist, so the source configuration alone is not sufficient evidence.
 
 On the Android device with the **signed production package** installed:

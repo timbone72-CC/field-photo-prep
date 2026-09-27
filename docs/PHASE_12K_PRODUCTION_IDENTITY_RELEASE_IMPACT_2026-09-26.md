@@ -312,3 +312,15 @@ PASS on the operator Android device:
 - `dumpsys package` reports versionCode `37`, versionName `0.28.0`.
 
 This establishes the first production-package install baseline using the permanent signer recorded above. Production auth callback reality verification remains pending.
+
+## Production auth callback reality result
+
+**PASS** on the physical Android device.
+
+Observed flow:
+1. real Supabase recovery email generated with `redirect_to=com.inandout.fieldphotoprep://auth-callback`;
+2. recovery link opened the signed production FPP package;
+3. app rendered the Set Password screen;
+4. password update succeeded;
+5. app returned to Account Connected with the expected organization and OWNER role;
+6. no localhost/browser dead end and no internal-package redirect occurred.
