@@ -9,7 +9,7 @@ import androidx.test.runner.lifecycle.Stage;
 final class FirstRunAuthTestHelper {
     private FirstRunAuthTestHelper() {}
 
-    static void dismissRequiredGateIfPresent() throws Exception {
+    static void dismissRequiredGateIfPresent() {
         for (int attempt = 0; attempt < 80; attempt++) {
             AuthActivity auth = awaitResumedOnce(AuthActivity.class);
             if (auth != null) {
@@ -18,12 +18,12 @@ final class FirstRunAuthTestHelper {
             if (awaitResumedOnce(MainActivity.class) != null) {
                 return;
             }
-            Thread.sleep(25L);
+            sleepBriefly();
         }
         throw new AssertionError("MainActivity did not resume after dismissing the required auth gate.");
     }
 
-    static <T extends Activity> T awaitResumed(Class<T> type) throws Exception {
+    static <T extends Activity> T awaitResumed(Class<T> type) {
         for (int attempt = 0; attempt < 100; attempt++) {
             T activity = awaitResumedOnce(type);
             if (activity != null) {
@@ -32,6 +32,15 @@ final class FirstRunAuthTestHelper {
             Thread.sleep(25L);
         }
         return null;
+    }
+
+    private static void sleepBriefly() {
+        try {
+            Thread.sleep(25L);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("Interrupted while waiting for Activity lifecycle state.", error);
+        }
     }
 
     private static <T extends Activity> T awaitResumedOnce(Class<T> type) {
