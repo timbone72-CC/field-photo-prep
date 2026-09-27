@@ -15,7 +15,7 @@ Status: **IN PROGRESS — AUTHORITATIVE REALITY-GATE LINE ESTABLISHED**
 ## Authoritative line
 
 - branch: `phase-12l/clean-install-new-user-reality-gates`;
-- PR: pending initial documentation commit;
+- PR: #85 — `Phase 12L: clean-install and new-user reality gates` (Draft);
 - competing 12L branch/PR at takeover: none;
 - unrelated Draft PR #39 remains outside Phase 12L.
 
