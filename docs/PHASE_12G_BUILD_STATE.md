@@ -2,7 +2,7 @@
 
 Date: 2026-09-26
 
-Status: **PRE-IMPLEMENTATION — AUTHORITATIVE LINE ESTABLISHED**
+Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — GOVERNED CLOSEOUT ON PR #81**
 
 ## Governed base
 
@@ -104,14 +104,59 @@ Existing code already owns the next transition:
 
 Therefore 12G does not add another Drive setup implementation.
 
-### Next checkpoint after final exact-head CI
+## Final runtime evidence
 
-Reconcile Phase 12G evidence and determine whether any additional non-destructive UI smoke is needed before marking the 12G runtime slice ready for merge review. The final clean-install/new-user physical claim remains deferred to 12L.
+Authoritative final runtime head:
 
-## Verification status
+`4930c4b06a51012ada9cc07c503abeae93e97b27`
 
-- documentation/preflight diff: PASS — exactly five intended documentation files changed from governed main;
-- runtime focused tests: not run — no runtime code changed;
-- complete Android CI: not required for the preflight documentation commit except the repository's normal Markdown-only CI path;
-- physical Samsung/provider gate: not required for this checkpoint;
-- Level 3 merge approval: not applicable while scope remains Level 2.
+Exact Android CI:
+- run `36286296646`;
+- unit tests: **PASS**;
+- internal APK build: **PASS**;
+- stable test signer verification: **PASS**;
+- instrumented UI/image tests: **PASS**;
+- internal launch smoke: **PASS**;
+- artifacts/evidence upload: **PASS**.
+
+Focused Phase 12G evidence now proves:
+- a fresh no-session launcher entry reaches the existing AuthActivity;
+- closing that one-time entry leaves protected/read-only Home recovery reachable;
+- Android Activity recreation does not force an authentication loop back over read/recovery Home;
+- required authentication returns to Main only after authoritative VALIDATED identity;
+- an INVITE redirect continues first-run onboarding after successful invitation activation/validation;
+- a cold-start invitation does not infer or grant Drive permission;
+- a saved same-Organization binding that was authorization-blocked before sign-in is preserved as the prior binding state so the existing 12H resume policy reloads it after validation;
+- NO_WORKSPACE continues into the existing deliberate Connect Drive / Android SAF path;
+- the existing 12H guard still requires online VALIDATED Organization identity before creating/rebinding a workspace;
+- no provider ID, SAF URI, queue destination, photo identity, or Supabase backend semantics changed.
+
+## Failure/reconciliation history
+
+Required failures were not reported as passes:
+
+- run `36284696569` exposed that pre-existing MainActivity UI tests were stopped behind the newly expected AuthActivity; tests were reconciled by dismissing the real gate in test-only code rather than adding a production bypass;
+- run `36285261268` exposed checked-exception handling in that test-only helper; the helper was corrected;
+- run `36286017638` exposed that Android Activity recreation re-opened the auth gate and blocked read/recovery Home; production routing was corrected so the gate is offered only on a fresh MainActivity entry;
+- final exact runtime run `36286296646` passed all required checks.
+
+Superseded in-flight CI runs on earlier heads are not final evidence.
+
+## External-state / reality boundary
+
+- Supabase schema/RLS/RPC/Edge Functions: **unchanged**;
+- Google Drive data/permissions: **unchanged by 12G implementation/testing**;
+- Drive binding persistence/schema: **unchanged**;
+- operator Samsung state: **not wiped or rebuilt for 12G**;
+- final clean-install/new-user physical reality claim remains deliberately deferred to **Phase 12L** under the approved Phase 12 design;
+- valid Phase 12H real-provider evidence remains reusable because 12G did not alter its binding semantics.
+
+## Closeout
+
+- classification remained **Level 2**;
+- final diff review confirms runtime ownership is limited to Main/Auth navigation plus the small 12G navigation policy and tests;
+- no Level 3 surface was introduced;
+- no additional physical/provider gate is required for the claims made by this slice;
+- PR #81 is the governed closeout line;
+- Level 3 merge approval is **not applicable**;
+- after governed merge, the next Phase 12 runtime slice is **12I — App Status & Diagnostics**.
