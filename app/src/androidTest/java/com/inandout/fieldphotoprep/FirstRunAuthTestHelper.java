@@ -29,14 +29,14 @@ final class FirstRunAuthTestHelper {
             if (activity != null) {
                 return activity;
             }
-            Thread.sleep(25L);
+            sleepBriefly();
         }
         return null;
     }
 
     private static void sleepBriefly() {
         try {
-            Thread.sleep(25L);
+            sleepBriefly();
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new AssertionError("Interrupted while waiting for Activity lifecycle state.", error);
