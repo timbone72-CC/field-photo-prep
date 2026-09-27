@@ -555,7 +555,7 @@ Permanent record:
 
 The prior Phase 11 `IN PROGRESS` labels were stale documentation and were corrected by the 2026-09-24 source-of-truth reconciliation.
 
-## Phase 12 — User Identity & Release Readiness — 12F / 12H / 12G / 12I COMPLETE / 12J IMPLEMENTATION & EVIDENCE COMPLETE
+## Phase 12 — User Identity & Release Readiness — 12F / 12H / 12G / 12I / 12J COMPLETE / 12K IN PROGRESS
 
 Goal:
 add durable FPP User/Organization identity and release-readiness controls without conflating FPP sign-in with Google Drive authorization or turning FPP into a second job/photo database.
@@ -578,7 +578,8 @@ Current status:
 - Phase 12H Organization ↔ Drive binding protection is complete and merged through PR #80;
 - Phase 12G First-Run / New-Device Flow is complete and merged through PR #81; final clean-install/new-user physical proof remains assigned to Phase 12L;
 - Phase 12I App Status & Diagnostics is complete and merged through PR #82; no real Drive provider gate was required because provider semantics were unchanged;
-- Phase 12J Recovery & Account-State UX implementation and required automated evidence are complete on governed PR #83; no real Drive provider gate was required because provider semantics were unchanged;
+- Phase 12J Recovery & Account-State UX is complete and merged through PR #83;
+- Phase 12K Production Identity / Release Path is active as a Level 3 pre-implementation line on `phase-12k/production-identity-release-path`; explicit operator approval is required before merge;
 - current personal-Drive production remains valid and unchanged;
 - Team remains a separate product/backend;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.

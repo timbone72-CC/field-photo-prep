@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — 12F / 12H / 12G / 12I COMPLETE / 12J IMPLEMENTATION & EVIDENCE COMPLETE**
+Status: **APPROVED MASTER PLAN — 12F / 12H / 12G / 12I / 12J COMPLETE / 12K IN PROGRESS**
 
 ## Purpose
 
@@ -443,7 +443,7 @@ Runtime implementation should wait until the 12E authorization-state owner is st
 
 # Phase 12J — Recovery & Account-State UX
 
-Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — governed closeout on PR #83**
+Status: **COMPLETE — merged through PR #83 on 2026-09-26**
 
 ## Goal
 
@@ -485,6 +485,8 @@ Any new mutation/recovery action that changes protected data, authorization, or 
 ---
 
 # Phase 12K — Production Identity / Release Path
+
+Status: **IN PROGRESS — Level 3 pre-implementation on `phase-12k/production-identity-release-path`**
 
 ## Goal
 
