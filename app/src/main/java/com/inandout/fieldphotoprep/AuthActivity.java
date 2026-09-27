@@ -16,6 +16,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class AuthActivity extends Activity {
+    static final String EXTRA_REQUIRED_ENTRY =
+            "com.inandout.fieldphotoprep.extra.REQUIRED_ENTRY";
+
     static final String EXTRA_REQUIRED_AUTH_GATE =
             "com.inandout.fieldphotoprep.extra.REQUIRED_AUTH_GATE";
 
@@ -49,6 +52,7 @@ public final class AuthActivity extends Activity {
     private Mode mode = Mode.LOGIN;
     private SupabaseAuthClient.AuthTokens pendingRecoveryTokens;
     private String pendingInvitationId;
+    private boolean returnToMainAfterAuthentication;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +92,10 @@ public final class AuthActivity extends Activity {
     }
 
     private void handleIntent(Intent intent) {
+        if (intent != null && intent.getBooleanExtra(EXTRA_REQUIRED_ENTRY, false)) {
+            returnToMainAfterAuthentication = true;
+        }
+
         String data = intent == null ? null : intent.getDataString();
         if (data == null || data.trim().isEmpty()) {
             AuthSessionState state = authorizationManager.storedSession();
@@ -95,7 +103,11 @@ public final class AuthActivity extends Activity {
                 showLogin(null);
             } else {
                 AuthorizationDecision decision = authorizationManager.currentDecision();
-                showConnected(state, storedSessionMessage(decision));
+                if (FirstRunNavigationPolicy.requiresAuthentication(decision)) {
+                    showLogin("Sign in again to continue Field Photo Prep work.");
+                } else {
+                    showConnected(state, storedSessionMessage(decision));
+                }
             }
             return;
         }
@@ -231,6 +243,17 @@ public final class AuthActivity extends Activity {
         }
     }
 
+    private void completeAuthenticatedEntry(AuthSessionState state, String message) {
+        AuthorizationDecision decision = authorizationManager.currentDecision();
+        if (FirstRunNavigationPolicy.shouldReturnToMain(
+                returnToMainAfterAuthentication,
+                decision)) {
+            finish();
+            return;
+        }
+        showConnected(state, message);
+    }
+
     private void showConnected(AuthSessionState state, String message) {
         AuthorizationDecision current = authorizationManager.currentDecision();
         if (getIntent().getBooleanExtra(EXTRA_REQUIRED_AUTH_GATE, false)
@@ -282,7 +305,9 @@ public final class AuthActivity extends Activity {
                         passwordValue);
                 AuthSessionState state = authClient.validateMembership(tokens);
                 replaceAuthenticatedSessionSafely(state);
-                runOnUiThread(() -> showConnected(state, "Signed in successfully."));
+                runOnUiThread(() -> completeAuthenticatedEntry(
+                        state,
+                        "Signed in successfully."));
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     setBusy(false);
@@ -361,7 +386,7 @@ public final class AuthActivity extends Activity {
                 runOnUiThread(() -> {
                     pendingRecoveryTokens = null;
                     pendingInvitationId = null;
-                    showConnected(
+                    completeAuthenticatedEntry(
                             state,
                             joined
                                     ? "Invitation accepted and account verified."

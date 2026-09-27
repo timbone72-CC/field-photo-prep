@@ -1,22 +1,24 @@
 package com.inandout.fieldphotoprep;
 
 /**
- * Phase 12G navigation-only policy.
+ * Phase 12G navigation policy only.
  *
- * Authorization ownership remains in RuntimeAuthorizationManager/Policy. This helper only decides
- * whether the launcher must route through the existing AuthActivity and when that required gate
- * may return to the existing field workflow.
+ * This class does not persist account state or Drive state. It translates the authoritative
+ * Phase 12E authorization decision into the smallest first-run navigation choice.
  */
 final class FirstRunNavigationPolicy {
     private FirstRunNavigationPolicy() {}
 
     static boolean requiresAuthentication(AuthorizationDecision decision) {
-        return decision == null
-                || decision.state() == AuthorizationDecision.State.SIGN_IN_REQUIRED;
+        return decision != null
+                && decision.state() == AuthorizationDecision.State.SIGN_IN_REQUIRED;
     }
 
-    static boolean completesRequiredAuthentication(AuthorizationDecision decision) {
-        return decision != null
+    static boolean shouldReturnToMain(
+            boolean requiredEntry,
+            AuthorizationDecision decision) {
+        return requiredEntry
+                && decision != null
                 && decision.state() == AuthorizationDecision.State.VALIDATED;
     }
 }

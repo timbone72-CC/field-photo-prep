@@ -129,7 +129,24 @@ public final class MainActivity extends Activity {
         showAddressScreen(false);
         renderSavedMaster();
 
+        if (launchRequiredAuthenticationIfNeeded(app.authorizationManager())) {
+            return;
+        }
         restoreSavedDriveIfUsable();
+    }
+
+    private boolean launchRequiredAuthenticationIfNeeded(
+            RuntimeAuthorizationManager authorizationManager) {
+        if (authorizationManager == null
+                || !FirstRunNavigationPolicy.requiresAuthentication(
+                        authorizationManager.currentDecision())) {
+            return false;
+        }
+
+        Intent intent = new Intent(this, AuthActivity.class);
+        intent.putExtra(AuthActivity.EXTRA_REQUIRED_ENTRY, true);
+        startActivity(intent);
+        return true;
     }
 
     @Override
