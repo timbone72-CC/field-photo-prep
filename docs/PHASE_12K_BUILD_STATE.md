@@ -71,7 +71,17 @@ That device gate is now **PASS**. No existing `com.inandout.fieldphotoprep` inst
 
 First permanent production signer is now established outside the repository on the operator-controlled Linux laptop.
 
-Next: build and verify the first signed production APK locally using the recorded signer, then configure GitHub production-signing secrets and run the manual signed candidate workflow. Before broader distribution, retain a secure backup of the keystore and password recovery information.
+Local production candidate build and verifier are now **PASS** on source commit `6065d48b943c657cae0ef3011c92fdc67213db44`.
+
+Verified artifact:
+- package: `com.inandout.fieldphotoprep`;
+- version: `37` / `0.28.0`;
+- callback: `com.inandout.fieldphotoprep://auth-callback`;
+- Supabase project ref: `vtyiktvqhbgabawotkrj`;
+- signer SHA-256: `8ba1dc6ae4907274a7ddb16662a46a7bb52a0fca5dbeadeb478001052fd2a1c2`;
+- APK SHA-256: `3e0785965531a56a4e5abc98ae09f070d1e69dcf1c8099e7804f96c85bfbe098`.
+
+Next: complete final CI on this governed head, then install the signed APK on the physical Android device as the first production baseline and run the production callback reality gate. GitHub production-signing secrets/manual candidate workflow remain to be configured before controlled distribution.
 
 ## External-state status
 

@@ -289,3 +289,17 @@ No merge of Phase 12K is authorized until:
 1. all required evidence is recorded;
 2. remaining structural assumptions are verified;
 3. the operator explicitly approves the Level-3 merge.
+
+## Local signed production candidate evidence
+
+Verified on source commit `6065d48b943c657cae0ef3011c92fdc67213db44`:
+- package: `com.inandout.fieldphotoprep`;
+- versionCode: `37`;
+- versionName: `0.28.0`;
+- callback: `com.inandout.fieldphotoprep://auth-callback`;
+- dedicated Supabase project ref: `vtyiktvqhbgabawotkrj`;
+- modern publishable key present: yes;
+- production signer SHA-256: `8ba1dc6ae4907274a7ddb16662a46a7bb52a0fca5dbeadeb478001052fd2a1c2`;
+- APK SHA-256: `3e0785965531a56a4e5abc98ae09f070d1e69dcf1c8099e7804f96c85bfbe098`.
+
+The local verifier completed successfully after the Phase 12K SIGPIPE fix in `scripts/verify-release-apk.sh`.
