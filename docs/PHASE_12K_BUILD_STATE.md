@@ -98,3 +98,14 @@ Next: complete final CI on this governed head, then install the signed APK on th
 ## Merge approval
 
 **PENDING — DO NOT MERGE**
+
+## Physical production install evidence
+
+Physical first-production install: **PASS**.
+- `adb install app/build/outputs/apk/release/app-release.apk` → `Success`;
+- Android package path resolved for `com.inandout.fieldphotoprep`;
+- installed versionCode: `37`;
+- installed versionName: `0.28.0`;
+- existing `.internal` package was not removed or replaced.
+
+Next required reality gate: real Supabase password-recovery link must return through `com.inandout.fieldphotoprep://auth-callback` into the production package and complete the existing recovery flow without a localhost/browser dead end.

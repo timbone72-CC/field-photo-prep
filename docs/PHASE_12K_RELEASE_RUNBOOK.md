@@ -190,6 +190,8 @@ If the callback fails, fix the Supabase allowed redirect configuration. Do not w
 
 Install the signed v37 APK as the first production baseline.
 
+**Phase 12K observed install result:** PASS. The signed v37 / 0.28.0 production APK installed successfully as `com.inandout.fieldphotoprep` while the existing internal package remained separate.
+
 Record:
 - APK SHA-256;
 - signer SHA-256;

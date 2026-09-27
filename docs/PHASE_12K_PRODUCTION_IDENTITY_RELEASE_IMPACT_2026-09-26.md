@@ -303,3 +303,12 @@ Verified on source commit `6065d48b943c657cae0ef3011c92fdc67213db44`:
 - APK SHA-256: `3e0785965531a56a4e5abc98ae09f070d1e69dcf1c8099e7804f96c85bfbe098`.
 
 The local verifier completed successfully after the Phase 12K SIGPIPE fix in `scripts/verify-release-apk.sh`.
+
+## Physical first-production install result
+
+PASS on the operator Android device:
+- signed production APK installed successfully without uninstalling the working internal package;
+- `com.inandout.fieldphotoprep` resolves to an installed APK path;
+- `dumpsys package` reports versionCode `37`, versionName `0.28.0`.
+
+This establishes the first production-package install baseline using the permanent signer recorded above. Production auth callback reality verification remains pending.
