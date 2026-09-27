@@ -62,15 +62,39 @@ Must remain unchanged:
 - existing SAF/provider identity;
 - Home / Work Orders / Photos field workflow after setup.
 
+## First runtime slice — required authentication entry
+
+Implemented on this branch after the documentation preflight:
+
+- `MainActivity.onResume()` now routes `SIGN_IN_REQUIRED` through the existing `AuthActivity` before Drive/Home resume work continues;
+- the same routing check runs again after the existing serialized account revalidation, so a stale stored session that becomes `SIGN_IN_REQUIRED` cannot remain in ordinary Home flow;
+- `AuthActivity` receives a narrow required-gate intent marker only for this launcher route;
+- after that required route reaches authoritative `VALIDATED` identity, `AuthActivity` finishes and returns to the existing `MainActivity`;
+- non-sign-in blocked/degraded states remain owned by the existing authorization/recovery behavior and are not redefined by 12G;
+- no Drive binding, `FolderPrefs`, Supabase, queue, photo, or provider identity semantics changed.
+
+Focused automated coverage:
+- no decision / `SIGN_IN_REQUIRED` requires the existing auth route;
+- `VALIDATED` completes the required gate;
+- GRACE, RECHECK_REQUIRED, NO_MEMBERSHIP, REVOKED, and DRIVE_DISCONNECTED do not create a second 12G recovery state machine.
+
+Verification: **PENDING CI** on the exact runtime head.
+
+### Next checkpoint after this slice passes
+
+Inspect and implement only the next 12G transition:
+
+`VALIDATED identity + NO_WORKSPACE → existing deliberate Connect Drive action`
+
+Do not change 12H binding persistence or SAF/provider semantics.
+
 ## Exact next checkpoint
 
-Before editing runtime code, inspect the smallest owning UI/navigation path and define the first focused test around this transition:
+After the required-authentication slice passes, continue with only:
 
-`no usable FPP session/identity → existing AuthActivity → VALIDATED identity → MainActivity evaluates existing 12H binding → deliberate Connect Drive only when required`
+`VALIDATED identity + NO_WORKSPACE → existing deliberate Connect Drive action`
 
-The implementation must use existing owners and avoid new persistence.
-
-Then implement only that first-run navigation boundary and its focused tests.
+Use the existing 12H binding guard and existing SAF picker. Do not add new persistence or provider-selection semantics.
 
 ## Verification status
 

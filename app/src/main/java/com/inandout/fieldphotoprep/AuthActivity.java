@@ -16,6 +16,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class AuthActivity extends Activity {
+    static final String EXTRA_REQUIRED_AUTH_GATE =
+            "com.inandout.fieldphotoprep.extra.REQUIRED_AUTH_GATE";
+
+    static Intent requiredGateIntent(Activity source) {
+        return new Intent(source, AuthActivity.class)
+                .putExtra(EXTRA_REQUIRED_AUTH_GATE, true);
+    }
+
     private enum Mode {
         LOGIN,
         RECOVERY_REQUEST,
@@ -224,6 +232,13 @@ public final class AuthActivity extends Activity {
     }
 
     private void showConnected(AuthSessionState state, String message) {
+        AuthorizationDecision current = authorizationManager.currentDecision();
+        if (getIntent().getBooleanExtra(EXTRA_REQUIRED_AUTH_GATE, false)
+                && FirstRunNavigationPolicy.completesRequiredAuthentication(current)) {
+            finish();
+            return;
+        }
+
         mode = Mode.CONNECTED;
         title.setText("Account Connected");
         status.setText(message
@@ -243,7 +258,6 @@ public final class AuthActivity extends Activity {
         primary.setOnClickListener(v -> recheckStoredSession(state));
         secondary.setOnClickListener(v -> signOutSafely(state));
 
-        AuthorizationDecision current = authorizationManager.currentDecision();
         boolean mayAdmin = current.allowsMemberAdministration();
         manageMembers.setVisibility(mayAdmin ? View.VISIBLE : View.GONE);
         manageMembers.setOnClickListener(v ->
