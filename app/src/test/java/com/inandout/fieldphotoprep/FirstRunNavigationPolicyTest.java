@@ -36,7 +36,7 @@ public final class FirstRunNavigationPolicyTest {
         assertFalse(FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(
                 AuthRedirectParser.Kind.RECOVERY));
         assertFalse(FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(
-                AuthRedirectParser.Kind.NONE));
+                AuthRedirectParser.Kind.UNSUPPORTED));
         assertFalse(FirstRunNavigationPolicy.continuesOnboardingAfterRedirect(
                 AuthRedirectParser.Kind.ERROR));
     }
