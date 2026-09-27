@@ -36,7 +36,7 @@ final class FirstRunAuthTestHelper {
 
     private static void sleepBriefly() {
         try {
-            sleepBriefly();
+            Thread.sleep(25L);
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new AssertionError("Interrupted while waiting for Activity lifecycle state.", error);
