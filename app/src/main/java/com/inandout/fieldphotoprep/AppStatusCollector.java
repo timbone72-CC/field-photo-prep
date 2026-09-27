@@ -20,7 +20,7 @@ final class AppStatusCollector {
     private final FolderPrefs folderPrefs;
     private final OrganizationDriveBindingGuard driveBindingGuard;
     private final PendingPhotoStore photoStore;
-    private final PhotoPreparer photoPreparer;
+    private final File preparedRoot;
     private final String appVersion;
 
     static AppStatusCollector create(
@@ -41,7 +41,7 @@ final class AppStatusCollector {
                 folderPrefs,
                 bindingGuard,
                 new PendingPhotoStore(new File(appContext.getFilesDir(), "pending_photos")),
-                new PhotoPreparer(new File(appContext.getFilesDir(), "prepared_photos")),
+                new File(appContext.getFilesDir(), "prepared_photos"),
                 BuildConfig.VERSION_NAME);
     }
 
@@ -51,7 +51,7 @@ final class AppStatusCollector {
             FolderPrefs folderPrefs,
             OrganizationDriveBindingGuard driveBindingGuard,
             PendingPhotoStore photoStore,
-            PhotoPreparer photoPreparer,
+            File preparedRoot,
             String appVersion) {
         this.context = Objects.requireNonNull(context, "context");
         this.authorizationManager =
@@ -59,7 +59,7 @@ final class AppStatusCollector {
         this.folderPrefs = Objects.requireNonNull(folderPrefs, "folderPrefs");
         this.driveBindingGuard = Objects.requireNonNull(driveBindingGuard, "driveBindingGuard");
         this.photoStore = Objects.requireNonNull(photoStore, "photoStore");
-        this.photoPreparer = Objects.requireNonNull(photoPreparer, "photoPreparer");
+        this.preparedRoot = Objects.requireNonNull(preparedRoot, "preparedRoot");
         this.appVersion = Objects.requireNonNull(appVersion, "appVersion");
     }
 
@@ -92,6 +92,7 @@ final class AppStatusCollector {
             int uncertain = 0;
             int uploaded = 0;
             int protectedOriginals = 0;
+            int cleanupPending = 0;
 
             for (PendingPhotoRecord record : scan.records()) {
                 switch (record.state()) {
@@ -116,13 +117,15 @@ final class AppStatusCollector {
                     default:
                         throw new IOException("Unsupported local queue state.");
                 }
-                if (photoStore.hasImageData(record)) {
+                boolean hasOriginal = photoStore.hasImageData(record);
+                if (hasOriginal) {
                     protectedOriginals++;
                 }
+                if (record.state() == PendingPhotoRecord.State.UPLOADED
+                        && (hasOriginal || hasPreparedCopy(record))) {
+                    cleanupPending++;
+                }
             }
-
-            ProtectedWorkGuard.Result protectedWork =
-                    new ProtectedWorkGuard(photoStore, photoPreparer).inspect();
 
             return new AppStatusSnapshot.QueueCounts(
                     capturing,
@@ -132,15 +135,20 @@ final class AppStatusCollector {
                     uncertain,
                     uploaded,
                     protectedOriginals,
-                    protectedWork.cleanupPendingCount(),
-                    Math.max(
-                            scan.corruptMetadataFiles().size(),
-                            protectedWork.unreadableCount()));
+                    cleanupPending,
+                    scan.corruptMetadataFiles().size());
         } catch (IOException | RuntimeException error) {
             // Diagnostics must never mutate/repair local state merely to make a status screen work.
             // Fail closed into an explicit unavailable state without copying raw error details.
             return AppStatusSnapshot.QueueCounts.unavailable();
         }
+    }
+
+    private boolean hasPreparedCopy(PendingPhotoRecord record) {
+        File prepared = new File(
+                preparedRoot,
+                PhotoPreparationPolicy.preparedFileNameFor(record.id()));
+        return prepared.isFile() && prepared.length() > 0L;
     }
 
     private static boolean hasPersistedReadPermission(Context context, Uri treeUri) {
