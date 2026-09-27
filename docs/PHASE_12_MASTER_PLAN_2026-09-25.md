@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — 12F / 12H COMPLETE / 12G IMPLEMENTATION & EVIDENCE COMPLETE**
+Status: **APPROVED MASTER PLAN — 12F / 12H / 12G COMPLETE / 12I IN PROGRESS**
 
 ## Purpose
 
@@ -297,7 +297,7 @@ changes authoritative Membership/Invitation state and can revoke authorization.
 
 # Phase 12G — First-Run / New-Device Flow
 
-Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — governed closeout on PR #81**
+Status: **COMPLETE — merged through PR #81 on 2026-09-26**
 
 ## Goal
 
@@ -387,6 +387,8 @@ Prove:
 ---
 
 # Phase 12I — App Status & Diagnostics
+
+Status: **IN PROGRESS — pre-implementation on `phase-12i/app-status-diagnostics`**
 
 ## Goal
 
