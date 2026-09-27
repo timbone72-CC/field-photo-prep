@@ -71,3 +71,13 @@ Observed production support status before any clear/uninstall:
 - unreadable local records: `0`.
 
 Conclusion: the production package contains no protected local work, unresolved upload state, or production-only Drive workspace binding that needs preservation. It is safe to clear **only** `com.inandout.fieldphotoprep` for Gate A. The working `com.inandout.fieldphotoprep.internal` package remains protected and must not be cleared or uninstalled.
+
+## Gate A — clean/no-session production launch
+
+Gate A clean/no-session launch: **PARTIAL PASS**.
+- production package was cleared after the pre-clear safety gate passed;
+- fresh production launch displayed `Field Photo Prep Account` with empty Email/Password fields and Sign In / Forgot Password actions;
+- no prior OWNER session was silently restored;
+- ordinary authenticated field use therefore remains gated behind FPP sign-in as designed.
+
+Remaining Gate A sub-check: physically confirm `com.inandout.fieldphotoprep.internal` is still installed/unchanged after clearing production. That separation proof may also be reused for Gate F.
