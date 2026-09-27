@@ -43,7 +43,9 @@ normalize_fingerprint() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -d ':[:space:]'
 }
 
-badging="$("${AAPT}" dump badging "${APK}" | head -n 1)"
+badging_file="$(mktemp)"
+"${AAPT}" dump badging "${APK}" > "${badging_file}"
+badging="$(sed -n '1p' "${badging_file}")"
 actual_package="$(printf '%s\n' "${badging}" | sed -n "s/.*package: name='\([^']*\)'.*/\1/p")"
 actual_version_code="$(printf '%s\n' "${badging}" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")"
 actual_version_name="$(printf '%s\n' "${badging}" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")"
@@ -72,7 +74,7 @@ manifest_dump="$(mktemp)"
 dex_strings="$(mktemp)"
 signer_dump="$(mktemp)"
 cleanup() {
-  rm -f "${manifest_dump}" "${dex_strings}" "${signer_dump}"
+  rm -f "${badging_file}" "${manifest_dump}" "${dex_strings}" "${signer_dump}"
 }
 trap cleanup EXIT
 
@@ -111,7 +113,7 @@ if [[ -n "${FPP_FORBIDDEN_STRING:-}" ]] && grep -Fq "${FPP_FORBIDDEN_STRING}" "$
 fi
 
 "${APKSIGNER}" verify --print-certs "${APK}" > "${signer_dump}"
-actual_cert="$(sed -n 's/.*certificate SHA-256 digest: *//p' "${signer_dump}" | head -n 1)"
+actual_cert="$(awk '/certificate SHA-256 digest:/ { sub(/^.*certificate SHA-256 digest: */, ""); print; found=1 } END { if (!found) exit 1 }' "${signer_dump}")"
 actual_cert="$(normalize_fingerprint "${actual_cert}")"
 expected_cert="$(normalize_fingerprint "${FPP_EXPECTED_CERT_SHA256}")"
 
