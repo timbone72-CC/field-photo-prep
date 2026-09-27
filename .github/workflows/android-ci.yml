@@ -75,6 +75,19 @@ jobs:
         if: steps.scope.outputs.runtime == 'true'
         run: gradle assembleDebug
 
+      - name: Verify production release fails closed without signing inputs
+        if: steps.scope.outputs.runtime == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gradle :app:assembleRelease > release-fail-closed.txt 2>&1; then
+            cat release-fail-closed.txt
+            echo "Production release unexpectedly built without external signing inputs." >&2
+            exit 1
+          fi
+          cat release-fail-closed.txt
+          grep -Fq "Missing required production signing environment" release-fail-closed.txt
+
       - name: Verify stable test APK signer
         if: steps.scope.outputs.runtime == 'true'
         shell: bash
@@ -154,4 +167,5 @@ jobs:
             app/build/outputs/androidTest-results
             app/build/test-results/testDebugUnitTest
             apk-signer.txt
+            release-fail-closed.txt
           if-no-files-found: error
