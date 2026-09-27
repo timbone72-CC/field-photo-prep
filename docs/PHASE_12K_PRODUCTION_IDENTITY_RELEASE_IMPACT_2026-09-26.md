@@ -55,6 +55,15 @@ Live dedicated FPP Supabase project verified through the connected Supabase mana
 
 The connected management surface does not expose the Auth redirect allowlist. Therefore the production redirect `com.inandout.fieldphotoprep://auth-callback` is **not claimed verified yet**. It remains a required release reality gate.
 
+Historical signer/package audit:
+- the stable non-production test signer was introduced on 2026-09-10;
+- before the later 2026-09-10 package split, debug/test builds briefly used unsuffixed `com.inandout.fieldphotoprep`;
+- commit `ceda1509b0b2c94b602b76b312c828ff89f727bb` introduced `.internal` for debug builds;
+- the suspected versionCode 18 / 0.13-field-ui CI artifact is confirmed as `field-photo-prep-internal-apk`, not a production artifact;
+- nevertheless, an older pre-split test-signed unsuffixed package may still exist on a device unless explicitly proven absent.
+
+Therefore a read-only device package/signer check is required before generating the permanent production signer.
+
 ## Approved implementation scope
 
 ### 1. Separate production signing path
@@ -129,6 +138,12 @@ Required to create a real signed production candidate:
 - monotonically increasing versionCode;
 - dedicated FPP Supabase URL and active publishable key;
 - production callback `com.inandout.fieldphotoprep://auth-callback`.
+
+Required before creating the permanent production signer:
+- confirm whether `com.inandout.fieldphotoprep` is currently installed on the physical Android device;
+- if present, extract/read its signer fingerprint and version without uninstalling it;
+- if its signer is not the known stable test fingerprint, stop and treat it as a potentially existing production signer;
+- if it is the known stable test signer, confirm no protected live work depends on that old package before any removal.
 
 Required before merge:
 - code/config verification;

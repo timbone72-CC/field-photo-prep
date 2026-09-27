@@ -16,11 +16,44 @@ This runbook prepares and verifies a **controlled private production APK candida
 
 The first production signer used for a distributed/installed production baseline becomes part of Android update continuity. Protect it accordingly.
 
-## 1. Create or recover the production keystore locally
+## 1. Check the physical device for an old unsuffixed package
+
+Before creating any permanent production key, connect the Android device to the operator-controlled Linux machine and run:
+
+```bash
+adb shell pm path com.inandout.fieldphotoprep
+adb shell pm path com.inandout.fieldphotoprep.internal
+```
+
+Expected modern working package: `com.inandout.fieldphotoprep.internal`.
+
+If the first command returns no APK path, there is no currently installed unsuffixed production-package app on that device and the first permanent production signer may be established.
+
+If `com.inandout.fieldphotoprep` is present, **do not uninstall it yet**. Read its version and signer:
+
+```bash
+adb shell dumpsys package com.inandout.fieldphotoprep | grep -E 'versionCode=|versionName='
+OLD_APK_PATH="$(adb shell pm path com.inandout.fieldphotoprep | head -n 1 | sed 's/^package://')"
+adb pull "$OLD_APK_PATH" /tmp/fpp-existing-production-package.apk
+APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+"$APKSIGNER" verify --print-certs /tmp/fpp-existing-production-package.apk
+```
+
+Known historical non-production stable test signer SHA-256:
+
+`2C:0A:96:16:FD:81:93:33:ED:98:B3:35:93:FB:E5:97:E1:20:E9:59:36:10:3C:6B:7A:76:27:0E:98:5D:3F:BA`
+
+If the existing unsuffixed package uses any other signer, STOP: treat it as a potentially real production identity and recover/identify that key before continuing.
+
+If it uses the known test signer, confirm that old package contains no protected live work that must be preserved before any uninstall. The current internal package must not be disturbed by this check.
+
+Historical context: the test signer briefly signed unsuffixed debug/test builds before commit `ceda1509b0b2c94b602b76b312c828ff89f727bb` separated debug builds into `.internal`. Later versionCode 18 CI evidence is confirmed internal, but the pre-split package must still be checked on-device.
+
+## 2. Create or recover the production keystore locally
 
 Do this on the operator-controlled Linux machine, **not** in GitHub Actions and not in the repository.
 
-If an existing production installation of `com.inandout.fieldphotoprep` already exists, do **not** generate a new signer until the signer protecting that installation is identified. A different signer cannot update the existing app.
+Only after the package/signer check above proves a new signer is safe should a first production signer be created.
 
 For a confirmed first production baseline, a suitable local command is:
 
@@ -49,7 +82,7 @@ keytool -list -v \
 
 Store an encrypted/offline backup of the keystore and its recovery information before distributing any APK signed by it.
 
-## 2. Local signed release build
+## 3. Local signed release build
 
 Set sensitive values only in the current shell/session or another secure local secret mechanism:
 
@@ -69,7 +102,7 @@ gradle :app:verifyProductionReleaseIdentity :app:assembleRelease
 
 The release build fails closed if any signing input is missing.
 
-## 3. Verify the local APK
+## 4. Verify the local APK
 
 ```bash
 export FPP_EXPECTED_PACKAGE='com.inandout.fieldphotoprep'
@@ -90,7 +123,7 @@ bash scripts/verify-release-apk.sh app/build/outputs/apk/release/app-release.apk
 
 Keep the resulting evidence beside the exact APK being tested.
 
-## 4. Configure GitHub Actions secrets
+## 5. Configure GitHub Actions secrets
 
 PR/source code references only secret **names**. The following values must be configured outside git before using the manual Production Release Candidate workflow:
 
@@ -110,7 +143,7 @@ Do not save that base64 text into the repository.
 
 The GitHub workflow materializes the keystore only in runner temporary storage and uploads only the signed APK and non-secret evidence.
 
-## 5. Manual GitHub candidate
+## 6. Manual GitHub candidate
 
 Run **Production Release Candidate** manually.
 
@@ -128,7 +161,7 @@ The workflow must fail unless:
 
 The workflow does not publish the candidate publicly.
 
-## 6. Production callback reality gate
+## 7. Production callback reality gate
 
 The connected Supabase management interface used during 12K does not expose the Auth redirect allowlist, so the source configuration alone is not sufficient evidence.
 
@@ -142,7 +175,7 @@ On the Android device with the **signed production package** installed:
 
 If the callback fails, fix the Supabase allowed redirect configuration. Do not weaken redirect parsing or substitute a localhost fallback.
 
-## 7. Install/update continuity gate
+## 8. Install/update continuity gate
 
 ### If no production package exists yet
 
@@ -176,7 +209,7 @@ After update verify:
 
 A signer mismatch is a STOP condition. Never uninstall a live production app with protected work just to bypass the mismatch.
 
-## 8. Rollback
+## 9. Rollback
 
 Source rollback point: `c502260b7207d75a1349581a2f72b397e7fa5e70`.
 
@@ -187,7 +220,7 @@ Artifact rollback must use a previously retained APK that:
 
 Ordinary Android installs do not permit versionCode downgrade without special/destructive handling. Therefore the safer response to a bad candidate is to stop distribution and produce a corrected higher-version candidate from a known-good source, preserving app data.
 
-## 9. Phase 12K merge gate
+## 10. Phase 12K merge gate
 
 Before merging PR #84, the build-state record must contain:
 - final source/tooling CI PASS;
