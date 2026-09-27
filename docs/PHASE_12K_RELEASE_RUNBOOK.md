@@ -156,6 +156,18 @@ The GitHub workflow materializes the keystore only in runner temporary storage a
 
 ## 6. Manual GitHub candidate
 
+### First activation of this workflow
+
+GitHub only accepts `workflow_dispatch` when the workflow file already exists on the repository default branch. Because Phase 12K introduces this workflow for the first time, it cannot be manually dispatched while PR #84 is still unmerged. An HTTP 404 from `gh workflow run production-release-candidate.yml --ref phase-12k/production-identity-release-path` before merge is therefore expected platform behavior.
+
+For the first activation only:
+1. complete the Phase 12K Level-3 merge gate;
+2. merge PR #84 after explicit operator approval;
+3. once the workflow exists on `main`, manually run `Production Release Candidate` with `previous_production_version_code=36`;
+4. verify the signed artifact/evidence produced by GitHub matches the governed production identity and signer.
+
+Subsequent releases may dispatch the already-registered workflow against an intended branch/tag as allowed by GitHub.
+
 Run **Production Release Candidate** manually.
 
 Provide the highest production versionCode already installed/distributed. For a confirmed first 12K production baseline with no prior production package, use the governed baseline value `36`.

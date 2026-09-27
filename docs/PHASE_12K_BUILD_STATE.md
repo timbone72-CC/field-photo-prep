@@ -130,3 +130,16 @@ Off-laptop production signer backup: **PASS**.
 - decrypted backup SHA-256: `5fc4dc15a73fbf3f8034c4a6a24389146a921f0d15bc9032995912e8205aa5f6`;
 - decrypted backup hash exactly matches the original production keystore creation hash;
 - backup passphrase/private keystore material remain outside git and were not shared in chat.
+
+## GitHub manual candidate activation constraint
+
+The new `Production Release Candidate` workflow exists on the Phase 12K branch but not yet on default branch `main`. GitHub `workflow_dispatch` only accepts manual dispatch when the workflow file exists on the default branch. A pre-merge `gh workflow run production-release-candidate.yml --ref phase-12k/production-identity-release-path` therefore returns HTTP 404 by platform design, not because of missing signing secrets or an invalid workflow file.
+
+Observed state:
+- workflow file present on `phase-12k/production-identity-release-path`;
+- workflow file absent on `main`;
+- all five required repository secrets configured;
+- current 12K Android CI PASS;
+- local signed production APK and physical callback/install gates PASS.
+
+Resolution: do not weaken or duplicate the workflow merely to force a pre-merge run. After PR #84 is merged and the workflow exists on `main`, run the manual Production Release Candidate workflow with `previous_production_version_code=36` as the post-merge release-path activation check. This platform sequencing constraint is not a Phase 12K merge blocker because the documented merge gate already requires source/tooling CI, signed artifact evidence, callback/install reality evidence, and explicit Level-3 approval—not a pre-merge `workflow_dispatch` run.
