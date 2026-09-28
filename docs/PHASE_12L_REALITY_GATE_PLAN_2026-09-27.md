@@ -88,8 +88,7 @@ Use a safe/disposable workspace context where a write is required. Do not use li
 
 ### Gate D — invited user end-to-end
 
-Observed Gate D result: **STOPPED — DEFECT FOUND**. The disposable MEMBER invitation was `PENDING / delivery SENT`, but clicking the real invitation email opened `localhost:3000` instead of the production FPP callback. Live Auth logs confirm the invite verification request carried `redirect_to=http://localhost:3000`. The deployed invite function still supplies the production callback with `?fpp_invitation_id=...`, so the evidence points to a missing production query-capable Auth redirect allowlist entry. Fix work is out of scope for this Level-1 evidence line and must occur on a separately governed defect branch before Gate D resumes.
-
+Observed Gate D result: **PASS**. The initial invitation click exposed a hosted Supabase Auth redirect-allowlist defect: the query-bearing production callback fell back to `http://localhost:3000`. That defect was isolated on Level-3 PR #86, corrected by adding `com.inandout.fieldphotoprep://auth-callback*` while retaining the exact production callback, live-tested successfully, and merged to `main` at `440c0d618f5cfbb922c5a11b43571cc33eafb9bc`. The same disposable MEMBER invitation was then resent and completed through the production Field Photo Prep app.
 
 Use a disposable invitation/account fixture and the existing Owner administration path:
 
@@ -100,7 +99,7 @@ Use a disposable invitation/account fixture and the existing Owner administratio
 - prove invitation acceptance did not silently grant/inherit Drive access;
 - clean up the disposable Membership/Auth/Invitation fixture after evidence is accepted.
 
-Observed Gate D invitation-delivery result: **PASS**. Owner administration shows `inandoutinspections2026+12lmember@gmail.com` as `MEMBER · PENDING · delivery SENT`. Invitation acceptance/new-user/Drive-separation proof remains pending.
+Observed Gate D end-to-end evidence: **PASS**. The newest resend opened the production app, reached the invitation Set Password flow, completed activation, and produced an `ACTIVE` `MEMBER` Membership for `inandoutinspections2026+12lmember@gmail.com`. The invited identity landed on Home with Google Drive `Not connected`, proving invitation acceptance did not silently grant or inherit a Drive workspace. The disposable fixture is intentionally retained only for the immediately following Gate E account-transition/boundary-safety proof and must be cleaned after that evidence unless separately documented.
 
 If OWNER-specific invitation behavior differs materially from MEMBER, test a disposable OWNER invitation separately; otherwise reuse the already-proven role-administration/backend coverage and do not repeat equivalent physical steps merely for ceremony.
 
