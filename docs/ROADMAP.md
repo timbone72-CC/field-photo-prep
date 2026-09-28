@@ -579,7 +579,7 @@ Current status:
 - Phase 12G First-Run / New-Device Flow is complete and merged through PR #81; final clean-install/new-user physical proof remains assigned to Phase 12L;
 - Phase 12I App Status & Diagnostics is complete and merged through PR #82; no real Drive provider gate was required because provider semantics were unchanged;
 - Phase 12J Recovery & Account-State UX is complete and merged through PR #83;
-- Phase 12K Production Identity / Release Path is active as a Level 3 pre-implementation line on `phase-12k/production-identity-release-path`; explicit operator approval is required before merge;
+- Phase 12K Production Identity / Release Path is complete and merged through PR #84; production signing/callback/release-candidate evidence is recorded in the Phase 12K build state;
 - current personal-Drive production remains valid and unchanged;
 - Team remains a separate product/backend;
 - later business Shared Drive migration changes local Drive binding, not FPP User/Organization identity.
@@ -796,7 +796,7 @@ Read-only operator status for:
 
 Diagnostics must consume the authoritative 12E/12H state rather than create a second state machine, and copied support status excludes tokens, provider IDs, SAF URIs, customer addresses/photos, and other sensitive content.
 
-### Phase 12J — Recovery/account-state UX — PLANNED
+### Phase 12J — Recovery/account-state UX — COMPLETE
 
 Clear guidance for:
 - temporary offline grace;
@@ -809,7 +809,9 @@ Clear guidance for:
 
 Recovery guidance must never delete or silently redirect protected work.
 
-### Phase 12K — Production identity/release path — PLANNED
+### Phase 12K — Production identity/release path — COMPLETE
+
+PR #84 merged to `main` at `c7970238e00139415a417f669d86915c4260154e`. Production package/signing/callback reality gates passed, the production signer has a verified encrypted off-laptop backup, and post-merge Production Release Candidate run `36316384072` reproduced and verified the signed v37 candidate from `main`.
 
 - separately secured production signing;
 - production callback/update continuity;
@@ -818,13 +820,15 @@ Recovery guidance must never delete or silently redirect protected work.
 - revisit verified Android App Links if an owned HTTPS domain and external distribution make them worthwhile;
 - no forced Play Store/public-distribution decision.
 
-### Phase 12L — Clean-install/new-user reality gates — PLANNED
+### Phase 12L — Clean-install/new-user reality gates — CLOSEOUT COMPLETE / PR #85 MERGE PENDING
 
-- prove clean/no-session behavior on real Android;
-- prove invited/new user identity flow;
-- prove Drive connection remains a separate deliberate SAF action;
-- prove account transitions cannot cross Organization/Drive boundaries;
-- reuse overlapping Phase 8C second-phone evidence if a suitable second phone becomes available rather than duplicate testing.
+- clean/no-session behavior on real Android: **PASS**;
+- invited/new-user identity flow: **PASS**;
+- Drive connection remains a separate deliberate SAF action: **PASS**;
+- account transitions cannot cross Organization/Drive boundaries: **PASS**;
+- production/internal package separation: **PASS**;
+- disposable invitation/member fixture cleanup: **PASS**;
+- cross-device SAF/provider-ID portability remains limited to the separately documented Phase 8C evidence boundary and is not overclaimed.
 
 ### Phase 12M — Account/privacy/release closeout — PLANNED
 
@@ -832,7 +836,7 @@ Final source-of-truth, security, privacy, RLS, backup, diagnostics-data-boundary
 
 Default remaining sequence:
 
-**12F → 12H → 12G → 12I → 12J → 12K → 12L → 12M**
+**12M**
 
 Safe design work may overlap where recorded in the master plan, but multiple runtime branches must not independently take ownership of startup/auth/Drive-binding state.
 

@@ -76,6 +76,21 @@ For account/authentication work, the following rules are contractual:
 29. Field Photo Prep Team's Supabase project, Auth users, tables, keys, functions, secrets, Organization IDs, work orders, photos, and sessions are never original-FPP runtime identity/data.
 30. Supabase Storage, Realtime, job/photo synchronization, Google Drive OAuth, Google/social sign-in, subscriptions/licensing, and public self-signup remain outside Phase 12B.
 
+### Production Android identity and release
+
+The Phase 12K production identity/release path is now approved behavior:
+
+1. The production Android application ID is `com.inandout.fieldphotoprep`. Internal/test variants remain separate package identities and must not replace the production package accidentally.
+2. The production Auth callback is `com.inandout.fieldphotoprep://auth-callback`; the internal callback remains `com.inandout.fieldphotoprep.internal://auth-callback`. Wrong package/scheme/host callbacks and localhost fallbacks are not accepted as production recovery behavior.
+3. The first permanent production signing certificate establishes Android update continuity for the production package. The production private key/passwords must remain outside source control and APK contents, must be recoverably backed up, and must not be casually regenerated or replaced.
+4. The intentionally public stable test signer is non-production and must never sign a production APK.
+5. Production versionCode must advance monotonically for ordinary updates. A bad release is corrected with a higher-version candidate signed by the same production signer; destructive uninstall/downgrade is not the normal rollback path when protected app data may exist.
+6. A production APK may contain only the dedicated original-FPP Supabase project URL and a publishable client key. A Supabase service-role key, `sb_secret_` key, production signing secret, or other privileged backend credential must never be packaged in Android.
+7. Before controlled distribution, a production candidate must verify its exact package, version, callback, dedicated Supabase client configuration, signer fingerprint, and APK hash, and deployment/install claims must use the affected physical-device/update reality gate.
+8. A Play Store release, public distribution, subscriptions/licensing, and public self-signup are separate product decisions. The controlled private APK path does not imply any of them.
+9. Supabase hosted Auth email is acceptable for the current controlled/internal use. Production-suitable business-controlled email/SMTP is required before outside-user/public distribution.
+10. Verified HTTPS Android App Links may replace the custom callback only through a separately governed release/identity change after an owned HTTPS domain and the corresponding real-device verification exist.
+
 ## 2. Company, property, work-order, and folder identity
 
 ### Company/workspace identity
