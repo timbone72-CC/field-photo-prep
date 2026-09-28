@@ -88,6 +88,9 @@ Use a safe/disposable workspace context where a write is required. Do not use li
 
 ### Gate D — invited user end-to-end
 
+Observed Gate D result: **STOPPED — DEFECT FOUND**. The disposable MEMBER invitation was `PENDING / delivery SENT`, but clicking the real invitation email opened `localhost:3000` instead of the production FPP callback. Live Auth logs confirm the invite verification request carried `redirect_to=http://localhost:3000`. The deployed invite function still supplies the production callback with `?fpp_invitation_id=...`, so the evidence points to a missing production query-capable Auth redirect allowlist entry. Fix work is out of scope for this Level-1 evidence line and must occur on a separately governed defect branch before Gate D resumes.
+
+
 Use a disposable invitation/account fixture and the existing Owner administration path:
 
 - invite as MEMBER first unless evidence requires OWNER separately;

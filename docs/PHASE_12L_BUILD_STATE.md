@@ -131,3 +131,15 @@ Gate D invited-user invitation delivery: **PASS**.
 - existing accepted member `timbone72@gmail.com` remains a separate Membership/invitation record.
 
 Next Gate D step: make the disposable production package fresh again before opening the new invitation, then accept/activate the invited identity and prove it begins with no inherited Drive workspace.
+
+## Gate D — invited user end-to-end
+
+Gate D invited-user end-to-end: **STOPPED — DEFECT FOUND**.
+- disposable MEMBER invitation created for `inandoutinspections2026+12lmember@gmail.com`;
+- Owner administration showed `MEMBER · PENDING · delivery SENT`;
+- opening the invitation email on the Android device landed at `http://localhost:3000` and failed with `ERR_CONNECTION_REFUSED` instead of opening the production FPP callback;
+- live `fpp-owner-invite` Edge Function source still constructs `com.inandout.fieldphotoprep://auth-callback?fpp_invitation_id=...` for production;
+- live Supabase Auth log for the failed click shows `/auth/v1/verify?...&type=invite&redirect_to=http%3A%2F%2Flocalhost%3A3000`;
+- current Supabase Auth documentation states a `redirectTo` that is not in the configured Redirect URL allowlist falls back to the project Site URL.
+
+Conclusion: production recovery callback coverage proved only the exact base callback; the invitation callback adds a query parameter and is not currently matched by the production Auth redirect allowlist. 12L remains an evidence-only line; this defect must be corrected on a separately governed implementation/configuration line before Gate D resumes. Do not resend/accept the disposable invitation until the redirect configuration is corrected and verified.
