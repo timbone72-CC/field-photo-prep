@@ -105,14 +105,29 @@ If OWNER-specific invitation behavior differs materially from MEMBER, test a dis
 
 ### Gate E — account transition / boundary safety
 
-Using safe disposable identity state:
+Observed Gate E result: **PASS**.
 
-- sign-out obeys the protected-work guard;
-- allowed sign-out does not delete Drive business data or protected local evidence;
-- signing in as another identity does not silently reuse a Drive binding for an unauthorized/different Organization;
-- no Organization boundary is crossed by stale navigation/provider identity.
+Current production-package evidence on 2026-09-28:
+- disposable invited identity was `VALIDATED / MEMBER`;
+- Drive state was `NO_WORKSPACE`;
+- all queue states, protected originals, cleanup pending, and unreadable local records were `0` before sign-out;
+- normal Sign Out completed and explicitly reported that the Drive workspace and local field data were left unchanged;
+- the controlled Owner account then signed in successfully;
+- Account Connected showed the expected `In And Out Cleaner Inspections LLC` Organization and `OWNER` role;
+- fresh App Status showed `VALIDATED / OWNER`, Drive `NO_WORKSPACE`, and all queue/protected-work counts still `0`;
+- no Drive binding, company, property, or work-order state was silently inherited during the MEMBER → OWNER transition.
 
-If a second Organization or no-membership identity is needed to prove rejection, create only a disposable fixture through approved server-side/admin paths and remove it afterward.
+Protected-work guard proof is reused rather than manufacturing disposable protected photos on the production phone:
+- current `ProtectedWorkGuardTest` proves non-empty CAPTURING reservations, WAITING, FAILED, UNCERTAIN, retained uploaded originals/prepared copies, and unreadable metadata block sign-out/fail closed;
+- current `AppStatusCollectorInstrumentedTest` proves those blocking queue/protected-work counts are read without mutating queue state;
+- `AuthActivity.signOutSafely(...)` remains the single sign-out owner and consults `ProtectedWorkGuard` before clearing the authenticated session.
+
+Cross-Organization stale-provider isolation is reused from completed Phase 12H physical Samsung evidence because that binding behavior is unchanged:
+- a different Organization could not silently inherit the prior workspace even while Android retained the SAF permission;
+- stale provider/company/property state did not leak across Organizations;
+- returning to the owning Organization recovered the correct binding without overwriting provider identity.
+
+Conclusion: the current production sign-out/account-transition path preserves local/Drive state, respects the protected-work guard, and does not cross Organization/Drive boundaries.
 
 ### Gate F — production/internal separation
 
