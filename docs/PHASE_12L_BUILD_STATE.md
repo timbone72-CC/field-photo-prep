@@ -214,7 +214,24 @@ All numbered Phase 12L reality gates are complete.
 ## Exact next checkpoint
 
 Begin governed Phase 12L closeout:
-1. clean the disposable `+12lmember` Membership/Auth/Invitation fixture;
+1. disposable `+12lmember` Membership/Auth/Invitation fixture cleanup — **PASS**;
 2. reconcile Phase 12L roadmap/master-plan/build-state closeout;
 3. run required GitHub governance/checks on the final documentation head;
 4. close/merge PR #85 according to its Level-1 governance classification.
+
+
+## Disposable fixture cleanup
+
+Cleanup: **PASS**.
+
+Live Supabase verification after explicit operator approval:
+- `inandoutinspections2026+12lmember@gmail.com` Auth users remaining: `0`;
+- matching Invitations remaining: `0`;
+- matching Memberships remaining: `0`;
+- matching Gate D acceptance audit row remaining: `0`;
+- Owner Auth user remains present with one ACTIVE OWNER Membership;
+- `timbone72@gmail.com` remains present with one ACTIVE Membership.
+
+The disposable account had already completed normal Gate E sign-out, so no active Auth session remained at cleanup time.
+
+The hard-delete path initially stopped safely on the audit foreign key. No partial cleanup occurred because that attempt was transactional. After separate explicit approval, only the single disposable `INVITATION_ACCEPTED / SUCCEEDED` audit row was removed, then the disposable Membership, Invitation, and Auth user were deleted successfully.
