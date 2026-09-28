@@ -71,7 +71,7 @@ Sign in with the controlled Owner account and prove:
 - role is OWNER;
 - FPP sign-in alone does **not** establish a Drive workspace binding.
 
-Observed Gate B result: fresh production sign-in reached Home while Google Drive remained `Not connected` and required the explicit `Connect Drive` action. Owner/Organization validation still needs a fresh post-clear App Status capture before Gate B is complete.
+Observed Gate B result: **PASS**. Fresh production sign-in reached Home while Google Drive remained `Not connected` and required the explicit `Connect Drive` action. Fresh App Status then confirmed account `VALIDATED`, role `OWNER`, and Drive state `NO_WORKSPACE`. This proves FPP authentication alone did not establish or infer Drive authorization.
 
 ### Gate C — deliberate Drive binding
 

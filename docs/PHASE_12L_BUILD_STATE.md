@@ -84,11 +84,19 @@ Internal-package preservation sub-check: **PASS**. `adb shell pm path com.inando
 
 ## Gate B — returning Owner identity
 
-Gate B returning Owner identity: **PARTIAL PASS**.
+Gate B returning Owner identity: **PASS**.
 - fresh production package accepted the controlled Owner sign-in;
 - app reached Home after authentication;
 - Home shows Google Drive `Not connected` with explicit `Connect Drive` action;
 - no Drive workspace was silently restored or inferred by FPP authentication;
 - property state is fresh/empty on this production install.
 
-Remaining Gate B proof: capture App Status after fresh sign-in to confirm account `VALIDATED`, expected Organization, and role `OWNER` on this cleared production package.
+Fresh post-clear App Status confirms:
+- app version `0.28.0`;
+- account state `VALIDATED`;
+- role `OWNER`;
+- grace not applicable;
+- Drive state `NO_WORKSPACE`;
+- all queue/protected-work counts remain zero.
+
+Conclusion: the returning Owner identity validated successfully and FPP authentication did not establish or infer a Drive workspace.
