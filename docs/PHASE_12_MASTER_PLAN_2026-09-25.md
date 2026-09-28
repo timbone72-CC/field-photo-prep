@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — THROUGH 12K COMPLETE; 12L CLOSEOUT COMPLETE / MERGE PENDING; 12M NEXT**
+Status: **APPROVED MASTER PLAN — THROUGH 12L COMPLETE; 12M NEXT**
 
 ## Purpose
 
@@ -526,7 +526,7 @@ Signing/deployment/update changes require explicit pre-merge approval and post-i
 
 # Phase 12L — Clean-Install / New-User Reality Gates
 
-Status: **CLOSEOUT COMPLETE — Gates A–F PASS, disposable fixture cleaned, PR #85 merge is the final 12L action**
+Status: **COMPLETE — Gates A–F PASS; disposable fixture cleaned; PR #85 merged to `main` at `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4`**
 
 ## Goal
 
@@ -570,7 +570,7 @@ Phase 12L completion evidence:
 - Owner and existing member records verified intact;
 - no additional second-phone/provider-portability claim is made beyond the documented limitation.
 
-PR #85 merge is the only remaining 12L action. Under the roadmap maintenance rule, the phase becomes formally COMPLETE when that governed PR is merged.
+PR #85 merged to `main` at `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4`. Under the roadmap maintenance rule, Phase 12L is formally **COMPLETE**.
 
 ## Change level
 

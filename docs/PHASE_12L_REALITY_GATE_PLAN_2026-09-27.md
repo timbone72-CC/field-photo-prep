@@ -2,7 +2,7 @@
 
 Date: 2026-09-27
 
-Status: **ALL GATES PASS — CLOSEOUT COMPLETE; PR #85 MERGE IS THE FINAL 12L ACTION**
+Status: **COMPLETE — ALL GATES PASS; PR #85 MERGED TO MAIN**
 
 ## Goal
 
@@ -184,3 +184,15 @@ Verified cleanup:
 - existing `timbone72@gmail.com` account and ACTIVE Membership remain present.
 
 Durable Gate D/E evidence remains in this Phase 12L record and the merged PR #86 defect record.
+
+
+## Phase 12L completion
+
+Phase 12L is **COMPLETE**.
+
+- Gates A–F: **PASS**;
+- disposable invitation/member fixture cleanup: **PASS**;
+- bounded production invitation redirect defect: fixed and merged through PR #86;
+- Phase 12L PR #85: merged to `main` at `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4`;
+- no additional phone/provider/Supabase reality gate remains for Phase 12L;
+- next authoritative phase: **12M — Account/privacy/release closeout**.

@@ -2,12 +2,13 @@
 
 Date: 2026-09-27
 
-Status: **CLOSEOUT COMPLETE — ALL GATES PASS; PR #85 MERGE IS THE FINAL 12L ACTION**
+Status: **COMPLETE — ALL GATES PASS; PR #85 MERGED TO MAIN**
 
 ## Governed base
 
 - original 12L base: `c7970238e00139415a417f669d86915c4260154e`;
-- current reconciled `main`: `440c0d618f5cfbb922c5a11b43571cc33eafb9bc`;
+- pre-merge reconciled `main`: `440c0d618f5cfbb922c5a11b43571cc33eafb9bc`;
+- Phase 12L merge to `main`: `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4`;
 - current-main reconciliation merge on 12L branch: `6419975c66ba19230516904f5a000ab63697b40b`;
 - Phase 12K merge: PR #84;
 - Phase 12K post-merge release activation: PASS;
@@ -17,7 +18,7 @@ Status: **CLOSEOUT COMPLETE — ALL GATES PASS; PR #85 MERGE IS THE FINAL 12L AC
 ## Authoritative line
 
 - branch: `phase-12l/clean-install-new-user-reality-gates`;
-- PR: #85 — `Phase 12L: clean-install and new-user reality gates` (Draft);
+- PR: #85 — `Phase 12L: clean-install and new-user reality gates` — **MERGED**;
 - competing 12L branch/PR at takeover: none;
 - unrelated Draft PR #39 remains outside Phase 12L.
 
@@ -213,16 +214,17 @@ Conclusion: Gate F production/internal separation is **PASS**.
 
 All numbered Phase 12L reality gates are complete.
 
-## Exact next checkpoint
+## Completion
 
-All physical gates and disposable-fixture cleanup are complete. The branch is reconciled with current `main` including merged PR #86.
+Phase 12L is **COMPLETE**.
 
-Remaining 12L actions:
-1. final roadmap/master-plan/build-state closeout reconciliation — **PASS on this head**;
-2. required GitHub governance/checks on the final documentation head;
-3. merge PR #85 according to its Level-1 governance classification.
+- all physical Gates A–F: **PASS**;
+- disposable fixture cleanup: **PASS**;
+- PR #86 redirect defect: fixed, verified, and merged before 12L closeout;
+- PR #85: merged to `main` at `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4`;
+- no additional phone/provider/Supabase reality gate remains for Phase 12L.
 
-No additional phone/provider/Supabase reality gate remains for Phase 12L.
+The next authoritative phase is **12M — Account/privacy/release closeout**.
 
 
 ## Disposable fixture cleanup
