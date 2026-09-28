@@ -100,3 +100,14 @@ Fresh post-clear App Status confirms:
 - all queue/protected-work counts remain zero.
 
 Conclusion: the returning Owner identity validated successfully and FPP authentication did not establish or infer a Drive workspace.
+
+## Gate C — deliberate Drive binding
+
+Gate C deliberate Drive binding: **PARTIAL PASS**.
+- fresh production Home remained `NO_WORKSPACE` after FPP authentication;
+- operator explicitly tapped `Connect Drive`;
+- Android system Storage Access Framework folder picker opened;
+- picker shows the operator-controlled Drive provider and existing Drive folder hierarchy;
+- no Drive workspace was inferred from the FPP Auth email/session.
+
+Remaining Gate C proof: deliberately choose the correct workspace root (`Photos`, parent of company folders such as HNP Jobs), confirm the production package records that workspace, and verify company discovery without requiring any customer-content write merely for the gate.
