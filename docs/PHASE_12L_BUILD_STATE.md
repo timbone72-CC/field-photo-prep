@@ -50,7 +50,7 @@ Reconciliation performed before physical testing:
 - artifact ID `10931335308`;
 - main post-merge Android CI `36316289354`: PASS.
 
-## Exact next gate
+## Historical next gate (completed)
 
 Before making the production package fresh, inspect the installed **production** app and prove it contains no protected local photos, unresolved upload/queue work, or production-only Drive binding/state that must be preserved.
 
@@ -224,7 +224,7 @@ Phase 12L is **COMPLETE**.
 - PR #85: merged to `main` at `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4`;
 - no additional phone/provider/Supabase reality gate remains for Phase 12L.
 
-The next authoritative phase is **12M — Account/privacy/release closeout**.
+The Phase 12M review is complete; `PHASE_12M_BUILD_STATE.md` owns final documentation closeout and retained limits.
 
 
 ## Disposable fixture cleanup

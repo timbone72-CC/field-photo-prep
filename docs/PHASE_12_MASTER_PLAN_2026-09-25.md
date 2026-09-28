@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — THROUGH 12L COMPLETE; 12M NEXT**
+Status: **APPROVED MASTER PLAN — PHASE 12 COMPLETE ON GOVERNED 12M CLOSEOUT MERGE**
 
 ## Purpose
 
@@ -582,6 +582,8 @@ Any defect fix discovered here returns to a separately governed runtime branch a
 
 # Phase 12M — Account / Privacy / Release Closeout
 
+Status: **REVIEW COMPLETE — effective completion on governed documentation merge**. Evidence and retained limits: `PHASE_12M_BUILD_STATE.md`.
+
 ## Goal
 
 Reconcile the final implementation against the identity model, contracts, backend, Android runtime, and actual device evidence before declaring Phase 12 complete.
@@ -696,8 +698,8 @@ Do not add these merely because identity now exists:
 
 Each requires separate evidence and approval.
 
-# Immediate next step
+# Current continuation point
 
-Create the dedicated **Phase 12E design + Level 3 impact record** from this master plan and the already settled 72-hour/revocation/sign-out rules.
+Phase 12 review and required supported-claim evidence are complete. The documentation closeout merge makes Phase 12 formally COMPLETE; see `PHASE_12M_BUILD_STATE.md`.
 
-Then implement 12E in the largest safe testable chunk practical, stopping only at the next genuine physical-device boundary.
+Do not restart 12E or repeat completed phone gates. Phase 8C, PR #39, wider-release email delivery, and production update-over-existing evidence remain separately governed limits, not hidden completed claims.

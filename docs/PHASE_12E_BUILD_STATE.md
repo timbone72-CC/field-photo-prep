@@ -1,6 +1,8 @@
 # Phase 12E — Runtime Authorization Enforcement Build State
 
-Last updated: 2026-09-25
+Current status (2026-09-28): **COMPLETE — PR #72 MERGED** at `31bfaaffa012cadf2da0c9c31c6da64967d9d24f`. Earlier pending approvals, active-branch labels, and next checkpoints below are historical and superseded. Do not resume them. Phase-wide closeout: `PHASE_12M_BUILD_STATE.md`.
+
+Last updated: 2026-09-28
 
 This is the durable handoff point. Use the current branch and CI results rather than repeating the historical audit.
 
@@ -50,6 +52,6 @@ Verified on device:
 
 Direct provider mutations in production are `DriveClient.createFolder`, `renameFolder`, `deleteDocument`, and `DrivePhotoUploader.create`; each has a required guard. `PhotoUploadCoordinator.upload` checks before queue transition. Production constructor call sites inject the central guard. Capture reservations originate in `PhotoCaptureActivity.beginCameraCapture` and `CameraCaptureActivity.reserveCaptureIfNeeded`; both are guarded before a new reservation, and each shutter rechecks. `DrivePhotoReconciler` queries provider state and does not mutate it. Existing focused tests deny Drive folder mutations before provider calls, photo creation before provider calls, and upload before queue state changes; the guard test observes authority loss before a second camera shutter and next Drive attempt. These claims are source-audit and fake-provider/JVM evidence, not physical device proof.
 
-## Exact next action
+## Historical pre-merge action (completed)
 
 Refresh PR #72 metadata and exact final-head CI evidence, then merge PR #72 under the operator's recorded Level 3 approval. Do not expand Phase 12 scope during merge finalization.

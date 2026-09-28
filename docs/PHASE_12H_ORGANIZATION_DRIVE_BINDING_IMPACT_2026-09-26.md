@@ -1,7 +1,9 @@
 # Phase 12H — Organization ↔ Drive Binding Protection Impact
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-26
-Status: ACTIVE — Level 3 / PRE-IMPLEMENTATION
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 Branch: `phase-12h/organization-drive-binding-protection`
 Rollback base: `5e3580d3ab769015b7f3c6168022a5def2f308c2` (merged Phase 12F)
 

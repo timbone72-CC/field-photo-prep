@@ -1,8 +1,8 @@
 # Phase 12G Build State
 
-Date: 2026-09-26
+Current status (2026-09-28): **COMPLETE — PR #81 MERGED** at `3962bad69add448a300fddc1eff3fcd6f2b26002`. Earlier pending approvals, active-branch labels, and next checkpoints below are historical and superseded. Do not resume them. Phase-wide closeout: `PHASE_12M_BUILD_STATE.md`.
 
-Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — GOVERNED CLOSEOUT ON PR #81**
+Date: 2026-09-26
 
 ## Governed base
 

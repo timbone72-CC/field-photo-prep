@@ -1,8 +1,10 @@
 # Phase 12J — Recovery & Account-State UX Impact Record
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-26
 
-Status: **IMPLEMENTATION & REQUIRED EVIDENCE COMPLETE — PR #83 CLOSEOUT**
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 
 ## Goal
 

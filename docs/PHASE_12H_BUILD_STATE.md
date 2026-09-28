@@ -1,16 +1,18 @@
 # Phase 12H — Build State
 
-Last updated: 2026-09-26
+Current status (2026-09-28): **COMPLETE — PR #80 MERGED** at `7b4c2017e9fa013929247751039db08cdae9418f`. Earlier pending approvals, active-branch labels, and next checkpoints below are historical and superseded. Do not resume them. Phase-wide closeout: `PHASE_12M_BUILD_STATE.md`.
+
+Last updated: 2026-09-28
 
 This file is the durable handoff point for Phase 12H — Organization ↔ Drive Binding Protection.
 
 ## Authoritative line
 
 - merged Phase 12F / rollback base: `5e3580d3ab769015b7f3c6168022a5def2f308c2`
-- active branch: `phase-12h/organization-drive-binding-protection`
-- draft PR: **#80 — Phase 12H: organization Drive binding protection**
+- completed branch: `phase-12h/organization-drive-binding-protection`
+- merged PR: **#80 — Phase 12H: organization Drive binding protection**
 - change level: **Level 3**
-- merge approval: **PENDING**
+- merge approval: **APPROVED — recorded 2026-09-26**
 - runtime implementation: **COMPLETE — FINAL REALITY GATE PASS**
 
 Do not implement 12H on the old Phase 12F branch and do not modify `main` directly.

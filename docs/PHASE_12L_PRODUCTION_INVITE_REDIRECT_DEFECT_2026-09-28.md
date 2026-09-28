@@ -1,8 +1,10 @@
 # Phase 12L Production Invitation Redirect Defect
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-28
 
-Status: **IN PROGRESS — LEVEL 3 EXTERNAL AUTH CONFIGURATION DEFECT**
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 
 ## Problem
 

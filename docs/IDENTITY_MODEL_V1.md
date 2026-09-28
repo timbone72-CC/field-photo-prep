@@ -1,6 +1,8 @@
 # Field Photo Prep Identity Model v1
 
-Status: **APPROVED DESIGN — IMPLEMENTATION NOT STARTED**
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 
 This document records the settled Phase 12 identity model. It governs later authentication/account implementation together with `CONTRACT.md`, `CHANGE_CONTROL_CONTRACT.md`, and `INTEGRATION_CONTRACT.md`.
 
