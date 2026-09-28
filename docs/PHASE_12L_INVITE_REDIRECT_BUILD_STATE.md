@@ -2,28 +2,56 @@
 
 Date: 2026-09-28
 
-Status: **IN PROGRESS — CONFIGURATION REALITY GATE**
+Status: **VERIFIED — LIVE CONFIGURATION FIX PASSED; LEVEL 3 MERGE APPROVAL PENDING**
 
 ## Authoritative line
 
 - branch: `fix/phase-12l-production-invite-redirect`;
 - base/rollback: `c7970238e00139415a417f669d86915c4260154e`;
-- Phase 12L PR #85: paused at Gate D;
+- Phase 12L PR #85: paused at Gate D while this defect line is reconciled;
 - implementation ownership: hosted Supabase Auth Redirect URL allowlist + source-of-truth documentation only.
 
-## Current live state
+## Implemented configuration correction
+
+The operator added the required production query-capable redirect entry in Supabase Auth URL Configuration:
+
+`com.inandout.fieldphotoprep://auth-callback*`
+
+The existing exact production callback entry was retained:
+
+`com.inandout.fieldphotoprep://auth-callback`
+
+The Site URL and internal callback entries were not changed.
+
+## Live verification evidence
+
+The focused production invitation retest now passes end to end.
 
 - `fpp-owner-invite`: ACTIVE;
-- invitation creation/delivery: PASS;
-- production invite click: FAIL — localhost fallback;
-- production recovery callback: previously PASS;
-- required production query-capable allowlist entry: `com.inandout.fieldphotoprep://auth-callback*`;
-- hosted allowlist mutation: **PENDING OPERATOR ACTION**.
+- existing disposable FPP invitation was reused; no duplicate FPP invitation was created;
+- an earlier resend attempt returned Auth `422 email_exists` because the first broken invitation link had already created/confirmed the disposable Auth user before falling back to localhost;
+- only that disposable `+12lmember` Auth user/session was reset, while the existing FPP invitation remained `PENDING`;
+- resend of the same invitation then succeeded;
+- live Auth invite request used the production callback with `?fpp_invitation_id=...`;
+- the newest invitation email opened the production Field Photo Prep app rather than localhost;
+- invitation verification reached the app's **Set Password** screen;
+- password completion succeeded;
+- final FPP invitation state: `ACCEPTED`;
+- final delivery state: `SENT`;
+- final Membership role: `MEMBER`;
+- final Membership status: `ACTIVE`;
+- the invited user landed on Home with Google Drive **Not connected**, proving invitation acceptance did not silently grant or inherit a Drive workspace.
+
+A stale invitation link in the existing Gmail conversation initially produced `Email link is invalid or has expired`; refreshing the email conversation exposed the newest resend, which completed successfully. This was test-email/thread state, not a failure of the corrected production callback.
+
+## Defect result
+
+**PASS.**
+
+The missing query-capable production Redirect URL allowlist entry was the bounded hosted configuration defect. No Android runtime code, Drive code, database schema, package identity, or signing change was required.
 
 ## Exact next checkpoint
 
-Operator adds the required production wildcard callback in Supabase Auth URL Configuration without removing the exact base callback.
+Do not perform additional runtime work on this branch.
 
-Then use **RESEND** on the same pending disposable MEMBER invitation and repeat only the failed invitation-click path.
-
-Do not create a second invitation and do not modify Android runtime code unless this focused configuration fix fails.
+PR #86 is Level 3 and must stop before merge for explicit operator merge approval. After that governed closeout, resume Phase 12L PR #85 and reconcile Gate D as PASS before beginning Gate E.
