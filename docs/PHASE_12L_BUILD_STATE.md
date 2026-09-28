@@ -123,23 +123,47 @@ Company discovery proof: **PASS**. The bound `Photos` workspace exposes the expe
 
 ## Gate D — invited user end-to-end
 
-Gate D invited-user invitation delivery: **PASS**.
+Gate D invited-user end-to-end: **PASS**.
+
+Initial invitation-delivery evidence:
 - Owner administration created a disposable invitation for `inandoutinspections2026+12lmember@gmail.com`;
 - role: `MEMBER`;
 - invitation status: `PENDING`;
 - delivery status: `SENT`;
-- existing accepted member `timbone72@gmail.com` remains a separate Membership/invitation record.
+- existing accepted member `timbone72@gmail.com` remained a separate Membership/invitation record.
 
-Next Gate D step: make the disposable production package fresh again before opening the new invitation, then accept/activate the invited identity and prove it begins with no inherited Drive workspace.
+Bounded defect discovered during first acceptance attempt:
+- the invitation email initially fell back to `http://localhost:3000` instead of opening the production callback;
+- live Auth logs confirmed the failed verification used the localhost redirect;
+- the deployed invite function was already supplying `com.inandout.fieldphotoprep://auth-callback?fpp_invitation_id=...`;
+- the defect was isolated to the hosted Supabase Auth Redirect URL allowlist.
 
-## Gate D — invited user end-to-end
+Defect disposition:
+- Level-3 PR #86 `Fix production invitation redirect allowlist` owned the configuration correction;
+- required wildcard entry `com.inandout.fieldphotoprep://auth-callback*` was added while retaining the exact production callback;
+- no Android runtime code, Drive code, database schema, package identity, or signing change was required;
+- focused live verification passed;
+- PR #86 merged to `main` at `440c0d618f5cfbb922c5a11b43571cc33eafb9bc`.
 
-Gate D invited-user end-to-end: **STOPPED — DEFECT FOUND**.
-- disposable MEMBER invitation created for `inandoutinspections2026+12lmember@gmail.com`;
-- Owner administration showed `MEMBER · PENDING · delivery SENT`;
-- opening the invitation email on the Android device landed at `http://localhost:3000` and failed with `ERR_CONNECTION_REFUSED` instead of opening the production FPP callback;
-- live `fpp-owner-invite` Edge Function source still constructs `com.inandout.fieldphotoprep://auth-callback?fpp_invitation_id=...` for production;
-- live Supabase Auth log for the failed click shows `/auth/v1/verify?...&type=invite&redirect_to=http%3A%2F%2Flocalhost%3A3000`;
-- current Supabase Auth documentation states a `redirectTo` that is not in the configured Redirect URL allowlist falls back to the project Site URL.
+Final Gate D acceptance evidence:
+- the same disposable FPP invitation was reused; no duplicate FPP invitation was created;
+- the newest resend opened the production Field Photo Prep app rather than localhost;
+- invitation verification reached the Set Password flow;
+- password completion succeeded;
+- final invitation status: `ACCEPTED`;
+- final delivery status: `SENT`;
+- final Membership role: `MEMBER`;
+- final Membership status: `ACTIVE`;
+- invited identity landed on Home with Google Drive `Not connected`.
 
-Conclusion: production recovery callback coverage proved only the exact base callback; the invitation callback adds a query parameter and is not currently matched by the production Auth redirect allowlist. 12L remains an evidence-only line; this defect must be corrected on a separately governed implementation/configuration line before Gate D resumes. Do not resend/accept the disposable invitation until the redirect configuration is corrected and verified.
+Conclusion: Gate D is **PASS**. Production invitation deep-linking, invitation activation, MEMBER authorization, and Drive-separation behavior are proven on the physical production package.
+
+Fixture disposition:
+- retain the disposable `+12lmember` identity only for the immediately following Gate E account-transition/boundary-safety evidence;
+- clean the disposable Membership/Auth/Invitation fixture after Gate E unless a later Phase 12L record explicitly documents another reason to retain it.
+
+## Exact next gate
+
+Gate E — account transition / boundary safety.
+
+Do not begin Gate E until this Gate D reconciliation is committed and PR #85 reflects the pass.
