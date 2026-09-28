@@ -11,7 +11,7 @@ Status: **REVIEW COMPLETE — PHASE 12 COMPLETION TAKES EFFECT WHEN THIS DOCUMEN
 - Affected surfaces: Phase 12 documentation, identity-design status, and roadmap only.
 - Change level: Level 1
 - Authoritative branch: docs/phase-12m-account-privacy-release-closeout
-- Authoritative PR: the single PR for this branch; no competing 12M line existed at takeover.
+- Authoritative PR: [#88](https://github.com/timbone72-CC/field-photo-prep/pull/88); no competing 12M line existed at takeover.
 - Required rule packs: AGENTS.md; GOVERNANCE.md; PROJECT_PROFILE.md; RULE_INDEX.md; CHANGE_CONTROL_CONTRACT.md; TESTING_CONTRACT.md; identity sections of CONTRACT.md; approved Phase 12 designs.
 - Protected behavior: all Android runtime, photo protection, immutable destinations, authorization, SAF/Drive binding, backend permissions, signing, and deployment behavior.
 - External systems changed: none; GitHub evidence and original-FPP Supabase were read only.
