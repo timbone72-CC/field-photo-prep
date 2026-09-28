@@ -61,6 +61,8 @@ Use automated tests for deterministic logic and state boundaries.
 
 Use a physical device or real external provider only for claims that depend on that real environment.
 
+For hosted Auth email flows, distinct live redirect shapes must be verified independently when they differ materially. In particular, a base recovery callback does not prove an invitation callback that appends query parameters; the actual hosted redirect allowlist must cover each production shape.
+
 Do not:
 - substitute device checks for automated identity/state tests;
 - represent mocks as real-provider proof;
