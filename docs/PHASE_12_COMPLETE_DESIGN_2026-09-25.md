@@ -1,7 +1,9 @@
 # Field Photo Prep Phase 12 — Complete Design
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-25  
-Status: design complete; implementation remains 12E–12M  
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 Supersedes the provisional implementation details in `PHASE_12_MASTER_PLAN_2026-09-25.md` where this document is more specific. Contracts and approved identity architecture still govern.
 
 ## Outcome and fixed boundaries

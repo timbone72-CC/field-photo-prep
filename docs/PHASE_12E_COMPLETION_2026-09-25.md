@@ -1,7 +1,9 @@
 # Phase 12E — Runtime Authorization Enforcement Evidence
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-25  
-Status: **PHASE 12E COMPLETE; AUTOMATED GATES PASS; SAMSUNG REALITY GATE PASS; PR #72 APPROVED FOR MERGE**
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 
 ## Exact implementation
 

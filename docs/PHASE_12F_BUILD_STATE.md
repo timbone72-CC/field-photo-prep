@@ -1,14 +1,16 @@
 # Phase 12F — Build State
 
-Last updated: 2026-09-25
+Current status (2026-09-28): **COMPLETE — PR #74 MERGED** at `5e3580d3ab769015b7f3c6168022a5def2f308c2`. Earlier pending approvals, active-branch labels, and next checkpoints below are historical and superseded. Do not resume them. Phase-wide closeout: `PHASE_12M_BUILD_STATE.md`.
 
-This file is the durable handoff point for the active Phase 12F implementation.
+Last updated: 2026-09-28
+
+This file is the durable handoff point for the completed Phase 12F implementation.
 
 ## Authoritative line
 
 - governed base / completed Phase 12E merge on `main`: `31bfaaffa012cadf2da0c9c31c6da64967d9d24f`
 - canonical Phase 12F branch: `phase-12f/membership-invitation-lifecycle`
-- canonical draft PR: **#74 — Phase 12F: membership and invitation lifecycle**
+- canonical merged PR: **#74 — Phase 12F: membership and invitation lifecycle**
 - superseded Phase 12F PR: **#73 — closed, not merged, history preserved**
 - Level 3: do not merge without explicit operator approval
 

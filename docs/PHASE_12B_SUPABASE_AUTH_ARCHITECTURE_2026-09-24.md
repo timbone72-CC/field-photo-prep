@@ -1,8 +1,10 @@
 # Phase 12B — Dedicated Supabase Authentication Architecture
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-24
 
-Status: **SETTLED DESIGN — IMPLEMENTATION NOT STARTED**
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 
 This design applies only to the original Field Photo Prep app in `timbone72-CC/field-photo-prep`.
 

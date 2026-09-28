@@ -1,7 +1,9 @@
 # Phase 12F — Membership and Invitation Lifecycle Impact
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-25
-Status: ACTIVE — Level 3
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 Branch: `phase-12f/membership-invitation-lifecycle`
 Rollback base: `31bfaaffa012cadf2da0c9c31c6da64967d9d24f`
 

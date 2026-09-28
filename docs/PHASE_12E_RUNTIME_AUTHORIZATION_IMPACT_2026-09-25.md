@@ -1,7 +1,9 @@
 # Phase 12E — Runtime Authorization Enforcement: Level 3 Impact Record
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-25  
-Status: design/impact record ready; runtime implementation not started  
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 Base: Phase 12D merged runtime and complete Phase 12 design.
 
 ## Problem and approved scope

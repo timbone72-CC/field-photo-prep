@@ -555,7 +555,7 @@ Permanent record:
 
 The prior Phase 11 `IN PROGRESS` labels were stale documentation and were corrected by the 2026-09-24 source-of-truth reconciliation.
 
-## Phase 12 — User Identity & Release Readiness — 12F / 12H / 12G / 12I / 12J COMPLETE / 12K IN PROGRESS
+## Phase 12 — User Identity & Release Readiness — COMPLETE
 
 Goal:
 add durable FPP User/Organization identity and release-readiness controls without conflating FPP sign-in with Google Drive authorization or turning FPP into a second job/photo database.
@@ -568,7 +568,9 @@ Governing design:
 - `docs/PHASE_12B_SUPABASE_AUTH_IMPACT_2026-09-24.md`;
 - `docs/PHASE_12_MASTER_PLAN_2026-09-25.md`.
 
-Current status:
+Current status (effective on merge of the 12M documentation closeout):
+- Phase 12L Gates A–F and disposable-fixture cleanup passed; PR #85 is merged.
+- Phase 12M final review passed; see `docs/PHASE_12M_BUILD_STATE.md` for evidence and retained limits.
 - Phase 12A Identity Model v1 is complete as the approved design foundation;
 - Phase 12B dedicated Supabase authentication architecture is approved and merged;
 - Phase 12C dedicated Supabase backend foundation is complete and merged;
@@ -576,7 +578,7 @@ Current status:
 - Phase 12E runtime authorization enforcement is complete, Samsung-validated, and merged through the governed Level 3 gate;
 - Phase 12F Owner/member administration and invitation lifecycle is complete and merged through PR #74; superseded PR #73 remains closed and must not be used as a continuation point;
 - Phase 12H Organization ↔ Drive binding protection is complete and merged through PR #80;
-- Phase 12G First-Run / New-Device Flow is complete and merged through PR #81; final clean-install/new-user physical proof remains assigned to Phase 12L;
+- Phase 12G First-Run / New-Device Flow is complete and merged through PR #81; final clean-install/new-user physical proof passed in Phase 12L;
 - Phase 12I App Status & Diagnostics is complete and merged through PR #82; no real Drive provider gate was required because provider semantics were unchanged;
 - Phase 12J Recovery & Account-State UX is complete and merged through PR #83;
 - Phase 12K Production Identity / Release Path is complete and merged through PR #84; production signing/callback/release-candidate evidence is recorded in the Phase 12K build state;
@@ -759,7 +761,9 @@ Durable handoff:
 - `docs/PHASE_12F_BUILD_STATE.md`
 - `docs/PHASE_12F_BACKEND_VERIFICATION_2026-09-25.md`
 
-### Phase 12G — First-run/new-device flow — PLANNED
+### Phase 12G — First-run/new-device flow — COMPLETE
+
+Merged through PR #81 at `3962bad69add448a300fddc1eff3fcd6f2b26002`.
 
 - sign in and validate Membership first;
 - establish active Organization;
@@ -767,14 +771,15 @@ Durable handoff:
 - invited-user setup;
 - no portable provider IDs or silent Drive-account inference.
 
-### Phase 12H — Organization ↔ Drive binding protection — IN PROGRESS (PRE-IMPLEMENTATION)
+### Phase 12H — Organization ↔ Drive binding protection — COMPLETE
 
-Active line:
+Completed line:
 - branch: `phase-12h/organization-drive-binding-protection`;
+- PR #80 merged at `7b4c2017e9fa013929247751039db08cdae9418f`;
 - rollback base: merged Phase 12F `5e3580d3ab769015b7f3c6168022a5def2f308c2`;
 - impact: `docs/PHASE_12H_ORGANIZATION_DRIVE_BINDING_IMPACT_2026-09-26.md`;
 - build state: `docs/PHASE_12H_BUILD_STATE.md`;
-- Level 3 merge approval remains pending.
+- explicit Level 3 merge approval recorded 2026-09-26.
 
 Scope:
 - bind the local Drive workspace deliberately to the active FPP Organization;
@@ -784,7 +789,9 @@ Scope:
 - do not compare Auth email to Drive email as an authorization rule;
 - no Supabase Drive-identity mirror and no second auth/binding state machine.
 
-### Phase 12I — App Status & Diagnostics — PLANNED
+### Phase 12I — App Status & Diagnostics — COMPLETE
+
+Merged through PR #82 at `1476afec4305d366931c39f66d6fe13e63445db9`.
 
 Read-only operator status for:
 - signed-in/Membership state;
@@ -832,13 +839,11 @@ PR #84 merged to `main` at `c7970238e00139415a417f669d86915c4260154e`. Productio
 
 PR #85 merged to `main` at `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4` after Gates A–F and fixture cleanup passed.
 
-### Phase 12M — Account/privacy/release closeout — PLANNED
+### Phase 12M — Account/privacy/release closeout — COMPLETE
 
-Final source-of-truth, security, privacy, RLS, backup, diagnostics-data-boundary, release, and protected-work review before Phase 12 is called complete.
+Final source-of-truth, security, privacy, RLS, backup, diagnostics-data-boundary, release, and protected-work review passed on 2026-09-28. Completion takes effect with the governed merge of this documentation closeout. Evidence and remaining distribution/portability limits: `docs/PHASE_12M_BUILD_STATE.md`.
 
-Default remaining sequence:
-
-**12M**
+No Phase 12 subphase remains. Phase 8C, unrelated PR #39, wider-release email delivery, and production update-over-existing proof retain their separate gates.
 
 Safe design work may overlap where recorded in the master plan, but multiple runtime branches must not independently take ownership of startup/auth/Drive-binding state.
 

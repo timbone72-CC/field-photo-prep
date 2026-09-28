@@ -1,8 +1,10 @@
 # Phase 12L Production Invite Redirect Defect — Build State
 
+Current-state note (2026-09-28): implementation and applicable approvals are complete. Historical planning, pending gates, and next-step text below are retained as evidence, not current instructions. `PHASE_12M_BUILD_STATE.md` owns phase-wide closeout and limits.
+
 Date: 2026-09-28
 
-Status: **VERIFIED — LIVE CONFIGURATION FIX PASSED; LEVEL 3 MERGE APPROVED**
+Status: **APPROVED RECORD — IMPLEMENTATION MERGED; SEE PHASE_12M_BUILD_STATE.md**
 
 ## Authoritative line
 
