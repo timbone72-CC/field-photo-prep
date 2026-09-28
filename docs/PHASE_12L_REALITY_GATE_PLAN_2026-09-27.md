@@ -131,12 +131,25 @@ Conclusion: the current production sign-out/account-transition path preserves lo
 
 ### Gate F — production/internal separation
 
-Prove on the device:
+Observed Gate F result: **PASS**.
 
-- production package and internal package remain separate;
-- production uses production callback/signer identity;
-- internal uses its existing internal package/test identity;
-- clearing/testing production does not clear or alter internal app data.
+Reused Phase 12K / Gate A identity evidence:
+- production package is `com.inandout.fieldphotoprep`;
+- internal package is `com.inandout.fieldphotoprep.internal`;
+- production callback is `com.inandout.fieldphotoprep://auth-callback`;
+- internal callback is `com.inandout.fieldphotoprep.internal://auth-callback`;
+- production signer SHA-256 is the established permanent production certificate;
+- internal uses the existing stable test signer/identity;
+- first production install did not remove or replace the internal package;
+- after production-package clear/retest, `adb shell pm path com.inandout.fieldphotoprep.internal` still resolved.
+
+Current physical separation evidence on 2026-09-28:
+- production package remains a separate fresh test surface and most recently showed `VALIDATED / OWNER` with Drive `NO_WORKSPACE`;
+- the working internal app was opened independently after all production testing;
+- internal Home still shows the preserved field state `HNP Jobs`, `Workspace: Photos`, and `25 properties`;
+- the internal app's existing field/Drive state was therefore not cleared, replaced, or inherited by the production package.
+
+Conclusion: production and internal packages remain separate in package identity, callback/signer identity, and local app data. Clearing/testing production did not clear or alter the working internal app state.
 
 ## Second-phone limitation
 
