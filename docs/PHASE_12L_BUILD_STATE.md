@@ -103,7 +103,7 @@ Conclusion: the returning Owner identity validated successfully and FPP authenti
 
 ## Gate C — deliberate Drive binding
 
-Gate C deliberate Drive binding: **PARTIAL PASS**.
+Gate C deliberate Drive binding: **PARTIAL PASS — WORKSPACE BOUND**.
 - fresh production Home remained `NO_WORKSPACE` after FPP authentication;
 - operator explicitly tapped `Connect Drive`;
 - Android system Storage Access Framework folder picker opened;
@@ -111,3 +111,12 @@ Gate C deliberate Drive binding: **PARTIAL PASS**.
 - no Drive workspace was inferred from the FPP Auth email/session.
 
 Remaining Gate C proof: deliberately choose the correct workspace root (`Photos`, parent of company folders such as HNP Jobs), confirm the production package records that workspace, and verify company discovery without requiring any customer-content write merely for the gate.
+
+Gate C workspace-selection evidence:
+- operator navigated one level up from `HNP Jobs` to the intended multi-company workspace root `Photos`;
+- operator explicitly accepted that folder through the Android SAF picker;
+- production Home now shows workspace `Photos`;
+- app prompts `Choose a company` / `Next: Choose a Company` rather than silently selecting a client company;
+- no live customer write was required for this proof.
+
+Remaining Gate C proof: open the company selector and confirm expected company folders are discoverable from the bound `Photos` workspace.

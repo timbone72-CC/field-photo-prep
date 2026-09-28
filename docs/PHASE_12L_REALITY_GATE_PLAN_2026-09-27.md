@@ -82,7 +82,7 @@ From the fresh production package:
 - the selected workspace/provider identity belongs only to that installation/package context;
 - signing into FPP did not infer the Drive account from the FPP Auth email.
 
-Observed Gate C picker result: **PASS for deliberate picker invocation**. After explicit `Connect Drive`, Android's SAF/system folder picker opened and displayed the Drive folder hierarchy. No Drive workspace had been established before that operator action. Workspace-selection completion remains pending.
+Observed Gate C picker result: **PASS for deliberate picker invocation**. After explicit `Connect Drive`, Android's SAF/system folder picker opened and displayed the Drive folder hierarchy. No Drive workspace had been established before that operator action. Observed Gate C workspace result: **PASS for deliberate workspace binding**. The operator selected the `Photos` workspace through SAF, and production Home now shows `Photos` with an explicit `Choose a company` next step. No client company was silently inferred and no customer-content write was needed. Final Gate C proof is company discovery from this bound workspace.
 
 Use a safe/disposable workspace context where a write is required. Do not use live customer content merely to prove the picker.
 
