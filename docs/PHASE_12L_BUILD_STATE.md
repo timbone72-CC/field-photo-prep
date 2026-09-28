@@ -74,13 +74,13 @@ Conclusion: the production package contains no protected local work, unresolved 
 
 ## Gate A — clean/no-session production launch
 
-Gate A clean/no-session launch: **PARTIAL PASS**.
+Gate A clean/no-session launch: **PASS**.
 - production package was cleared after the pre-clear safety gate passed;
 - fresh production launch displayed `Field Photo Prep Account` with empty Email/Password fields and Sign In / Forgot Password actions;
 - no prior OWNER session was silently restored;
 - ordinary authenticated field use therefore remains gated behind FPP sign-in as designed.
 
-Remaining Gate A sub-check: physically confirm `com.inandout.fieldphotoprep.internal` is still installed/unchanged after clearing production. That separation proof may also be reused for Gate F.
+Internal-package preservation sub-check: **PASS**. `adb shell pm path com.inandout.fieldphotoprep.internal` resolved successfully after production-package clear/retest, proving production clean-state testing did not remove the working internal package. This evidence may also be reused for Gate F.
 
 ## Gate B — returning Owner identity
 

@@ -60,7 +60,7 @@ After the production package is made safely fresh:
 - no prior FPP session is silently restored;
 - internal package state remains unchanged.
 
-Observed Gate A result: fresh production launch showed the FPP Account sign-in screen with no restored session. The internal-package-preservation sub-check remains pending until confirmed by `adb shell pm path com.inandout.fieldphotoprep.internal`.
+Observed Gate A result: **PASS**. Fresh production launch showed the FPP Account sign-in screen with no restored session, and `adb shell pm path com.inandout.fieldphotoprep.internal` still resolved afterward, proving the working internal package remained installed.
 
 ### Gate B — returning Owner identity
 
