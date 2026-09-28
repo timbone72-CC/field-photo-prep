@@ -103,7 +103,7 @@ Conclusion: the returning Owner identity validated successfully and FPP authenti
 
 ## Gate C — deliberate Drive binding
 
-Gate C deliberate Drive binding: **PARTIAL PASS — WORKSPACE BOUND**.
+Gate C deliberate Drive binding: **PASS**.
 - fresh production Home remained `NO_WORKSPACE` after FPP authentication;
 - operator explicitly tapped `Connect Drive`;
 - Android system Storage Access Framework folder picker opened;
@@ -119,4 +119,4 @@ Gate C workspace-selection evidence:
 - app prompts `Choose a company` / `Next: Choose a Company` rather than silently selecting a client company;
 - no live customer write was required for this proof.
 
-Remaining Gate C proof: open the company selector and confirm expected company folders are discoverable from the bound `Photos` workspace.
+Company discovery proof: **PASS**. The bound `Photos` workspace exposes the expected company choices including `HNP Jobs` and `Tresmolino Jobs`. An older `FPP Phase 12H Test Company - DELETE` test folder is also visible; it is a stale Drive fixture and is not treated as a Gate C failure. No company was silently selected and no customer-content write was required.
