@@ -99,7 +99,7 @@ Use a disposable invitation/account fixture and the existing Owner administratio
 - prove invitation acceptance did not silently grant/inherit Drive access;
 - clean up the disposable Membership/Auth/Invitation fixture after evidence is accepted.
 
-Observed Gate D end-to-end evidence: **PASS**. The newest resend opened the production app, reached the invitation Set Password flow, completed activation, and produced an `ACTIVE` `MEMBER` Membership for `inandoutinspections2026+12lmember@gmail.com`. The invited identity landed on Home with Google Drive `Not connected`, proving invitation acceptance did not silently grant or inherit a Drive workspace. The disposable fixture is intentionally retained only for the immediately following Gate E account-transition/boundary-safety proof and must be cleaned after that evidence unless separately documented.
+Observed Gate D end-to-end evidence: **PASS**. The newest resend opened the production app, reached the invitation Set Password flow, completed activation, and produced an `ACTIVE` `MEMBER` Membership for `inandoutinspections2026+12lmember@gmail.com`. The invited identity landed on Home with Google Drive `Not connected`, proving invitation acceptance did not silently grant or inherit a Drive workspace. The disposable fixture was retained through Gate E, then cleaned during Phase 12L closeout after explicit operator approval.
 
 If OWNER-specific invitation behavior differs materially from MEMBER, test a disposable OWNER invitation separately; otherwise reuse the already-proven role-administration/backend coverage and do not repeat equivalent physical steps merely for ceremony.
 
@@ -166,3 +166,19 @@ If no suitable second phone is available:
 Record each physical observation once. Reuse already-valid 12K recovery/package evidence where the underlying behavior is unchanged.
 
 Any unexpected account/Drive/protected-work behavior is a STOP condition for the affected gate. Preserve evidence and open a separately governed defect line rather than patching runtime behavior inside this documentation/evidence branch.
+
+
+## Fixture cleanup — PASS
+
+After all numbered gates passed, the disposable `inandoutinspections2026+12lmember@gmail.com` fixture was cleaned from the dedicated FPP Supabase project with explicit operator approval.
+
+Verified cleanup:
+- disposable Auth user: removed;
+- disposable ACTIVE MEMBER Membership: removed;
+- disposable ACCEPTED Invitation: removed;
+- active Auth session: none remained after normal Gate E sign-out;
+- the single disposable `INVITATION_ACCEPTED / SUCCEEDED` audit row that directly referenced the disposable Auth user was removed with separate explicit approval because its foreign key otherwise correctly blocked hard deletion;
+- Owner account and ACTIVE OWNER Membership remain present;
+- existing `timbone72@gmail.com` account and ACTIVE Membership remain present.
+
+Durable Gate D/E evidence remains in this Phase 12L record and the merged PR #86 defect record.
