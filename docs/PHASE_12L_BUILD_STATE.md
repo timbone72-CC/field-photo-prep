@@ -162,8 +162,25 @@ Fixture disposition:
 - retain the disposable `+12lmember` identity only for the immediately following Gate E account-transition/boundary-safety evidence;
 - clean the disposable Membership/Auth/Invitation fixture after Gate E unless a later Phase 12L record explicitly documents another reason to retain it.
 
+## Gate E — account transition / boundary safety
+
+Gate E: **PASS**.
+
+Current production-package physical evidence:
+- pre-sign-out disposable MEMBER state: `VALIDATED / MEMBER`, Drive `NO_WORKSPACE`, all queue/protected-work counters `0`;
+- normal sign-out completed and reported that Drive workspace/local field data were left unchanged;
+- controlled Owner then signed in successfully;
+- Account Connected showed `In And Out Cleaner Inspections LLC` / `OWNER`;
+- post-transition App Status: `VALIDATED / OWNER`, Drive `NO_WORKSPACE`, all queue/protected-work counters still `0`;
+- no stale Drive binding or navigation state was silently inherited during MEMBER → OWNER transition.
+
+Reused unchanged evidence:
+- `ProtectedWorkGuardTest` covers sign-out blocking/fail-closed behavior for CAPTURING, WAITING, FAILED, UNCERTAIN, retained uploaded local copies, prepared-copy cleanup, and unreadable metadata;
+- `AppStatusCollectorInstrumentedTest` verifies the blocking counters without mutating queue state;
+- completed Phase 12H physical Samsung evidence proves a different Organization cannot silently inherit stale Drive/provider state while SAF permission remains, and that return to the owning Organization restores the correct binding without rewriting provider identity.
+
+Conclusion: Gate E account transition / boundary safety is **PASS** without manufacturing new protected work on the production phone.
+
 ## Exact next gate
 
-Gate E — account transition / boundary safety.
-
-Do not begin Gate E until this Gate D reconciliation is committed and PR #85 reflects the pass.
+Gate F — production/internal separation.
