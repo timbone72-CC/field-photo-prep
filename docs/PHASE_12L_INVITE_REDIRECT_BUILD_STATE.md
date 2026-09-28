@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 
-Status: **VERIFIED — LIVE CONFIGURATION FIX PASSED; LEVEL 3 MERGE APPROVAL PENDING**
+Status: **VERIFIED — LIVE CONFIGURATION FIX PASSED; LEVEL 3 MERGE APPROVED**
 
 ## Authoritative line
 
@@ -50,8 +50,14 @@ A stale invitation link in the existing Gmail conversation initially produced `E
 
 The missing query-capable production Redirect URL allowlist entry was the bounded hosted configuration defect. No Android runtime code, Drive code, database schema, package identity, or signing change was required.
 
+## Approval and fixture disposition
+
+- explicit Level 3 operator merge approval: **GRANTED 2026-09-28**;
+- the disposable `+12lmember` MEMBER/Auth fixture is deliberately retained for the immediately following Phase 12L Gate E account-transition/boundary-safety evidence;
+- it must be cleaned after that evidence unless the Phase 12L record explicitly documents another reason to retain it.
+
 ## Exact next checkpoint
 
 Do not perform additional runtime work on this branch.
 
-PR #86 is Level 3 and must stop before merge for explicit operator merge approval. After that governed closeout, resume Phase 12L PR #85 and reconcile Gate D as PASS before beginning Gate E.
+Merge PR #86 after required GitHub checks pass. Then resume Phase 12L PR #85, reconcile Gate D as PASS, and begin Gate E.
