@@ -97,6 +97,8 @@ Use a disposable invitation/account fixture and the existing Owner administratio
 - prove invitation acceptance did not silently grant/inherit Drive access;
 - clean up the disposable Membership/Auth/Invitation fixture after evidence is accepted.
 
+Observed Gate D invitation-delivery result: **PASS**. Owner administration shows `inandoutinspections2026+12lmember@gmail.com` as `MEMBER · PENDING · delivery SENT`. Invitation acceptance/new-user/Drive-separation proof remains pending.
+
 If OWNER-specific invitation behavior differs materially from MEMBER, test a disposable OWNER invitation separately; otherwise reuse the already-proven role-administration/backend coverage and do not repeat equivalent physical steps merely for ceremony.
 
 ### Gate E — account transition / boundary safety

@@ -120,3 +120,14 @@ Gate C workspace-selection evidence:
 - no live customer write was required for this proof.
 
 Company discovery proof: **PASS**. The bound `Photos` workspace exposes the expected company choices including `HNP Jobs` and `Tresmolino Jobs`. An older `FPP Phase 12H Test Company - DELETE` test folder is also visible; it is a stale Drive fixture and is not treated as a Gate C failure. No company was silently selected and no customer-content write was required.
+
+## Gate D — invited user end-to-end
+
+Gate D invited-user invitation delivery: **PASS**.
+- Owner administration created a disposable invitation for `inandoutinspections2026+12lmember@gmail.com`;
+- role: `MEMBER`;
+- invitation status: `PENDING`;
+- delivery status: `SENT`;
+- existing accepted member `timbone72@gmail.com` remains a separate Membership/invitation record.
+
+Next Gate D step: make the disposable production package fresh again before opening the new invitation, then accept/activate the invited identity and prove it begins with no inherited Drive workspace.
