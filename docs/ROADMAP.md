@@ -820,7 +820,7 @@ PR #84 merged to `main` at `c7970238e00139415a417f669d86915c4260154e`. Productio
 - revisit verified Android App Links if an owned HTTPS domain and external distribution make them worthwhile;
 - no forced Play Store/public-distribution decision.
 
-### Phase 12L — Clean-install/new-user reality gates — CLOSEOUT COMPLETE / PR #85 MERGE PENDING
+### Phase 12L — Clean-install/new-user reality gates — COMPLETE
 
 - clean/no-session behavior on real Android: **PASS**;
 - invited/new-user identity flow: **PASS**;
@@ -829,6 +829,8 @@ PR #84 merged to `main` at `c7970238e00139415a417f669d86915c4260154e`. Productio
 - production/internal package separation: **PASS**;
 - disposable invitation/member fixture cleanup: **PASS**;
 - cross-device SAF/provider-ID portability remains limited to the separately documented Phase 8C evidence boundary and is not overclaimed.
+
+PR #85 merged to `main` at `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4` after Gates A–F and fixture cleanup passed.
 
 ### Phase 12M — Account/privacy/release closeout — PLANNED
 
