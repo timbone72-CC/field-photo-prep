@@ -184,6 +184,19 @@ The workflow must fail unless:
 
 The workflow does not publish the candidate publicly.
 
+## Production invitation redirect allowlist
+
+Recovery and invitation links do not use the same redirect shape.
+
+- recovery uses the base callback: `com.inandout.fieldphotoprep://auth-callback`;
+- Owner invitation delivery appends an invitation query parameter: `com.inandout.fieldphotoprep://auth-callback?fpp_invitation_id=...`.
+
+Supabase Auth requires the requested `redirectTo` to match the configured Redirect URL allowlist. Therefore the hosted production Auth configuration must allow both the base callback and the invitation form. The governed production entry is:
+
+`com.inandout.fieldphotoprep://auth-callback*`
+
+Keep the exact base callback entry as well. A passing recovery test does **not** prove invitation redirect coverage because recovery does not append the FPP invitation query parameter.
+
 ## 7. Production callback reality gate
 
 **Phase 12K observed callback result:** PASS. A real Supabase password-recovery link returned into the signed production package, completed password update, and returned to Account Connected for `In And Out Cleaner Inspections LLC` with OWNER role. No localhost/browser dead end or `.internal` redirect was observed.
