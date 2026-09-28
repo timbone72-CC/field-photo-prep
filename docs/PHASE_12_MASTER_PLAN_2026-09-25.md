@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 
-Status: **APPROVED MASTER PLAN — 12F / 12H / 12G / 12I / 12J COMPLETE / 12K IN PROGRESS**
+Status: **APPROVED MASTER PLAN — THROUGH 12K COMPLETE; 12L CLOSEOUT COMPLETE / MERGE PENDING; 12M NEXT**
 
 ## Purpose
 
@@ -526,7 +526,7 @@ Signing/deployment/update changes require explicit pre-merge approval and post-i
 
 # Phase 12L — Clean-Install / New-User Reality Gates
 
-Status: **IN PROGRESS — authoritative evidence line `phase-12l/clean-install-new-user-reality-gates`**
+Status: **CLOSEOUT COMPLETE — Gates A–F PASS, disposable fixture cleaned, PR #85 merge is the final 12L action**
 
 ## Goal
 
@@ -556,6 +556,21 @@ If no suitable second phone is available:
 - record the remaining Phase 8C limitation explicitly.
 
 Phase 12 may still verify identity/release behavior that does not depend on claiming portable provider IDs.
+
+## Completion evidence
+
+Phase 12L completion evidence:
+- Gate A clean/no-session launch: PASS;
+- Gate B returning Owner identity: PASS;
+- Gate C deliberate Drive binding: PASS;
+- Gate D invited user end-to-end: PASS after the bounded production invite redirect defect was fixed on Level-3 PR #86 and merged to main;
+- Gate E account transition / boundary safety: PASS;
+- Gate F production/internal separation: PASS;
+- disposable `+12lmember` Auth/Membership/Invitation fixture: cleaned with explicit operator approval;
+- Owner and existing member records verified intact;
+- no additional second-phone/provider-portability claim is made beyond the documented limitation.
+
+PR #85 merge is the only remaining 12L action. Under the roadmap maintenance rule, the phase becomes formally COMPLETE when that governed PR is merged.
 
 ## Change level
 
