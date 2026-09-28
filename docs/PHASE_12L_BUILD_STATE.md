@@ -181,6 +181,40 @@ Reused unchanged evidence:
 
 Conclusion: Gate E account transition / boundary safety is **PASS** without manufacturing new protected work on the production phone.
 
-## Exact next gate
+## Gate F — production/internal separation
 
-Gate F — production/internal separation.
+Gate F: **PASS**.
+
+Reused identity/separation evidence:
+- production package: `com.inandout.fieldphotoprep`;
+- internal package: `com.inandout.fieldphotoprep.internal`;
+- production callback/signer and internal callback/test identity remain distinct as established in Phase 12K;
+- first production install did not replace internal;
+- Gate A post-clear ADB proof confirmed the internal package still existed after production data was cleared.
+
+Current physical evidence:
+- production most recently validated as OWNER with Drive `NO_WORKSPACE`;
+- internal app opened independently afterward;
+- internal Home still shows `HNP Jobs`, `Workspace: Photos`, and `25 properties`;
+- working internal field/Drive state therefore survived the full production Gate A–F sequence unchanged.
+
+Conclusion: Gate F production/internal separation is **PASS**.
+
+## Phase 12L gate status
+
+- Gate A: **PASS**
+- Gate B: **PASS**
+- Gate C: **PASS**
+- Gate D: **PASS**
+- Gate E: **PASS**
+- Gate F: **PASS**
+
+All numbered Phase 12L reality gates are complete.
+
+## Exact next checkpoint
+
+Begin governed Phase 12L closeout:
+1. clean the disposable `+12lmember` Membership/Auth/Invitation fixture;
+2. reconcile Phase 12L roadmap/master-plan/build-state closeout;
+3. run required GitHub governance/checks on the final documentation head;
+4. close/merge PR #85 according to its Level-1 governance classification.
