@@ -15,6 +15,22 @@ public final class WorkOrderFolderName {
         return workOrder + DATE_SEPARATOR + date;
     }
 
+    public static String reuseNameForDate(
+            String selectedFolderName,
+            String requestedLocalDate) {
+        LocalDate requestedDate = parseRequestedDate(requestedLocalDate);
+        ParsedFolder selected = parseExisting(selectedFolderName);
+        if (selected == null) {
+            throw new IllegalArgumentException(
+                    "Select a dated work-order folder before using Clear & Reuse.");
+        }
+        if (!selected.date.isBefore(requestedDate)) {
+            throw new IllegalArgumentException(
+                    "Choose a date after " + selected.date + " for Clear & Reuse.");
+        }
+        return selected.workOrder + DATE_SEPARATOR + requestedDate;
+    }
+
     public static boolean isOlderSameWorkOrderFolder(
             String candidateFolderName,
             String requestedWorkOrderName,
