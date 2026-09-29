@@ -170,36 +170,13 @@
                 android:textStyle="bold"
                 style="@style/FieldAction" />
             <Button
-                android:id="@+id/work_order_maintenance_toggle"
+                android:id="@+id/work_order_clear_reuse"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginTop="10dp"
-                android:text="Maintenance actions"
+                android:text="Clear &amp; Reuse"
                 android:textAllCaps="false"
-                style="@style/FieldAction"
-                android:background="?android:attr/selectableItemBackground"
-                android:textColor="@color/home_text_secondary" />
-            <LinearLayout
-                android:id="@+id/work_order_maintenance"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-                <Button
-                    android:id="@+id/work_order_reuse_empty"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:text="Reuse Selected Empty Folder"
-                    android:textAllCaps="false"
-                    style="@style/FieldAction" />
-                <Button
-                    android:id="@+id/work_order_clear_reuse"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:text="Clear &amp; Reuse Selected Folder"
-                    android:textAllCaps="false"
-                    style="@style/FieldAction" />
-            </LinearLayout>
+                style="@style/FieldAction" />
         </LinearLayout>
     </ScrollView>
     <include
