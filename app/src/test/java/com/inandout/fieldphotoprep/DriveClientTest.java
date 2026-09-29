@@ -72,6 +72,15 @@ public final class DriveClientTest {
     }
 
     @Test
+    public void imageMimeTypesAreRecognizedWithoutTreatingFoldersAsImages() {
+        assertTrue(DriveClient.isPhotoMimeType("image/jpeg"));
+        assertTrue(DriveClient.isPhotoMimeType("image/png"));
+        assertFalse(DriveClient.isPhotoMimeType("application/pdf"));
+        assertFalse(DriveClient.isPhotoMimeType(DocumentsContract.Document.MIME_TYPE_DIR));
+        assertFalse(DriveClient.isPhotoMimeType(null));
+    }
+
+    @Test
     public void exactWorkOrderMatchDoesNotUseCaseOrPartialGuessing() {
         List<DriveFolder> folders = Arrays.asList(
                 new DriveFolder("1", "Cut Grass - 2026-09-06"),
