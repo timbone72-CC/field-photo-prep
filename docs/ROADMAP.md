@@ -258,7 +258,7 @@ Canonical field-tested baseline:
 
 The source-of-truth split is resolved. Future runtime work must start from canonical `main` (or a branch created from it) so already-proven 0.20 behavior is not lost.
 
-## Phase 10 — Stabilization & Scale — IN PROGRESS
+## Phase 10 — Stabilization & Scale — COMPLETE
 
 Goal: stabilize the proven single-phone field workflow for realistic large inspection batches, reduce avoidable operator recovery work, and make repository/device-recovery behavior explicit without weakening the existing photo and Drive safety model.
 
@@ -294,7 +294,7 @@ Completion evidence:
 - explicit Level 3 operator pre-merge approval was given immediately before merge;
 - PR #42 was closed after its exact head was confirmed in canonical ancestry;
 - obsolete Phase 9A PR #34 was closed as superseded;
-- PR #39 remains open intentionally for separate Phase 10C stale-provider reconciliation review.
+- PR #39 remained open as a separate Phase 10C input and was later closed unmerged when repeated natural field batches showed no material need for its runtime change.
 
 ### Phase 10B — Large photo-list scalability — COMPLETE
 
@@ -326,37 +326,31 @@ Completion evidence:
 - focused Samsung large-list smoke passed;
 - PR #49 merged to `main` at `110477c286bace05bb7fa56ee22199cf2de7fa92`.
 
-### Phase 10C — Large-batch upload / UNCERTAIN stabilization — OBSERVING
+### Phase 10C — Large-batch upload / UNCERTAIN stabilization — COMPLETE
 
 Field basis:
-- a prior large upload produced a substantial UNCERTAIN backlog even though later reconciliation proved the Drive copies existed;
-- the current development line already adds a bounded provider-settle verification window and safe bulk reconciliation.
+- an earlier large upload had produced a substantial UNCERTAIN backlog, so Phase 10C deliberately stayed observation-only after the bounded provider-settle and bulk-reconciliation repair;
+- later normal field use supplied the evidence the phase was waiting for.
 
-First step:
-- use the current canonical 0.21 behavior on a fresh realistic large batch and record:
-  - selected photo count;
-  - immediately confirmed uploads;
-  - retry-safe failures;
-  - UNCERTAIN results;
-  - reconciliation-confirmed results;
-  - any unresolved items.
+Completion evidence:
+- the operator reports repeated natural field batches in the approximate 40–130 image range uploading without a material problem;
+- no fresh recurring UNCERTAIN/reconciliation burden has been reported during those batches;
+- exact per-batch counters were not retained, so the closeout does not invent aggregate confirmed/failed/UNCERTAIN totals;
+- the documented decision rule therefore resolves to **no additional upload/reconciliation runtime change**;
+- PR #39's two stale-provider hardening ideas are retained in history but are not justified for merge by current field evidence;
+- PR #39 is closed unmerged as part of Phase 10C closeout.
 
-Decision rule:
-- if false UNCERTAIN results are now rare and recovery is practical, make no additional upload change;
-- if false UNCERTAIN remains materially disruptive, design one narrow automatic **read-only reconciliation** pass for the affected photo before surfacing manual operator recovery.
-
-Any later implementation must preserve:
+Protected behavior remains unchanged:
 - no blind retry;
 - no second remote create when remote state is unresolved;
 - exact stored destination identity;
 - provisional remote identity evidence;
 - strict exact-match reconciliation;
 - strictly sequential selected-batch Drive writes;
-- manual fail-closed state when remote truth still cannot be proven.
+- fail-closed behavior when remote truth still cannot be proven.
 
-Do not add a background retry scheduler merely to hide provider uncertainty.
-
-Existing open PR #39 (`Fix UNCERTAIN reconciliation on stale Drive provider metadata`) is a Phase 10C input, not a Phase 10A merge target. A code comparison found two unique hardening ideas not present in 0.20: provider `refresh() == false` should not by itself block otherwise-settled reconciliation, and stale provider size metadata should not override a stronger exact SHA-256 content proof. Keep PR #39 open until those behaviors are deliberately re-evaluated against the canonical 0.20 baseline with current tests and a governed Level 3 decision.
+Permanent record:
+- `docs/PHASE_10C_LARGE_BATCH_UPLOAD_OBSERVATION_2026-09-17.md`.
 
 ### Phase 10D — Separate Properties and Work Orders UI state — COMPLETE
 
@@ -466,9 +460,7 @@ Completion evidence:
 - explicit Level 3 operator pre-merge approval was given immediately before merge;
 - PR #55 merged to `main` at `4ec3f00dc169f0ebb5c5bfe22e80e8528a1059ac`.
 
-Phase 8C remains the final physical portability gate:
-- when a second suitable Android phone is available, run the existing shared-master test on that phone;
-- do not claim provider-ID portability until that gate passes.
+Phase 8C later completed its second-phone/shared-master physical portability gate. See `docs/PHASE_8C_SECOND_PHONE_REALITY_GATE_2026-09-28.md`.
 
 ### Phase 10 deferred release trigger — production signing
 
@@ -498,13 +490,16 @@ Do not change during stabilization unless a separately evidenced defect requires
 
 Do not add Room/SQLite, WorkManager, parallel Drive uploads, automatic destructive Drive cleanup, placeholder Settings, OCR, AI classification, or a permanent in-app photo library without separate field evidence and approval.
 
-### Phase 10 sequencing
+### Phase 10 sequencing — COMPLETE
 
-Default order:
-
-**10A source-of-truth reconciliation → 10B photo-list scaling → 10C large-batch observation/refinement → 10D screen-state separation → 10E guided next-action workflow → 10F backup/restore readiness → Phase 8C when a second suitable phone exists.**
-
-A later step may move earlier only when field evidence makes it more urgent and the change remains independently testable.
+The governed sequence is closed:
+- 10A source-of-truth reconciliation — complete;
+- 10B photo-list scaling — complete;
+- 10C large-batch observation — complete with no additional runtime change;
+- 10D screen-state separation — complete;
+- 10E guided next-action workflow — complete;
+- 10F backup/restore readiness — complete;
+- the separately required Phase 8C second-phone gate also later passed.
 
 ## Phase 11 — Multi-Company Field Workflow — COMPLETE
 
@@ -850,7 +845,7 @@ PR #85 merged to `main` at `cc2bf42960fbd91313d2e7fa6b6762fce94c6ad4` after Gate
 
 Final source-of-truth, security, privacy, RLS, backup, diagnostics-data-boundary, release, and protected-work review passed on 2026-09-28. Completion takes effect with the governed merge of this documentation closeout. Evidence and remaining distribution/portability limits: `docs/PHASE_12M_BUILD_STATE.md`.
 
-No Phase 12 subphase remains. Phase 8C, unrelated PR #39, wider-release email delivery, and production update-over-existing proof retain their separate gates.
+No Phase 12 subphase remains. Phase 8C and Phase 10C are now complete, and PR #39 is retired unmerged. Wider-release email delivery and production update-over-existing proof retain their separate gates.
 
 Safe design work may overlap where recorded in the master plan, but multiple runtime branches must not independently take ownership of startup/auth/Drive-binding state.
 
