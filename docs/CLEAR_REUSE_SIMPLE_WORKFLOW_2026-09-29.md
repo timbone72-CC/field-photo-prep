@@ -1,8 +1,9 @@
 # Clear & Reuse Simple Workflow — Build State
 
 Date: 2026-09-29
-Status: LEVEL 3 — IN PROGRESS
+Status: LEVEL 3 — FINAL CI / PRE-MERGE GATE
 Branch: `fix/clear-reuse-photo-only-20260929`
+PR: #92 `Fix Clear & Reuse workflow and limit cleanup to photos`
 Rollback: `26d4f8fc7a25469ac6f1f10e4ed67fff339cf4ba`
 
 ## Goal
@@ -31,8 +32,24 @@ Provider freshness, exact folder identity, requested-name collision checks, muta
 
 Required before merge:
 - focused unit/UI coverage for selected-name dating, image classification, photo-snapshot stability, and simplified entry point;
-- complete Android CI on final runtime head;
-- disposable physical-device Google Drive check proving photo-only cleanup, preserved non-photo content, same provider identity/parent, new date, and next sequence `001`.
+- complete Android CI on the final branch/PR head;
+- disposable physical-device Google Drive check proving photo-only cleanup, preserved non-photo content, same provider identity/parent, new date, and next sequence `001`;
+- explicit operator Level-3 merge approval after all required evidence passes.
+
+## Physical-device Google Drive reality gate — PASS
+
+Completed on 2026-09-29 through the actual Android SAF/Google Drive provider path using the disposable property `99999 FPP UNIQUE CREATE TEST`.
+
+Fixture and evidence:
+- selected work order: `TREE TRIM 3 TEST - 2026-09-18`;
+- fixture contained three FPP-uploaded photos plus one non-photo Google document (`Test 2`);
+- confirmation correctly reported **3** Drive photos to remove and **1** other non-photo item to keep;
+- confirmed Clear & Reuse removed the three photos and preserved `Test 2`;
+- the work-order folder was renamed to `TREE TRIM 3 TEST - 2026-09-30`;
+- Drive metadata verified that the renamed work order retained the same provider folder identity and same address parent;
+- the next captured/uploaded photo in the reused occurrence was visibly named beginning `001_field-photo-`, proving the new occurrence restarted at sequence `001`.
+
+Result: **PASS**. The required real-provider photo-only cleanup, preserved non-photo content, stable folder identity/parent, date reset, and sequence reset were all observed.
 
 ## Current progress
 
@@ -43,13 +60,14 @@ Required before merge:
 - Separate empty-folder control removed from the user-facing flow.
 - Main Clear & Reuse path now uses selected WO → date → confirmation.
 - Product, integration, and regression contracts reconciled.
+- Focused unit/UI coverage added for the changed behavior.
+- Runtime identification bumped to version `0.28.1` / versionCode `38`.
+- Draft PR #92 opened on the authoritative branch.
+- Physical-device Google Drive reality gate passed and recorded above.
 
 ## Remaining
 
-- finish focused automated coverage;
-- bump internal/runtime version for install identification;
-- open PR and pass CI;
-- physical-device disposable Drive reality check;
-- explicit operator approval before merge.
+- pass the required GitHub Android CI on the exact final PR head;
+- obtain explicit operator Level-3 merge approval after CI passes.
 
 Explicit Level-3 merge approval: **NOT YET GRANTED**.
