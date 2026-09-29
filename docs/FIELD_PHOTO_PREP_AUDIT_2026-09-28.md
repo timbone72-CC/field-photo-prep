@@ -7,6 +7,8 @@ Authoritative completed baseline: `origin/main` at `2ffa723c9be500765503af31a4c5
 Checkout inspected: `phase-12k/production-identity-release-path` at `6065d48b943c657cae0ef3011c92fdc67213db44`
 Checkout status: clean tracked tree with pre-existing untracked `release-evidence/release-evidence.txt`; preserved unchanged.
 
+> **Post-audit status update — 2026-09-28:** Phase 8C was completed after this read-only audit using a second physical Android phone. The deferred Phase 8C statements below are retained as the audit's point-in-time findings and are superseded only for that gate by `docs/PHASE_8C_SECOND_PHONE_REALITY_GATE_2026-09-28.md`. Other audit findings and limits remain unchanged.
+
 ## Overall result
 
 The supported Field Photo Prep workflow is structurally sound and the repository's governed `main` accurately records Phase 12 completion. I found no confirmed current data-loss, wrong-destination, blind-retry, or cross-Organization authorization defect in the inspected Android, queue, Drive, authentication, backend, or release paths.
