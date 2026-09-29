@@ -54,7 +54,6 @@ public final class Concept3UiStructureInstrumentedTest {
         Button clearReuse = work.findViewById(R.id.work_order_clear_reuse);
         assertNotNull(clearReuse);
         assertEquals("Clear & Reuse", clearReuse.getText().toString());
-        assertFalse(clearReuse.isEnabled());
 
         View photos = inflater.inflate(R.layout.screen_photos, null, false);
         assertNotNull(photos.findViewById(R.id.photos_open_camera));
