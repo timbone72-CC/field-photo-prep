@@ -55,20 +55,22 @@ Use only the sections affected by the change. This checklist is not a requiremen
 
 ## E. Work-order folder reuse
 
-- [ ] When the new dated folder does not exist, the app may offer older folders only under the selected address.
-- [ ] Simple reuse candidates match the requested work-order name, for example old `Cut Grass` for new `Cut Grass`.
-- [ ] The app obtains provider state safe enough to determine the actual selected old folder contents before deciding whether it is empty.
-- [ ] A truly empty old work-order folder can be renamed to the new date without changing its provider document ID.
-- [ ] Empty-folder reuse does not change the folder's address parent.
-- [ ] A non-empty old folder is never cleared or renamed automatically.
-- [ ] Provider loading/stale/uncertain state is never treated as proof that a folder is empty.
-- [ ] **Clear & Reuse** shows the full selected hierarchy, exact old folder name, direct child-item count, requested new folder, and child-folder warning where applicable before confirmation.
-- [ ] **Clear & Reuse** confirmation is bound to the exact direct-child identity snapshot and stops if that snapshot changes before deletion.
+- [ ] The operator can select an existing dated work order and start **Clear & Reuse** directly without retyping the work-order name.
+- [ ] **Clear & Reuse** asks for the new date after the old work order is selected.
+- [ ] The new reuse name keeps the exact selected work-order name and changes only to a later date.
+- [ ] Ordinary **Add Work Order** remains non-destructive and does not silently route into Clear & Reuse.
+- [ ] Provider loading/stale/uncertain state is never treated as authority for photo removal or rename.
+- [ ] Confirmation shows the exact selected property/work order, Drive photo count, and new date.
 - [ ] Cancelling confirmation changes nothing in Drive.
-- [ ] Confirmed **Clear & Reuse** removes only the selected work-order folder's confirmed direct child items.
-- [ ] The app verifies authoritative-enough empty state before renaming the selected folder.
-- [ ] The renamed folder keeps the same provider document ID.
-- [ ] A child-deletion failure stops reuse and leaves the folder visibly incomplete rather than pretending success.
+- [ ] Confirmation is bound to the exact direct-photo provider-identity snapshot and stops if that photo set changes before removal.
+- [ ] Confirmed **Clear & Reuse** removes only direct image/photo files from the selected work-order folder.
+- [ ] Child folders and non-image files in the selected work-order folder remain unchanged.
+- [ ] The app verifies authoritative-enough zero-photo state before renaming the selected folder.
+- [ ] A zero-photo selected folder uses the same Clear & Reuse flow and can be date-reset without a separate empty-reuse control.
+- [ ] The renamed folder keeps the same provider document ID and address parent.
+- [ ] The first photo captured in the reused occurrence starts at `001`.
+- [ ] Confirmed upload history from the prior occurrence does not appear in the new occurrence's Photos list.
+- [ ] A photo-removal failure stops reuse and leaves the folder visibly incomplete rather than pretending success.
 - [ ] A rename failure stops reuse and no new-work photos are sent into that folder.
 - [ ] No unrelated Drive file, sibling work-order folder, address folder, or other property is changed.
 
@@ -141,10 +143,11 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] App does not create public Drive links automatically.
 - [ ] App does not alter Drive sharing permissions automatically.
 - [ ] Ordinary discover/create/upload flow does not move/rename/delete existing Drive content.
-- [ ] **Drive content deletion** occurs only inside confirmed **Clear & Reuse** for one exact selected work-order folder.
+- [ ] **Drive photo deletion** occurs only inside confirmed **Clear & Reuse** for one exact selected work-order folder.
+- [ ] Clear & Reuse deletion is limited to direct image/photo files; child folders and non-image files are preserved.
 - [ ] Explicit local-photo discard never calls Drive/provider deletion and cannot delete a Drive photo or folder.
 - [ ] App does not delete the selected work-order folder itself during **Clear & Reuse**.
-- [ ] App does not delete address folders or arbitrary Drive content through the reuse feature.
+- [ ] App does not delete address folders, child folders, non-photo files, or arbitrary Drive content through the reuse feature.
 - [ ] Persisted provider access data and remote identities are not exposed unnecessarily in logs or exported app data.
 - [ ] Android runtime does not invent or persist Google OAuth credentials for the SAF workflow.
 
@@ -164,8 +167,8 @@ Run this as the primary end-to-end smoke check once the first working version ex
 10. Confirm no unconfirmed photo is lost during preparation/upload/retry.
 11. After confirmed upload and local bookkeeping, confirm temporary image data can be cleaned up and the Drive copies remain intact.
 12. Restart the app, refresh Drive folders, and confirm the existing address and work-order provider identities are found without duplicates.
-13. Delete the disposable photos from the test `Cut Grass - 2026-09-06` folder so it is empty, then reuse it as `Cut Grass - 2026-09-13`; confirm the provider document ID stays the same.
-14. Add disposable content to that folder, choose **Clear & Reuse** for a later grass-cut date, confirm the hierarchy/warning/count, and verify only that folder's confirmed disposable children are removed before rename.
+13. Select the disposable `Cut Grass - 2026-09-06` work order, choose **Clear & Reuse**, select `2026-09-13`, and confirm the same provider document ID is retained and the next captured photo would start at `001`.
+14. For the next reuse, place disposable photos plus one non-photo file or child folder in that test work order. Choose **Clear & Reuse** for a later date and verify only the confirmed photos are removed from Drive, the non-photo item remains, and the same folder identity is renamed.
 
 ## N. Initial non-requirements guard
 
