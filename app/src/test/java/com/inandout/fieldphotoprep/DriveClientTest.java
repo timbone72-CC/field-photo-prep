@@ -194,13 +194,20 @@ public final class DriveClientTest {
     }
 
     @Test
-    public void childSnapshotCountsDirectItemsAndChildFolders() {
+    public void childSnapshotSeparatesImageFilesFromOtherItems() {
         DriveClient.ChildSnapshot snapshot = new DriveClient.ChildSnapshot(
-                Arrays.asList("photo", "nested-folder"), 1);
+                Arrays.asList("photo-1", "notes", "nested-folder"),
+                Arrays.asList("photo-1"),
+                1);
 
-        assertEquals(2, snapshot.count());
+        assertEquals(3, snapshot.count());
+        assertEquals(1, snapshot.photoCount());
+        assertEquals(2, snapshot.preservedCount());
         assertEquals(1, snapshot.folderCount());
-        assertEquals(Arrays.asList("photo", "nested-folder"), snapshot.documentIds());
+        assertEquals(Arrays.asList("photo-1"), snapshot.photoDocumentIds());
+        assertEquals(
+                Arrays.asList("photo-1", "notes", "nested-folder"),
+                snapshot.documentIds());
     }
 
     @Test
