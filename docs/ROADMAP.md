@@ -139,7 +139,7 @@ Stable test signing was added so test APK updates preserve app-private state acr
 
 The complete Phase 5 → 7B stack was merged to main, followed by the controlled Phase 3B/4 integration in PR #20. The current main line therefore contains the full proven core workflow.
 
-## Phase 8 — Field Workflow / Release Hardening — IN PROGRESS — 8C DEFERRED
+## Phase 8 — Field Workflow / Release Hardening — COMPLETE
 
 Goal: turn the proven core into a practical first field release without expanding the product unnecessarily.
 
@@ -192,22 +192,29 @@ Delivered and validated on the current main line:
 
 The camera/layout smoke passed on the operator's Samsung phone, and the selectable batch Drive gate passed against a disposable real Google Drive work order. PRs #25, #26, #27, and #30 are merged. The old superseded camera PR #24 is closed.
 
-### Phase 8C — Second Android phone/shared-master reality check — DEFERRED
+### Phase 8C — Second Android phone/shared-master reality check — COMPLETE
 
-Reason for deferral: a second suitable Android phone is not currently available.
+Physical second-phone reality gate completed on 2026-09-28 with Field Photo Prep Internal `0.28.0-internal`.
 
-When another supported Android phone becomes available, use that phone user's own Google Drive access to the shared approved master and complete the original portability gate:
-- install the internal build normally;
-- select the intended Drive provider/account and approved shared master;
-- reopen a safe existing address/work order without duplicates;
-- capture/prepare/upload one disposable photo;
-- verify the Drive destination and visual result;
-- restart and confirm safe confirmed state;
-- prove the app does not assume provider IDs are portable between phones/accounts.
+Observed evidence:
+- second physical Android phone began the gate from clean local FPP state after the operator explicitly discarded obsolete local test photos;
+- account validation completed as ACTIVE `MEMBER`;
+- the Android system picker deliberately granted this installation access to the approved `Photos` workspace;
+- the app rediscovered `HNP Jobs` and 25 existing properties from this phone's own local provider/SAF context;
+- existing property `99999 FPP UNIQUE CREATE TEST` reopened without creating a duplicate;
+- existing work order `test - 2026-09-16` reopened without creating a duplicate;
+- one disposable camera photo was captured and prepared locally (618 KB prepared copy);
+- the selected photo uploaded on attempt 1 and was confirmed in Drive, with local copies cleaned after confirmation;
+- independent Drive inspection verified the new JPEG in the exact existing work-order folder and confirmed the image was visually usable;
+- after app restart, the Drive binding remained usable and HNP discovery still worked;
+- post-restart App Status reported `VALIDATED`, `MEMBER`, Drive `USABLE`, camera `GRANTED`, `UPLOADED: 1`, all active/error queue counts zero, `Protected originals: 0`, `Cleanup pending: 0`, and `Unreadable local records: 0`.
 
-This deferral does not invalidate the already proven single-device core workflow and is not a reason to simulate a second device/account. Phase 8C remains required before claiming cross-device/account portability or treating that portability as field-proven.
+Permanent evidence:
+- `docs/PHASE_8C_SECOND_PHONE_REALITY_GATE_2026-09-28.md`.
 
-Development may continue on work that does not depend on second-device provider identity behavior. The next roadmap phase should be defined from actual remaining field needs rather than inventing a substitute for the missing second-phone gate.
+Boundary:
+- this proves the app can establish a fresh device-local provider/SAF binding on a second physical Android phone and use the existing shared master without copying the primary phone's local provider state;
+- it does not claim Google Drive ACL isolation between client companies or arbitrary access from an account that has not been granted Drive access.
 
 ## Phase 9 — Concept 3 Field UI — COMPLETE
 
@@ -233,7 +240,7 @@ Verification and merge evidence:
 - PR #35 (Concept 3 + Phase 9D), PR #36 (guarded batch local discard), and PR #37 (date readability + version reconciliation) merged to `main` on 2026-09-13;
 - Phase 9 completed at versionCode 18 / `0.13-field-ui-internal` with the existing internal package identity and stable non-production test signer.
 
-Phase 8C remains independently deferred; completing Phase 9 does not claim cross-device/account provider-ID portability.
+Phase 8C is now complete through the separately recorded second-phone/shared-master reality gate. Phase 9's historical completion remains unchanged.
 
 ## Current canonical field-tested baseline — 2026-09-17
 
