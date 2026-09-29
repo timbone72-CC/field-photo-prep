@@ -85,21 +85,21 @@ The Phase 3B and Phase 4 development branches implement repeated matching settle
 
 ## Work-order folder recycling contract
 
-1. Folder recycling is limited to work-order folders under the currently selected address folder.
-2. An automatic or simple reuse candidate must have the same work-order name as the new occurrence; the date may differ.
-3. The app must obtain provider state safe enough to determine the selected old folder's direct children before deciding whether it is empty.
-4. A truly empty old folder may be renamed to the requested new `Work Order - YYYY-MM-DD` name and reused with the same provider document ID.
+1. Folder recycling is limited to the exact work-order folder selected under the currently selected address folder.
+2. The selected dated work-order folder supplies the work-order name. Clear & Reuse changes only the date portion after the operator selects a later date; the operator does not retype the work-order name for this action.
+3. The app must obtain provider state safe enough to enumerate the selected folder's direct children and classify which direct files are photos/images before any destructive decision.
+4. The user-facing flow is **select work order → Clear & Reuse → choose later date → confirm**. A zero-photo folder uses this same path; a separate empty-folder reuse control is not required.
 5. A non-empty old folder may never be cleared, renamed, or reused automatically.
-6. The operator may explicitly choose **Clear & Reuse** for a non-empty old work-order folder.
-7. Before **Clear & Reuse**, the app must identify the folder by exact provider document ID, enumerate its direct child items from authoritative-enough provider state, show the full selected hierarchy, old folder name, child-item count, requested new name, and child-folder warning where applicable, then obtain operator confirmation.
-8. The confirmation authorizes only the exact direct-child identity snapshot shown/approved for that selected work-order folder.
-9. After confirmation, the app must re-read the selected hierarchy and direct-child identities. If the set or selected identity changed, deletion must not begin.
-10. The app may remove only the confirmed direct child identities whose direct parent is that selected work-order folder.
-11. The app must verify authoritative-enough zero-child state after removal and before rename.
-12. Only after confirmed emptiness may the app rename that same folder to the requested new dated work-order name and retain its existing provider document ID as the new occurrence destination.
-13. If any child removal fails, if state is uncertain, if emptiness cannot be confirmed, or if rename fails, the workflow stops and no new-work photo may be uploaded into that folder until the operator resolves the failure.
-14. Reuse never moves the selected work-order folder to another address and never deletes the work-order folder itself.
-15. General bulk cleanup, address-folder deletion, and deletion of arbitrary Drive content remain outside the initial scope.
+6. Before confirmation, the app must identify the exact selected folder by provider document ID and show the selected property/work order, direct Drive photo count, and requested new date.
+7. The confirmation authorizes only the exact direct-photo provider-identity snapshot shown for that selected work-order folder.
+8. After confirmation, the app must re-read the selected folder identity/name, requested-name collision state, and direct-photo identities. If the selected identity/name changes or the photo identity set changes, removal must not begin.
+9. The app may remove only confirmed direct child files whose provider MIME type identifies them as images/photos. Child folders and non-image files are never Clear & Reuse removal targets.
+10. After removal, the app must obtain authoritative-enough provider state and verify zero direct photo files. Preserved child folders and non-image files may remain.
+11. Only after the photo-clear condition is verified may the app rename that same folder to the same work-order name with the requested later date and retain its existing provider document ID as the new occurrence destination.
+12. If any approved photo removal fails, provider state is uncertain, zero-photo state cannot be confirmed, or rename fails, the workflow stops and no new-work photo may be uploaded into that folder until the operator resolves the failure.
+13. Reuse never moves the selected work-order folder to another address and never deletes the work-order folder itself.
+14. Ordinary **Add Work Order** remains non-destructive and must not silently invoke Clear & Reuse merely because an older work-order occurrence is selected.
+15. General bulk cleanup, address-folder deletion, child-folder deletion, non-photo-file deletion, and deletion of arbitrary Drive content remain outside the reuse scope.
 
 ## Photo upload contract
 
@@ -175,7 +175,7 @@ Any Android runtime change that alters or depends on workspace-tree access, comp
 6. Under a selected address folder, prove dated work-order discovery returns the real work-order children expected there.
 7. Prove one exact existing folder is reused without creating a duplicate and that multiple same-named folders require operator choice at each relevant level.
 8. Prove an empty old same-work-order folder can be renamed/reused without changing its provider document ID or parent.
-9. For **Clear & Reuse**, use disposable test content and prove the app shows the correct full hierarchy and child count before confirmation, removes only that folder's confirmed children, verifies emptiness, then renames/reuses the same provider identity.
+9. For **Clear & Reuse**, use a disposable test work order containing photos plus at least one preserved non-photo item or child folder. Prove the operator flow is select work order → Clear & Reuse → choose later date → confirm; confirmation shows the correct property/work order and Drive photo count; only the confirmed image/photo files are removed; preserved non-photo content remains; zero-photo state is verified; and the same provider identity is renamed/reused.
 10. Attempt a safe deterministic child-deletion or rename failure when it can be produced without a production destructive testing backdoor or risk to unrelated content. If it cannot be produced safely, document that limitation and do not claim the real-provider failure path was tested.
 11. For newly created folders/files, inspect the actual Drive item and confirm it is under the expected parent and has the expected type/name.
 12. Confirm the app persisted the returned/selected workspace, company, address, work-order, and remote-file provider identities as applicable and can reopen/retry without creating duplicates.
