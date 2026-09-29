@@ -1,48 +1,64 @@
 # Phase 10C — Large-Batch Upload Observation Record
 
-Date opened: 2026-09-17
+Date opened: 2026-09-17  
+Date closed: 2026-09-28
 
-Status: **OBSERVING — NO RUNTIME CHANGE AUTHORIZED YET**
+Status: **COMPLETE — NO RUNTIME CHANGE REQUIRED**
 
-Canonical baseline:
+Canonical baseline at opening:
 - `main` after Phase 10B;
 - versionCode 26 / `0.21-photo-list-scale`;
 - Phase 10B merge `110477c286bace05bb7fa56ee22199cf2de7fa92`.
 
 ## Purpose
 
-Collect one fresh realistic large-batch upload result under the current canonical behavior before deciding whether any further upload/reconciliation change is justified.
+Collect fresh realistic large-batch field evidence before deciding whether any further upload/reconciliation change is justified.
 
-This observation phase intentionally changes no Drive, queue, upload, retry, reconciliation, destination, or deletion behavior.
+This observation phase intentionally changed no Drive, queue, upload, retry, reconciliation, destination, or deletion behavior.
 
-## Record for the next natural large batch
+## Natural field evidence
 
-Capture:
-- selected photo count;
+The operator subsequently reported repeated normal field uploads in the approximate **40–130 image** range with **no material upload problem**.
+
+This is stronger operational evidence than the originally requested single natural large batch because it reflects repeated real field use across multiple large batches.
+
+The exact per-batch counters were not retained. This closeout therefore does **not** invent aggregate numbers for:
 - immediately confirmed uploads;
 - retry-safe failures;
 - UNCERTAIN results;
 - reconciliation-confirmed results;
-- unresolved items after safe reconciliation;
-- whether manual recovery was materially disruptive.
+- unresolved items.
 
-## Decision rule
+What is supported by the field report is that the current upload path has not been producing a recurring or materially disruptive UNCERTAIN/reconciliation problem during these repeated 40–130-image batches.
 
-- If false UNCERTAIN is rare and bulk recovery is practical: make no runtime change.
-- If false UNCERTAIN remains materially disruptive: review a narrow read-only pre-surface reconciliation refinement.
-- PR #39 remains an input to that review, not an automatic merge target.
+## Decision rule result
 
-## PR #39 evidence retained for later review
+Original rule:
+- if false UNCERTAIN is rare and recovery is practical: make no runtime change;
+- if false UNCERTAIN remains materially disruptive: review a narrow read-only pre-surface reconciliation refinement.
 
-PR #39 contains two ideas not present in 0.21:
-1. treat provider `ContentResolver.refresh(...) == false` as a best-effort hint rather than a hard reconciliation blocker when two matching settled non-loading snapshots can still be proven;
+Observed field behavior resolves to the first branch.
+
+**Decision: make no additional upload/reconciliation runtime change.**
+
+## PR #39 disposition
+
+PR #39 (`Fix UNCERTAIN reconciliation on stale Drive provider metadata`) was retained during observation because it contained two potentially useful hardening ideas:
+
+1. treat provider `ContentResolver.refresh(...) == false` as a best-effort hint rather than a hard reconciliation blocker when settled non-loading snapshots can still be proven;
 2. allow exact id/name/MIME + SHA-256 content proof to override stale provider size metadata such as temporary `0`.
 
-Those ideas must be re-evaluated against the canonical 0.21 line only if fresh field evidence justifies a Level 3 change.
+Current field evidence does not justify changing the working upload/reconciliation behavior to obtain those refinements.
+
+Therefore:
+- PR #39 is **not merged**;
+- its evidence remains available in Git history/PR history;
+- it is closed as no longer justified by current field behavior;
+- reopening or reimplementing those ideas requires new contradictory field evidence and a new governed Level 3 decision.
 
 ## Protected rules
 
-Do not weaken:
+Unchanged:
 - no blind retry;
 - no second remote create while remote state is unresolved;
 - exact stored work-order destination;
@@ -52,3 +68,9 @@ Do not weaken:
 - fail-closed behavior when remote truth cannot be proven.
 
 No synthetic ambiguous remote-create test is required merely to force an UNCERTAIN result.
+
+## Closeout
+
+Phase 10C is complete based on repeated natural field evidence.
+
+No Android runtime, Google Drive behavior, queue state machine, reconciliation algorithm, or remote-write path is changed by this closeout.
