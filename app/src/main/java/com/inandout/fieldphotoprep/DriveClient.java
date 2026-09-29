@@ -37,10 +37,15 @@ public final class DriveClient {
 
     public static final class ChildSnapshot {
         private final List<String> documentIds;
+        private final List<String> photoDocumentIds;
         private final int folderCount;
 
-        ChildSnapshot(List<String> documentIds, int folderCount) {
+        ChildSnapshot(
+                List<String> documentIds,
+                List<String> photoDocumentIds,
+                int folderCount) {
             this.documentIds = Collections.unmodifiableList(new ArrayList<>(documentIds));
+            this.photoDocumentIds = Collections.unmodifiableList(new ArrayList<>(photoDocumentIds));
             this.folderCount = folderCount;
         }
 
@@ -48,8 +53,20 @@ public final class DriveClient {
             return documentIds;
         }
 
+        public List<String> photoDocumentIds() {
+            return photoDocumentIds;
+        }
+
         public int count() {
             return documentIds.size();
+        }
+
+        public int photoCount() {
+            return photoDocumentIds.size();
+        }
+
+        public int preservedCount() {
+            return count() - photoCount();
         }
 
         public int folderCount() {
@@ -300,6 +317,12 @@ public final class DriveClient {
         return DocumentsContract.Document.MIME_TYPE_DIR.equals(mimeType);
     }
 
+    static boolean isPhotoMimeType(String mimeType) {
+        return mimeType != null
+                && !isFolderMimeType(mimeType)
+                && mimeType.startsWith("image/");
+    }
+
     static boolean isAuthoritativeFolderState(boolean refreshAccepted, boolean loading) {
         return refreshAccepted && !loading;
     }
@@ -333,6 +356,7 @@ public final class DriveClient {
             ContentResolver resolver,
             Uri childrenUri) throws IOException {
         List<String> ids = new ArrayList<>();
+        List<String> photoIds = new ArrayList<>();
         int folderCount = 0;
 
         try (Cursor cursor = resolver.query(childrenUri, CHILD_PROJECTION, null, null, null)) {
@@ -343,13 +367,20 @@ public final class DriveClient {
             int idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
             int mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE);
             while (cursor.moveToNext()) {
-                ids.add(cursor.getString(idColumn));
-                if (isFolderMimeType(cursor.getString(mimeColumn))) {
+                String id = cursor.getString(idColumn);
+                String mimeType = cursor.getString(mimeColumn);
+                ids.add(id);
+                if (isFolderMimeType(mimeType)) {
                     folderCount++;
+                } else if (isPhotoMimeType(mimeType)) {
+                    photoIds.add(id);
                 }
             }
             Collections.sort(ids);
-            return new ChildQueryResult(new ChildSnapshot(ids, folderCount), loading);
+            Collections.sort(photoIds);
+            return new ChildQueryResult(
+                    new ChildSnapshot(ids, photoIds, folderCount),
+                    loading);
         }
     }
 
