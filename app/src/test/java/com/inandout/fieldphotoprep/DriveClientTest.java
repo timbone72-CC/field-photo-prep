@@ -203,6 +203,25 @@ public final class DriveClientTest {
     }
 
     @Test
+    public void photoIdentitySetCanStayStableWhileOtherItemsChange() {
+        DriveClient.ChildSnapshot first = new DriveClient.ChildSnapshot(
+                Arrays.asList("photo-1", "notes"),
+                Arrays.asList("photo-1"),
+                0);
+        DriveClient.ChildSnapshot second = new DriveClient.ChildSnapshot(
+                Arrays.asList("photo-1", "notes", "nested-folder"),
+                Arrays.asList("photo-1"),
+                1);
+
+        assertTrue(DriveClient.sameDocumentIds(
+                first.photoDocumentIds(),
+                second.photoDocumentIds()));
+        assertFalse(DriveClient.sameDocumentIds(
+                first.documentIds(),
+                second.documentIds()));
+    }
+
+    @Test
     public void childSnapshotSeparatesImageFilesFromOtherItems() {
         DriveClient.ChildSnapshot snapshot = new DriveClient.ChildSnapshot(
                 Arrays.asList("photo-1", "notes", "nested-folder"),
