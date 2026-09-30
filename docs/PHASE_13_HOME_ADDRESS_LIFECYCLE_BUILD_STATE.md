@@ -1,14 +1,15 @@
 # Phase 13 — Home Address Lifecycle & Cleanup — Build State
 
 Date: 2026-09-29  
-Status: **LEVEL 3 — PHASE 13A–13D IMPLEMENTED / CI PASS; PHASE 13E NEXT**  
+Status: **LEVEL 3 — PHASE 13A–13E IMPLEMENTED; FINAL AUTOMATED AND PHYSICAL BEHAVIOR GATES PASS / TEST-FIXTURE CLOSEOUT AND EXPLICIT MERGE APPROVAL PENDING**  
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
 PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
 Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.
-Current validated Phase 13D runtime head: `e79219684a3b7176e9807bb747e0380dc910dc4f`.
-Android CI run #1131 / `36666095641`: **PASS** on that exact runtime head.
-Validated internal build: `0.28.2-internal` / versionCode `39`.
+Final validated Phase 13 runtime head: `731a231695436da9f355cafaa6c9922d814e82ed`.
+Android CI run #1139 / `36702591737`: **PASS** on that exact runtime head.
+Physically installed Samsung internal build: `0.28.5-internal` / versionCode `42`.
+The historical Phase 13D and intermediate Phase 13E snapshots below remain as evidence of earlier checkpoints; this header and the final Phase 13E acceptance record at the end govern the current status.
 
 ## Goal
 
@@ -444,15 +445,7 @@ Completed:
 - existing PR #92 Clear & Reuse photo-only rules selected as the photo classification/deletion baseline;
 - Phase 10F non-portable backup boundary confirmed.
 
-Not started:
-- Phase 13 disposable external/Drive mutation proof;
-- Phase 13 physical Samsung/Google Drive reality gate.
-
-## Next checkpoint
-
-Begin **Phase 13E — Verification / reality gate** on this authoritative branch.
-
-Use the already-approved disposable positive + negative fixture plan. Do not use live customer/job folders. Phase 13E must prove the real Google Drive cleanup/preservation behavior, archive/search/reactivate identity reuse, and unresolved/protected-work blocking before explicit Level 3 merge approval is requested.
+Historical checkpoint at Phase 13D: the disposable Samsung/Google Drive reality gate had not yet begun. Its completed evidence and remaining closeout obligations are recorded in the final Phase 13E acceptance section below.
 
 ## Phase 13E archive local-history/numbering defect discovered on physical Samsung
 
@@ -461,3 +454,34 @@ After the real-provider positive gate, Reactivate correctly reused the original 
 Scope: on this same authoritative Phase 13 branch/PR #93, retire *only* confirmed old metadata and any remaining local copies bound to the exact verified dated work-order IDs after fresh remote zero-photo proof; reset their capture sequence as a new occurrence; keep the original provider IDs/folders/non-photo files, preserve unrelated local records, and block on any unresolved/corrupt local metadata. A failed local cleanup must not claim Archive succeeded or commit a partial ledger reset. This is an explicit revision to the earlier Phase 13 assumption that confirmed history could remain or that archive should never reset capture numbering. Clear & Reuse's separate history semantics remain unchanged.
 
 Physical reality already proven: original Archive removed exactly 4 disposable Drive photos, preserved both folders and Google Doc; Samsung 0.28.4-internal passed physical address-card navigation and menu checks; negative gate showed WAITING correctly blocks Archive, with no mutation. **Do not treat local-history retirement or capture-number reset as passed yet**. Current fixture has one new confirmed upload and one new WAITING record under Test B; do not delete/renumber either on installation or while WAITING remains. After focused/full CI of the repair, operator resolves that disposable WAITING photo explicitly, then runs one fresh, confirmed Archive and reactivation to prove old rows vanish and new capture starts 001. PR remains draft and Level 3 merge approval is still required. Rollback baseline remains the earlier verified head `31a33093b3067cccbc3906f1d677dc5c10f5a289` (0.28.4-internal).
+
+
+## Phase 13E — Final physical acceptance evidence (2026-09-30)
+
+**Implementation / full CI:** exact final runtime head `731a231695436da9f355cafaa6c9922d814e82ed`; Android CI #1139 (`36702591737`) **PASS** on this runtime head. Unit tests and production identity, internal debug build, production signing fail-closed, stable test signer/APK identity, complete connected emulator instrumentation, internal launch smoke, and rendered evidence all passed. Internal APK `0.28.5-internal`, versionCode `42`; CI APK artifact ID `11091101345`, workflow artifact digest `sha256:bf0dba7d86cd038f334e25264f6e2a991606adc661eb019a29c2af3458caee84`. The documentation-only evidence update does not alter this validated runtime head.
+
+**Live context / fixture:** physical operator Samsung (validated MEMBER, Drive USABLE, camera GRANTED), selected `HNP Jobs` company inside the existing SAF Google Drive workspace, disposable address `99998 PHASE 13 TEST` with two existing dated work-order folders `PHASE 13 TEST A - 2026-09-29` and `PHASE 13 TEST B - 2026-09-29`, and manually placed non-photo Google Doc `PHASE 13 KEEP ME` under B. No live customer/job folders used. These are device-observed behavior claims, not synthetic provider-ID assertions.
+
+**Original remote photo cleanup and preservation (physical evidence):**
+- On Samsung 0.28.3, Archive preflight listed 2 dated work orders, 4 remote direct photos, and 1 direct non-photo item to preserve; the operator completed Archive. Independent Google Drive screenshots showed A empty, B retaining its original Google Doc, both original folder entries still present, and all 4 approved photos absent.
+- The test address was found via search and reactivated, retaining its existing two dated work-order entries; exact provider-ID byte comparison was not independently exported from the device.
+- The 0.28.4 navigation repair passed full CI #1138 (`36700372692`) and operator physical taps: the address card opened Work Orders and the row's three-dot action opened the Archive confirmation independently.
+
+**Protected/unresolved negative gate (physical evidence):**
+- Operator successfully uploaded one new disposable photo under B and left a second as local `WAITING`.
+- Attempting Archive displayed `Could not verify address archive. Nothing was changed` and identified the `WAITING` photo; Home showed the target's `1 photo` protected indicator. This proves fail-closed refusal before cleanup for the witnessed WAITING case.
+- Operator explicitly discarded only that disposable WAITING photo; Support Status on 0.28.5 then showed CAPTURING, WAITING, UPLOADING, FAILED, UNCERTAIN, Protected originals, and unreadable local records all zero. Do not infer no protected records on another device/context.
+
+**Archive local-history retirement and numbering repair (physical evidence):**
+- Under 0.28.5, the second Archive preflight listed **2 work-order folders, 1 Drive photo targeted, 1 non-photo item preserved**. The operator confirmed Archive; Home displayed **24** rather than **25** active properties and no longer displayed the disposable address.
+- The operator searched for and reactivated that address, opened existing dated work order B, and provided a physical Photos screenshot of **Photos (0)**: the previously stale uploaded-history rows were absent. This directly verifies the issue the operator reported was repaired.
+- The operator then captured and uploaded one new photo in B, copied **FPP_CAPTURE_ORDER_V1**, and supplied the following non-sensitive extracted assertions from its real result: address = `99998 PHASE 13 TEST`, work order = `PHASE 13 TEST B - 2026-09-29`, count = **1**, record prefix = **001**, remote filename prefix = **001_field-photo-**. Thus the next capture numbered **001**, not the old ledger sequence. The full photo ID and exact timestamp are intentionally not copied into this repo.
+- This proof covers B's physical capture-number reset. A's 001 reset is covered by exact-head automated tests, not independently retested on the phone. The preserved document remained identified in the second preflight; its post-second-Archive content was not separately screenshotted, while the prior independent Drive preservation proof already passed.
+
+**External-state disposition / stop boundary:**
+- The address was intentionally reactivated for the successful numbering proof and currently contains **one newly uploaded disposable numbered test photo under B**, plus the earlier preserved non-photo test document. The prior archived photo history was removed; this final new photo was uploaded after the successful second Archive, so it is not expected to disappear until a **separately confirmed** cleanup. Do not claim the disposable fixture has been completely cleaned.
+- Remaining fixture housekeeping: the operator may perform one last deliberate Archive of `99998 PHASE 13 TEST` to remove the newly uploaded test photo and retain the folders/document. The non-photo test document may be cleaned manually from Drive later if desired. No assistant-initiated Drive mutation is authorized or needed to mark the verified implementation behavior.
+- **Phase 13E implementation, final full CI, and tested positive/negative/numbering physical behavior: PASS.** Preserve the precise evidence limits above. PR #93 remains draft/unmerged; final fixture disposition and **explicit Level 3 operator pre-merge approval** remain open. Do not interpret acceptance of a phone test or the earlier design approval as permission to merge.
+- Runtime rollback point before the scoped archive-history correction: `31a33093b3067cccbc3906f1d677dc5c10f5a289` (0.28.4-internal). Governed full Phase 13 base: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`.
+
+**Next exact checkpoint:** obtain the operator's preferred disposition for the disposable address's final newly uploaded test photo, then request explicit Level 3 merge approval on this exact validated runtime scope. Do not repeat established provider or instrumentation tests absent new contradictory evidence.
