@@ -38,9 +38,9 @@ public final class HomePropertySearchInstrumentedTest {
 
         PropertyLifecycleStore lifecycle = new PropertyLifecycleStore(context);
         lifecycle.markWorkActivity("company", "active", 100L);
-        lifecycle.setState("company", "archived", PropertyLifecycleStore.State.ARCHIVED);
+        lifecycle.setStateForTest("company", "archived", PropertyLifecycleStore.State.ARCHIVED);
         lifecycle.markWorkActivity("company", "archived", 200L);
-        lifecycle.setState("company", "deleted", PropertyLifecycleStore.State.DELETED);
+        lifecycle.setStateForTest("company", "deleted", PropertyLifecycleStore.State.DELETED);
 
         Intent intent = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
