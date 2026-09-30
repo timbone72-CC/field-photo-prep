@@ -1,11 +1,11 @@
 # Phase 13 — Home Address Lifecycle & Cleanup — Build State
 
 Date: 2026-09-29  
-Status: **LEVEL 3 — PHASE 13A–13B IMPLEMENTED / CI PASS; PHASE 13C NEXT**  
+Status: **LEVEL 3 — PHASE 13A–13C IMPLEMENTED / CI PASS; PHASE 13D NEXT**  
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
 PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
-Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.\nCurrent validated Phase 13B runtime head: `b88f15142626d1b0697cd8387620cbbd359b2f01`.
+Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.\nCurrent validated Phase 13C branch head: `c11d5aea78a695d2043c0f5bef93b08f05d422cd`.\nCurrent Phase 13C runtime implementation head: `14ed8883d7527aa13186d1149c96c5e786fae4d9`.
 
 ## Goal
 
@@ -369,6 +369,33 @@ Phase 13B verification:
 - rendered-screen variants and internal launch smoke: PASS;
 - internal APK and rendered evidence artifacts uploaded by CI.
 
+Phase 13C completed on 2026-09-29:
+- Archive/Delete now resolve the exact current company/address provider identity from fresh Drive state before cleanup;
+- the cleanup plan snapshots only direct dated work-order folders under that exact address and classifies only direct child `image/*` documents as photo deletion targets;
+- child folders and non-image files are preserved and are never cleanup targets;
+- `PendingPhotoStore.requireAddressCleanupSafe` blocks cleanup when the affected address has unresolved/protected local photo state and fails closed when unreadable metadata prevents proving ownership;
+- the confirmation summarizes the exact property, work-order count, photo count, and preserved non-photo count before any deletion;
+- after confirmation the app revalidates the exact address, work-order identity set, and approved direct-photo identity set before mutation;
+- persisted SAF read/write access and runtime Drive-mutation authorization are rechecked immediately before deletion;
+- cleanup executes deterministically one work order at a time: remove only the approved photos for that work order, obtain fresh provider state, prove that work order has zero direct photos, then continue to the next work order;
+- if deletion or post-delete verification fails, later work orders are not touched, the removed count is reported, the address cleanup path is blocked until refresh/inspection, and lifecycle state is not committed;
+- final `ARCHIVED` / `DELETED` state is committed only after all approved photos are removed, every affected work order verifies photo-empty, the work-order folder set still matches, and the original address provider identity/name is still confirmed;
+- Archive/Delete do not rename, move, recreate, or remove address/work-order folders and do not alter non-photo content.
+
+Phase 13C verification:
+- implementation review found an initial sequencing defect where all work orders could be deleted before post-delete verification; this was corrected before accepting the checkpoint so each work order is verified before any later work order can be mutated;
+- focused mutation coverage now proves the call order `delete work-1 photos → verify work-1 → delete work-2 photos → verify work-2` and proves a failed first-work-order verification prevents later-work-order deletion;
+- Android CI run #1120 / `36664611383` correctly failed only because an instrumentation assertion expected one specific access-rejection message even though the app had already failed closed at an earlier valid Drive authority guard;
+- that test was broadened to accept the existing valid Drive authority/access guard without weakening runtime behavior;
+- Android CI run #1121 / `36664624482`: **PASS** on branch head `c11d5aea78a695d2043c0f5bef93b08f05d422cd`, containing runtime implementation head `14ed8883d7527aa13186d1149c96c5e786fae4d9`;
+- unit tests and production identity checks: PASS;
+- internal debug build: PASS;
+- production release fail-closed, stable signer, and APK identity/evidence checks: PASS;
+- full connected Android instrumentation: PASS;
+- rendered verification and internal launch smoke: PASS;
+- internal APK and rendered/test evidence artifacts uploaded by CI;
+- no Phase 13 real-provider Drive photo deletion has been performed yet; that external behavior remains reserved for the Phase 13E disposable Samsung/Google Drive reality gate.
+
 Completed:
 - current `main` inspected;
 - no open PR or existing Phase 13 branch owned this scope;
@@ -379,13 +406,12 @@ Completed:
 - Phase 10F non-portable backup boundary confirmed.
 
 Not started:
-- Phase 13C destructive Drive photo cleanup;
-- Phase 13D inactivity review;
+- Phase 13D adjustable inactivity review;
 - external/Drive mutation for Phase 13;
 - Phase 13 physical reality gate.
 
 ## Next checkpoint
 
-Begin **Phase 13C — Safe Archive/Delete Photo Cleanup** on this authoritative branch.
+Begin **Phase 13D — Adjustable Inactivity Review** on this authoritative branch.
 
-Replace the current fail-closed Archive/Delete completion placeholder with the governed exact-address cleanup pipeline. Do not commit `ARCHIVED` or `DELETED` until all required work-order/photo identity snapshots are fresh, protected/unresolved local work is absent, the operator confirms the exact bounded cleanup, revalidation still matches, and remote photo-only cleanup is proven complete. Preserve address/work-order folders and all non-photo content.
+Add the approved global **Suggest archive after** threshold with choices 30 days, 60 days, 90 days, 6 months, 1 year, and Never; default 90 days. Keep it suggestion-only, expose only a compact review surface, and do not perform archive or Drive cleanup automatically. Preserve the proven Phase 13C cleanup path unchanged until the later Phase 13E reality gate.
