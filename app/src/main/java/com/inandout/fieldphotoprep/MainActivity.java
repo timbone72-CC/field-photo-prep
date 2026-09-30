@@ -381,6 +381,14 @@ private void buildHomeUi() {
         openAddress(folder);
     });
 
+    ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
+        var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+        view.setPadding(0, bars.top, 0, bars.bottom);
+        return insets;
+    });
+    ViewCompat.requestApplyInsets(homeRoot);
+}
+
     private void showPropertyOptions(View anchor, DriveFolder folder) {
         if (busy || folder == null) {
             if (busy) {
@@ -481,13 +489,6 @@ private void buildHomeUi() {
                 : "Archiving is waiting for verified photo cleanup. No changes were made.");
     }
 
-    ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
-        var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-        view.setPadding(0, bars.top, 0, bars.bottom);
-        return insets;
-    });
-    ViewCompat.requestApplyInsets(homeRoot);
-}
 
 private void openSavedPropertyFromHome() {
     DriveFolder saved = folderPrefs.getCurrentAddress();
