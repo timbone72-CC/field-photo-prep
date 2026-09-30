@@ -5,7 +5,10 @@ Status: **LEVEL 3 — PHASE 13A–13C IMPLEMENTED / CI PASS; PHASE 13D NEXT**
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
 PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
-Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.\nCurrent validated Phase 13C branch head: `c11d5aea78a695d2043c0f5bef93b08f05d422cd`.\nCurrent Phase 13C runtime implementation head: `14ed8883d7527aa13186d1149c96c5e786fae4d9`.
+Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.
+Current validated Phase 13C branch head: `c11d5aea78a695d2043c0f5bef93b08f05d422cd`.
+Current Phase 13C runtime implementation head: `14ed8883d7527aa13186d1149c96c5e786fae4d9`.
+Validated internal build: `0.28.2-internal` / versionCode `39`.
 
 ## Goal
 
@@ -394,6 +397,8 @@ Phase 13C verification:
 - full connected Android instrumentation: PASS;
 - rendered verification and internal launch smoke: PASS;
 - internal APK and rendered/test evidence artifacts uploaded by CI;
+- internal APK artifact: `field-photo-prep-internal-apk`, artifact id `11075932150`, SHA-256 `9417eb205336a49bbc008d5b13561a29c71f84c8a34ba81558b92b551a4acdf4`;
+- rendered/test evidence artifact id `11075966941`, SHA-256 `da0ba134fcd8338eda748ccd2f9d8eace27e4b54c335e82aafc1db9ff2130fd2`;
 - no Phase 13 real-provider Drive photo deletion has been performed yet; that external behavior remains reserved for the Phase 13E disposable Samsung/Google Drive reality gate.
 
 Completed:
