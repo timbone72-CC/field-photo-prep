@@ -12,7 +12,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -1476,7 +1475,6 @@ private void buildLegacyWorkOrderUi() {
             try {
                 List<DriveFolder> folders = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, parentId);
-                logFolderProbe("ADDRESSES", master, folderPrefs.getCurrentAddress(), folders);
                 runOnUiThread(() -> {
                     setDiscoveredPropertyFolders(folders);
                     propertyCleanupBlockedAddressId = null;
@@ -1484,10 +1482,6 @@ private void buildLegacyWorkOrderUi() {
                     setNotBusy();
                 });
             } catch (Exception error) {
-                if (BuildConfig.DEBUG) {
-                    Log.i("FPPFolderProbe", "ADDRESSES error="
-                            + error.getClass().getSimpleName() + ": " + error.getMessage());
-                }
                 runOnUiThread(() -> showError("Could not read address folders", error));
             }
         });
@@ -1821,15 +1815,12 @@ private void buildLegacyWorkOrderUi() {
         }
 
         createBlockedUntilRefresh = false;
-        final DriveFolder requestedAddress = selectedAddress;
-        String addressId = requestedAddress.id();
+        String addressId = selectedAddress.id();
         setBusy("Refreshing work-order folders…");
         executor.execute(() -> {
             try {
                 List<DriveFolder> folders = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, addressId);
-                logFolderProbe("WORK_ORDERS", requestedAddress,
-                        folderPrefs.getCurrentWorkOrder(), folders);
                 runOnUiThread(() -> {
                     if (!isStillOnAddress(addressId)) {
                         return;
@@ -1843,11 +1834,6 @@ private void buildLegacyWorkOrderUi() {
                     setNotBusy();
                 });
             } catch (Exception error) {
-                if (BuildConfig.DEBUG) {
-                    Log.i("FPPFolderProbe", "WORK_ORDERS parentName=" + requestedAddress.name()
-                            + " parentIdTail=" + probeId(requestedAddress) + " error="
-                            + error.getClass().getSimpleName() + ": " + error.getMessage());
-                }
                 runOnUiThread(() -> {
                     if (!isStillOnAddress(addressId)) {
                         return;
@@ -2459,46 +2445,6 @@ private void buildLegacyWorkOrderUi() {
                 NextActionGuide.workOrders(busy, selectedAddress != null && selectedWorkOrder != null);
         photosButton.setText(action.label());
         photosButton.setEnabled(action.enabled());
-    }
-
-    // TEMPORARY PR #95 INTERNAL-ONLY DIAGNOSTIC. Remove before merge.
-    // Report only the selected address and similarly numbered candidates; never raw
-    // tree URIs or full remote provider IDs in device logs.
-    private static String probeId(DriveFolder folder) {
-        if (folder == null) {
-            return "(none)";
-        }
-        String id = folder.id();
-        return "…" + id.substring(Math.max(0, id.length() - 12));
-    }
-
-    private static void logFolderProbe(
-            String scope,
-            DriveFolder parent,
-            DriveFolder saved,
-            List<DriveFolder> children) {
-        if (!BuildConfig.DEBUG) {
-            return;
-        }
-        String tag = "FPPFolderProbe";
-        Log.i(tag, scope + " parentName=" + parent.name()
-                + " parentIdTail=" + probeId(parent)
-                + " savedName=" + (saved == null ? "(none)" : saved.name())
-                + " savedIdTail=" + probeId(saved)
-                + " childCount=" + children.size());
-        String sameStreetNumber = saved == null
-                ? null
-                : PropertyDisplayName.readableFolderName(saved.name()).split(" ", 2)[0] + " ";
-        for (DriveFolder child : children) {
-            if ("ADDRESSES".equals(scope) && (saved == null
-                    || (!child.id().equals(saved.id())
-                    && !PropertyDisplayName.readableFolderName(child.name())
-                            .startsWith(sameStreetNumber)))) {
-                continue;
-            }
-            Log.i(tag, scope + " childName=" + child.name()
-                    + " childIdTail=" + probeId(child));
-        }
     }
 
     private String shortId(String id) {
