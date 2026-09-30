@@ -15,14 +15,14 @@ final class DriveOptionsPolicy {
             boolean hasWorkspace,
             boolean hasCurrentCompany) {
         if (!bindingUsable) {
-            return new CharSequence[]{"Archive Review", "App Status", "Account"};
+            return new CharSequence[]{"Suggest Archive After", "App Status", "Account"};
         }
         if (!hasWorkspace) {
-            return new CharSequence[]{"Set Up Companies", "Archive Review", "App Status", "Account"};
+            return new CharSequence[]{"Set Up Companies", "Suggest Archive After", "App Status", "Account"};
         }
         if (!hasCurrentCompany) {
-            return new CharSequence[]{"Choose Company", "Add Company", "Change Workspace", "Archive Review", "App Status", "Account"};
+            return new CharSequence[]{"Choose Company", "Add Company", "Change Workspace", "Suggest Archive After", "App Status", "Account"};
         }
-        return new CharSequence[]{"Add Company", "Edit Company", "Change Workspace", "Archive Review", "App Status", "Account"};
+        return new CharSequence[]{"Add Company", "Edit Company", "Change Workspace", "Suggest Archive After", "App Status", "Account"};
     }
 }
