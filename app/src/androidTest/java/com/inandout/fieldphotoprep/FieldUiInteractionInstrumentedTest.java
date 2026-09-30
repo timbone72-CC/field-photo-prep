@@ -192,11 +192,8 @@ public final class FieldUiInteractionInstrumentedTest {
     }
 
     private static void bindSingleProperty(MainActivity activity, DriveFolder property) throws Exception {
-        @SuppressWarnings("unchecked")
-        List<DriveFolder> visible = (List<DriveFolder>) field(activity, "propertyFolders");
-        visible.clear();
-        visible.add(property);
-        call(activity, "notifyFolderAdapters", new Class<?>[]{});
+        call(activity, "setDiscoveredPropertyFolders",
+                new Class<?>[]{List.class}, List.of(property));
         activity.findViewById(R.id.home_property_list).setEnabled(true);
     }
 
