@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -18,7 +19,7 @@ final class PropertyArchiveReviewPolicy {
         PropertyArchiveReviewPrefs.Threshold effective =
                 threshold == null ? PropertyArchiveReviewPrefs.Threshold.DAYS_90 : threshold;
         if (effective == PropertyArchiveReviewPrefs.Threshold.NEVER || nowEpochMs <= 0L) {
-            return List.of();
+            return Collections.emptyList();
         }
 
         long cutoffEpochMs = cutoffEpochMs(effective, nowEpochMs);
