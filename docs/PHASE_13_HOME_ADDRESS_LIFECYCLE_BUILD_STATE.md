@@ -1,7 +1,7 @@
 # Phase 13 — Home Address Lifecycle & Cleanup — Build State
 
 Date: 2026-09-29  
-Status: **LEVEL 3 — PHASE 13A–13E IMPLEMENTED; FINAL AUTOMATED AND PHYSICAL BEHAVIOR GATES PASS / TEST-FIXTURE CLOSEOUT AND EXPLICIT MERGE APPROVAL PENDING**  
+Status: **LEVEL 3 — PHASE 13A–13E VERIFIED; OPERATOR MERGE APPROVAL GRANTED 2026-09-30; GOVERNED MERGE PENDING**  
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
 PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
@@ -481,7 +481,7 @@ Physical reality already proven: original Archive removed exactly 4 disposable D
 **External-state disposition / stop boundary:**
 - The address was intentionally reactivated for the successful numbering proof and currently contains **one newly uploaded disposable numbered test photo under B**, plus the earlier preserved non-photo test document. The prior archived photo history was removed; this final new photo was uploaded after the successful second Archive, so it is not expected to disappear until a **separately confirmed** cleanup. Do not claim the disposable fixture has been completely cleaned.
 - Remaining fixture housekeeping: the operator may perform one last deliberate Archive of `99998 PHASE 13 TEST` to remove the newly uploaded test photo and retain the folders/document. The non-photo test document may be cleaned manually from Drive later if desired. No assistant-initiated Drive mutation is authorized or needed to mark the verified implementation behavior.
-- **Phase 13E implementation, final full CI, and tested positive/negative/numbering physical behavior: PASS.** Preserve the precise evidence limits above. PR #93 remains draft/unmerged; final fixture disposition and **explicit Level 3 operator pre-merge approval** remain open. Do not interpret acceptance of a phone test or the earlier design approval as permission to merge.
+- **Phase 13E implementation, final full CI, and tested positive/negative/numbering physical behavior: PASS.** Preserve the precise evidence limits above. The operator subsequently explicitly replied **Approved** to merging PR #93 on 2026-09-30. Level 3 pre-merge approval is now **GRANTED** for the validated Phase 13 scope. PR remains unmerged until governed merge succeeds; do not claim merged based on approval alone. The disposable last numbered photo and test document are **deliberately retained and documented for a separate operator-initiated cleanup**, not proof of a fully empty fixture. No automatic remote cleanup is authorized.
 - Runtime rollback point before the scoped archive-history correction: `31a33093b3067cccbc3906f1d677dc5c10f5a289` (0.28.4-internal). Governed full Phase 13 base: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`.
 
-**Next exact checkpoint:** obtain the operator's preferred disposition for the disposable address's final newly uploaded test photo, then request explicit Level 3 merge approval on this exact validated runtime scope. Do not repeat established provider or instrumentation tests absent new contradictory evidence.
+**Next exact checkpoint:** reconcile PR metadata as Level 3 merge approval APPROVED, verify final GitHub required checks and governed merge PR #93 on the unchanged runtime scope. Do not re-run physical gates absent contradictory evidence; preserve the remaining disposable fixture until the operator initiates separate cleanup. Record actual merge SHA when known.
