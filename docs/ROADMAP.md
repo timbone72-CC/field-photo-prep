@@ -851,15 +851,15 @@ Safe design work may overlap where recorded in the master plan, but multiple run
 
 Settled Phase 12A/12B decisions must not drift without contradictory evidence or an explicit governed design change.
 
-## Phase 13 — Home Address Lifecycle & Cleanup — DESIGN APPROVED / READY FOR IMPLEMENTATION
+## Phase 13 — Home Address Lifecycle & Cleanup — COMPLETE
 
 Date approved: 2026-09-29
 
 Goal: keep Home useful as the property history grows without turning FPP into a photo archive or a property-management system.
 
-Phase 13 is one Level 3 roadmap phase with staged checkpoints. The checkpoints are implementation/verification boundaries, not separate roadmap phases.
+Phase 13 was one Level 3 phase with staged checkpoints. All checkpoints are complete. Operator merge approval was granted on 2026-09-30; PR #93 merged to governed `main` at `163db396eaf877cca36c674f500a6ddbb21b491c`. The final verified Android internal runtime is `0.28.5-internal` (versionCode 42), implementation head `731a231695436da9f355cafaa6c9922d814e82ed`. Full final Android CI #1142 (`36705305824`) and governance passed before merge; all post-runtime commits were documentation only. Physical disposable Samsung/Google Drive positive and WAITING-negative tests, archive history retirement, and new capture numbering `001` passed. Full evidence and the separately confirmed fixture removal are in `docs/PHASE_13_HOME_ADDRESS_LIFECYCLE_BUILD_STATE.md`. No Phase 14 is currently approved. The checkpoints below preserve the original approved behavior as a record, not pending work.
 
-### Phase 13A — Home scalability — IMPLEMENTED / CI PASS
+### Phase 13A — Home scalability — COMPLETE
 
 - Home shows active properties only and sorts them by most recent real work activity.
 - Add compact address search at the top of Home.
@@ -868,7 +868,7 @@ Phase 13 is one Level 3 roadmap phase with staged checkpoints. The checkpoints a
 - Browsing, opening, searching, or reviewing a property must not reset its inactivity age.
 - No destructive Drive behavior is introduced in 13A.
 
-### Phase 13B — Archive, reactivate, and manual delete — IMPLEMENTED / CI PASS (final Archive/Delete commit gated to 13C)
+### Phase 13B — Archive, reactivate, and manual delete — COMPLETE
 
 - Add device-local property lifecycle state keyed to the exact company/address provider identity.
 - `Archive` removes the property from the normal Home list while retaining enough lightweight state to find and reactivate it.
@@ -878,7 +878,7 @@ Phase 13 is one Level 3 roadmap phase with staged checkpoints. The checkpoints a
 - Phase 13 does not recursively delete company/address/work-order folder structure. Drive folder identity and non-photo content are preserved.
 - Explicitly choosing/recreating an exact existing Drive address later may clear the local deleted/suppressed state rather than create a duplicate folder.
 
-### Phase 13C — Safe archive photo cleanup — IMPLEMENTED / AUTOMATED CI PASS
+### Phase 13C — Safe archive photo cleanup — COMPLETE
 
 - FPP is not a long-term photo library. Archiving may remove old Drive photos under that address after safety checks pass.
 - Reuse the approved Clear & Reuse definition of photo cleanup: delete direct image/photo children only; preserve non-photo items and folder structure.
@@ -889,7 +889,7 @@ Phase 13 is one Level 3 roadmap phase with staged checkpoints. The checkpoints a
 - Partial or ambiguous remote deletion fails closed and blocks further affected Drive mutation until refresh/inspection.
 - No unrelated Drive content is deleted.
 
-### Phase 13D — Adjustable inactivity review
+### Phase 13D — Adjustable inactivity review — COMPLETE
 
 Add one global setting:
 
@@ -898,10 +898,10 @@ Add one global setting:
 - Default: 90 days.
 - This threshold creates suggestions only; it never auto-archives or auto-deletes.
 - Use a compact `Addresses ready for review` entry rather than recurring pop-up prompts.
-- Review supports individual or bounded multi-select archive actions without creating a general storage-management dashboard.
+- Review filters the existing Home list to eligible addresses and uses the existing individual per-address Archive action; it adds no bulk cleanup control or general storage-management dashboard.
 - Do not add per-company timers, tags, favorites, folders, pinning, storage analytics, or other management features unless field evidence later justifies them.
 
-### Phase 13E — Verification / reality gate
+### Phase 13E — Verification / reality gate — COMPLETE
 
 Automated coverage must prove:
 - active vs archived vs deleted Home/search behavior;
@@ -921,6 +921,8 @@ Physical Google Drive proof must use a disposable fixture and demonstrate:
 **active property → completed work/photos → archive → old Drive photos removed while non-photo/folder structure remains → property absent from Home → search finds archived property → reactivate → same provider property identity is reused.**
 
 A separate negative gate must prove unresolved/protected work blocks archive/delete cleanup without removing Drive photos.
+
+**Accepted Phase 13E evidence:** On a disposable address, two existing dated work-order folders and one non-photo document were preserved while confirmed photos were deleted. Search/reactivation and repaired Home row/three-dot navigation passed on physical Samsung. Archive refused a `WAITING` protected photo without mutation. After explicit disposal of only that disposable pending photo, renewed Archive and Reactivate retired the old confirmed photo history (`Photos (0)`); a newly captured/uploaded photo was numbered `001` in the actual capture-order export. The final photo was removed by a last operator-confirmed Archive. Subsequent fresh Google Drive folder listings showed both work-order folders photo-empty, one with only the expected test document. After explicit additional operator approval, that document, both empty test work-order folders, and their exact test parent folder were permanently deleted through the connected Drive account; a fresh Drive search no longer found the test parent. No application-initiated recursive folder deletion was added or exercised. The exact provider-ID byte-level identity was not exported from the phone; do not overclaim that separate observation.
 
 ### Phase 13 boundaries
 
