@@ -81,10 +81,6 @@ final class PropertyLifecycleStore {
         persistState(companyId, addressId, State.DELETED);
     }
 
-    void setStateForTest(String companyId, String addressId, State state) {
-        persistState(companyId, addressId, state);
-    }
-
     private void persistState(String companyId, String addressId, State state) {
         if (state == null) {
             throw new IllegalArgumentException("Property lifecycle state is required.");
