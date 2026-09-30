@@ -1,7 +1,7 @@
 # Clear & Reuse Simple Workflow — Build State
 
 Date: 2026-09-29
-Status: LEVEL 3 — FINAL CI / PRE-MERGE GATE
+Status: LEVEL 3 — MERGE APPROVED
 Branch: `fix/clear-reuse-photo-only-20260929`
 PR: #92 `Fix Clear & Reuse workflow and limit cleanup to photos`
 Rollback: `26d4f8fc7a25469ac6f1f10e4ed67fff339cf4ba`
@@ -68,6 +68,6 @@ Result: **PASS**. The required real-provider photo-only cleanup, preserved non-p
 ## Remaining
 
 - pass the required GitHub Android CI on the exact final PR head;
-- obtain explicit operator Level-3 merge approval after CI passes.
+- merge PR #92 after the exact final head passes required GitHub checks.
 
-Explicit Level-3 merge approval: **NOT YET GRANTED**.
+Explicit Level-3 merge approval: **GRANTED 2026-09-29**.
