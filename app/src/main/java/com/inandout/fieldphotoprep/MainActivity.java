@@ -197,6 +197,9 @@ public final class MainActivity extends Activity {
                     }));
         }
         refreshProtectedPhotoCounts();
+        if (!discoveredPropertyFolders.isEmpty()) {
+            rebuildHomePropertyFolders();
+        }
 
         if (pendingStatusConnectDrive) {
             pendingStatusConnectDrive = false;
@@ -330,6 +333,8 @@ private void buildHomeUi() {
     homeNavWorkOrdersButton = homeRoot.findViewById(R.id.nav_work_orders);
     homeNavPhotosButton = homeRoot.findViewById(R.id.nav_photos);
     homeRoot.findViewById(R.id.nav_home).setSelected(true);
+    homeRoot.setFocusableInTouchMode(true);
+    homeRoot.requestFocus();
 
     chooseMasterButton.setOnClickListener(v -> chooseMasterFolder());
     refreshAddressButton.setOnClickListener(v -> refreshHomeFolders());
@@ -355,6 +360,7 @@ private void buildHomeUi() {
     adapter = new PropertyListAdapter(
             this,
             propertyFolders,
+            discoveredPropertyFolders,
             protectedPhotoCountByAddressId,
             propertyLifecycleByAddressId);
     folderList.setAdapter(adapter);
