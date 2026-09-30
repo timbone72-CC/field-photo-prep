@@ -23,6 +23,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -45,6 +46,9 @@ import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_MASTER_FOLDER = 1001;
+    private static final int PROPERTY_ACTION_ARCHIVE = 1;
+    private static final int PROPERTY_ACTION_REACTIVATE = 2;
+    private static final int PROPERTY_ACTION_DELETE = 3;
     static final String EXTRA_OPEN_DRIVE_PICKER_FROM_STATUS =
             "com.inandout.fieldphotoprep.extra.OPEN_DRIVE_PICKER_FROM_STATUS";
     static final String EXTRA_OPEN_PHOTOS_FROM_STATUS =
@@ -362,7 +366,8 @@ private void buildHomeUi() {
             propertyFolders,
             discoveredPropertyFolders,
             protectedPhotoCountByAddressId,
-            propertyLifecycleByAddressId);
+            propertyLifecycleByAddressId,
+            this::showPropertyOptions);
     folderList.setAdapter(adapter);
     folderList.setOnItemClickListener((parent, view, position, id) -> {
         if (screen != Screen.ADDRESSES || busy || position < 0 || position >= propertyFolders.size()) {
@@ -370,11 +375,111 @@ private void buildHomeUi() {
         }
         DriveFolder folder = propertyFolders.get(position);
         if (PropertyHomePolicy.isArchived(propertyLifecycleByAddressId, folder.id())) {
-            showHomeInlineMessage("This property is archived. Reactivate it before opening.");
+            showHomeInlineMessage("This property is archived. Use its options menu to Reactivate it.");
             return;
         }
         openAddress(folder);
     });
+
+    private void showPropertyOptions(View anchor, DriveFolder folder) {
+        if (busy || folder == null) {
+            if (busy) {
+                showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            }
+            return;
+        }
+
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null || propertyLifecycleStore == null) {
+            showHomeInlineMessage("Choose a company before managing this address.");
+            return;
+        }
+
+        PropertyLifecycleStore.Snapshot snapshot =
+                propertyLifecycleStore.snapshot(company.id(), folder.id());
+        PopupMenu menu = new PopupMenu(this, anchor);
+        if (snapshot.state() == PropertyLifecycleStore.State.ARCHIVED) {
+            menu.getMenu().add(0, PROPERTY_ACTION_REACTIVATE, 0, "Reactivate");
+        } else if (snapshot.state() == PropertyLifecycleStore.State.ACTIVE) {
+            menu.getMenu().add(0, PROPERTY_ACTION_ARCHIVE, 0, "Archive");
+        }
+        menu.getMenu().add(0, PROPERTY_ACTION_DELETE, 1, "Delete Address");
+
+        menu.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case PROPERTY_ACTION_REACTIVATE:
+                    reactivateProperty(folder);
+                    return true;
+                case PROPERTY_ACTION_ARCHIVE:
+                    showPropertyCleanupConfirmation(folder, false);
+                    return true;
+                case PROPERTY_ACTION_DELETE:
+                    showPropertyCleanupConfirmation(folder, true);
+                    return true;
+                default:
+                    return false;
+            }
+        });
+        menu.show();
+    }
+
+    private void reactivateProperty(DriveFolder folder) {
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null || folder == null || propertyLifecycleStore == null) {
+            showHomeInlineMessage("Could not reactivate that address.");
+            return;
+        }
+
+        PropertyLifecycleStore.Snapshot before =
+                propertyLifecycleStore.snapshot(company.id(), folder.id());
+        if (before.state() != PropertyLifecycleStore.State.ARCHIVED) {
+            rebuildHomePropertyFolders();
+            showHomeInlineMessage("That address is already active.");
+            return;
+        }
+
+        try {
+            propertyLifecycleStore.reactivate(company.id(), folder.id());
+            rebuildHomePropertyFolders();
+            showHomeSuccessMessage("Address reactivated. Tap it to continue.");
+        } catch (RuntimeException error) {
+            showError("Could not reactivate address", error);
+        }
+    }
+
+    private void showPropertyCleanupConfirmation(DriveFolder folder, boolean deleteAddress) {
+        if (folder == null) {
+            return;
+        }
+        String display = PropertyDisplayName.fromDriveFolderName(folder.name());
+        String title = deleteAddress ? "Delete Address?" : "Archive Address?";
+        String message = deleteAddress
+                ? display
+                    + "\n\nThis will remove old FPP photos and remove this address from normal "
+                    + "Home/search on this device. Drive folders and non-photo files stay. "
+                    + "If you add this exact address again later, FPP can reuse the existing Drive folder."
+                : display
+                    + "\n\nThis will remove old FPP photos and hide this address from Home. "
+                    + "You can still find it with Search and reactivate it later. "
+                    + "Drive folders and non-photo files stay.";
+
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton(deleteAddress ? "Delete Address" : "Archive", (dialog, which) ->
+                        blockPropertyCleanupUntilPhase13C(deleteAddress))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void blockPropertyCleanupUntilPhase13C(boolean deleteAddress) {
+        // Phase 13C must prove exact photo cleanup before the lifecycle state can become
+        // ARCHIVED or DELETED. Keep this intermediate branch fail-closed rather than hiding
+        // an address while its old FPP photos are still present.
+        showHomeInlineMessage(deleteAddress
+                ? "Address deletion is waiting for verified photo cleanup. No changes were made."
+                : "Archiving is waiting for verified photo cleanup. No changes were made.");
+    }
 
     ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
         var bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -1185,7 +1290,7 @@ private void buildLegacyWorkOrderUi() {
                             return;
                         }
                         setDiscoveredPropertyFolders(folders);
-                        openAddress(existing);
+                        handleExistingAddressFromCreate(existing);
                     });
                     return;
                 }
@@ -1250,6 +1355,41 @@ private void buildLegacyWorkOrderUi() {
                 });
             }
         });
+    }
+
+    private void handleExistingAddressFromCreate(DriveFolder address) {
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null || address == null || propertyLifecycleStore == null) {
+            openAddress(address);
+            return;
+        }
+
+        PropertyLifecycleStore.Snapshot snapshot =
+                propertyLifecycleStore.snapshot(company.id(), address.id());
+        if (snapshot.state() == PropertyLifecycleStore.State.ACTIVE) {
+            openAddress(address);
+            return;
+        }
+
+        String display = PropertyDisplayName.fromDriveFolderName(address.name());
+        boolean deleted = snapshot.state() == PropertyLifecycleStore.State.DELETED;
+        new AlertDialog.Builder(this)
+                .setTitle(deleted ? "Add Address Back?" : "Reactivate Address?")
+                .setMessage(deleted
+                        ? display + "\n\nThis exact Drive address already exists but was removed from FPP. "
+                            + "Add it back using the same Drive folder?"
+                        : display + "\n\nThis exact address is archived. Reactivate it using the same Drive folder?")
+                .setPositiveButton(deleted ? "Add Back" : "Reactivate", (dialog, which) -> {
+                    try {
+                        propertyLifecycleStore.reactivate(company.id(), address.id());
+                        rebuildHomePropertyFolders();
+                        openAddress(address);
+                    } catch (RuntimeException error) {
+                        showError("Could not restore address", error);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void openAddress(DriveFolder address) {
