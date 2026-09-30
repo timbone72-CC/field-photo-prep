@@ -120,8 +120,8 @@ jobs:
         if: steps.scope.outputs.runtime == 'true'
         env:
           FPP_EXPECTED_PACKAGE: com.inandout.fieldphotoprep.internal
-          FPP_EXPECTED_VERSION_CODE: '39'
-          FPP_EXPECTED_VERSION_NAME: 0.28.2-internal
+          FPP_EXPECTED_VERSION_CODE: '40'
+          FPP_EXPECTED_VERSION_NAME: 0.28.3-internal
           FPP_EXPECTED_AUTH_REDIRECT_SCHEME: com.inandout.fieldphotoprep.internal
           FPP_EXPECTED_AUTH_REDIRECT_HOST: auth-callback
           FPP_EXPECTED_SUPABASE_URL: https://vtyiktvqhbgabawotkrj.supabase.co
