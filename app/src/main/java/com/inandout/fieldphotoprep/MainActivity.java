@@ -605,6 +605,7 @@ private void buildHomeUi() {
         executor.execute(() -> {
             int removedCount = 0;
             boolean remoteMutationAttempted = false;
+            boolean remoteCleanupVerifiedForLocalRetirement = false;
             try {
                 List<DriveFolder> addressesBefore = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, companyId);
@@ -692,6 +693,25 @@ private void buildHomeUi() {
                             "Drive could not verify the original address identity after cleanup.");
                 }
 
+                // This second settled read protects the history/sequence transition even if
+                // another uploader writes to an earlier work order during later-folder cleanup.
+                for (AddressPhotoCleanupPlan.WorkOrderTarget target : approvedPlan.targets()) {
+                    DriveClient.ChildSnapshot finalChildren = driveClient.listDirectChildren(
+                            getContentResolver(), treeUri, target.folder().id());
+                    if (finalChildren.photoCount() != 0) {
+                        throw new IOException(
+                                "A work order received another photo during cleanup. "
+                                        + "Local history and capture numbering were not reset.");
+                    }
+                }
+                remoteCleanupVerifiedForLocalRetirement = true;
+                photoStore.requireAddressCleanupSafe(addressId);
+                int retiredHistoryCount =
+                        photoStore.retireConfirmedAddressHistoryAfterVerifiedRemoteCleanup(
+                                addressId,
+                                workOrdersAfter,
+                                new PhotoPreparer(new File(getFilesDir(), "prepared_photos")));
+
                 if (deleteAddress) {
                     propertyLifecycleStore.deleteAfterCleanupProven(companyId, addressId);
                 } else {
@@ -699,6 +719,7 @@ private void buildHomeUi() {
                 }
 
                 final int removed = removedCount;
+                final int retired = retiredHistoryCount;
                 runOnUiThread(() -> {
                     propertyCleanupBlockedAddressId = null;
                     DriveFolder savedAddress = folderPrefs.getCurrentAddress();
@@ -711,23 +732,29 @@ private void buildHomeUi() {
                             (deleteAddress ? "Address removed from FPP. " : "Address archived. ")
                                     + removed
                                     + (removed == 1 ? " old photo removed." : " old photos removed.")
+                                    + " Old local photo history cleared (" + retired
+                                    + "). Numbering reset for cleared work orders."
                                     + " Drive folders and non-photo files were kept.");
                 });
             } catch (Exception error) {
                 final int removed = removedCount;
                 final boolean attempted = remoteMutationAttempted;
+                final boolean verifiedForLocal = remoteCleanupVerifiedForLocalRetirement;
                 runOnUiThread(() -> {
-                    if (attempted) {
+                    if (attempted || verifiedForLocal) {
                         propertyCleanupBlockedAddressId = addressId;
                     }
                     showError(
-                            attempted
-                                    ? "Address cleanup stopped after removing "
-                                            + removed
-                                            + " of "
-                                            + approvedPlan.totalPhotoCount()
-                                            + " approved photos. Refresh and inspect before retrying"
-                                    : "Address cleanup stopped before any photo was removed",
+                            verifiedForLocal
+                                    ? "Drive cleanup verified, but local history/numbering could not"
+                                            + " finish. Refresh and inspect before retrying"
+                                    : attempted
+                                            ? "Address cleanup stopped after removing "
+                                                    + removed
+                                                    + " of "
+                                                    + approvedPlan.totalPhotoCount()
+                                                    + " approved photos. Refresh and inspect before retrying"
+                                            : "Address cleanup stopped before any photo was removed",
                             error);
                 });
             }

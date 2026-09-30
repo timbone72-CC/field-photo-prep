@@ -194,7 +194,7 @@ Before any remote deletion:
 8. On confirmation, re-read the direct work-order identity set and each approved direct-photo identity set.
 9. If any set changed, stop before deletion and require review again.
 
-Archive/Delete may reuse existing Clear & Reuse photo MIME classification and identity-set comparison logic, but it must not call Clear & Reuse's rename/sequence-reset behavior.
+Archive/Delete may reuse the existing photo MIME classification and identity-set comparison logic. Unlike Clear & Reuse, a successfully completed Archive/Delete also retires old confirmed local photo history for the exact verified dated work-order IDs and independently starts a new capture-order occurrence at 001; it never renames a Drive folder. Local retirement/sequence reset occurs only after complete remote zero-photo verification, and any local I/O failure blocks final lifecycle state.
 
 ## Remote mutation / failure behavior
 
@@ -453,3 +453,11 @@ Not started:
 Begin **Phase 13E — Verification / reality gate** on this authoritative branch.
 
 Use the already-approved disposable positive + negative fixture plan. Do not use live customer/job folders. Phase 13E must prove the real Google Drive cleanup/preservation behavior, archive/search/reactivate identity reuse, and unresolved/protected-work blocking before explicit Level 3 merge approval is requested.
+
+## Phase 13E archive local-history/numbering defect discovered on physical Samsung
+
+After the real-provider positive gate, Reactivate correctly reused the original address and two dated work-order folders, but Photos still displayed the old two confirmed-upload rows from Test B. Those images had been independently proven deleted from Drive. Their retained local metadata and per-work-order capture ledger caused the new test photos to retain old sequence positions instead of starting at 001. The operator rejected this behavior on 2026-09-30 and approved actual completed-archive retirement rather than displaying lightweight prior-archive history.
+
+Scope: on this same authoritative Phase 13 branch/PR #93, retire *only* confirmed old metadata and any remaining local copies bound to the exact verified dated work-order IDs after fresh remote zero-photo proof; reset their capture sequence as a new occurrence; keep the original provider IDs/folders/non-photo files, preserve unrelated local records, and block on any unresolved/corrupt local metadata. A failed local cleanup must not claim Archive succeeded or commit a partial ledger reset. This is an explicit revision to the earlier Phase 13 assumption that confirmed history could remain or that archive should never reset capture numbering. Clear & Reuse's separate history semantics remain unchanged.
+
+Physical reality already proven: original Archive removed exactly 4 disposable Drive photos, preserved both folders and Google Doc; Samsung 0.28.4-internal passed physical address-card navigation and menu checks; negative gate showed WAITING correctly blocks Archive, with no mutation. **Do not treat local-history retirement or capture-number reset as passed yet**. Current fixture has one new confirmed upload and one new WAITING record under Test B; do not delete/renumber either on installation or while WAITING remains. After focused/full CI of the repair, operator resolves that disposable WAITING photo explicitly, then runs one fresh, confirmed Archive and reactivation to prove old rows vanish and new capture starts 001. PR remains draft and Level 3 merge approval is still required. Rollback baseline remains the earlier verified head `31a33093b3067cccbc3906f1d677dc5c10f5a289` (0.28.4-internal).

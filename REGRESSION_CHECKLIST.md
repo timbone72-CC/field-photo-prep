@@ -168,6 +168,8 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] Inactivity threshold is configurable as 30 days / 60 days / 90 days / 6 months / 1 year / Never, defaults to 90 days, and never auto-archives or auto-deletes.
 - [ ] Lifecycle state is device-local/provider-context-bound and remains excluded from Android backup/transfer under the existing Phase 10F rules.
 - [ ] No company/address/work-order provider ID or queued-photo destination is rewritten by archive, reactivate, search, review, or cleanup.
+- [ ] After a fully verified Archive/Delete, old confirmed local photo records and residual copies for exactly the cleaned dated work-order provider IDs are retired; after Reactivate or deliberate re-add, each cleared work order starts at capture number `001`.
+- [ ] Failed or blocked Archive/Delete, including a target WAITING photo or partial local-history retirement, never resets active capture numbering or deletes protected/unrelated local records.
 
 ## M. Minimal field workflow
 
