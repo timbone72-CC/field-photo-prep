@@ -379,17 +379,13 @@ private void buildHomeUi() {
             protectedPhotoCountByAddressId,
             propertyLifecycleByAddressId,
             this::showPropertyOptions);
+    adapter.setPropertyOpenListener(this::selectHomeProperty);
     folderList.setAdapter(adapter);
+    // Keep ListView's native item callback as fallback for assistive navigation.
     folderList.setOnItemClickListener((parent, view, position, id) -> {
-        if (screen != Screen.ADDRESSES || busy || position < 0 || position >= propertyFolders.size()) {
-            return;
+        if (position >= 0 && position < adapter.getCount()) {
+            selectHomeProperty(adapter.getItem(position));
         }
-        DriveFolder folder = propertyFolders.get(position);
-        if (PropertyHomePolicy.isArchived(propertyLifecycleByAddressId, folder.id())) {
-            showHomeInlineMessage("This property is archived. Use its options menu to Reactivate it.");
-            return;
-        }
-        openAddress(folder);
     });
 
     ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
@@ -399,6 +395,17 @@ private void buildHomeUi() {
     });
     ViewCompat.requestApplyInsets(homeRoot);
 }
+
+    private void selectHomeProperty(DriveFolder folder) {
+        if (screen != Screen.ADDRESSES || busy || folder == null) {
+            return;
+        }
+        if (PropertyHomePolicy.isArchived(propertyLifecycleByAddressId, folder.id())) {
+            showHomeInlineMessage("This property is archived. Use its options menu to Reactivate it.");
+            return;
+        }
+        openAddress(folder);
+    }
 
     private void showPropertyOptions(View anchor, DriveFolder folder) {
         if (busy || folder == null) {

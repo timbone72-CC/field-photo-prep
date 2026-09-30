@@ -19,6 +19,10 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
     interface PropertyOptionsListener {
         void onPropertyOptions(View anchor, DriveFolder folder);
     }
+
+    interface PropertyOpenListener {
+        void onPropertyOpen(DriveFolder folder);
+    }
     private static final DateTimeFormatter LAST_USED_FORMAT =
             DateTimeFormatter.ofPattern("MMM d");
 
@@ -28,6 +32,11 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
     private final Map<String, Integer> protectedPhotoCountsByAddressId;
     private final Map<String, PropertyLifecycleStore.Snapshot> lifecycleByAddressId;
     private final PropertyOptionsListener propertyOptionsListener;
+    private PropertyOpenListener propertyOpenListener;
+
+    void setPropertyOpenListener(PropertyOpenListener listener) {
+        propertyOpenListener = listener;
+    }
 
     PropertyListAdapter(Context context, List<DriveFolder> folders) {
         this(context, folders, folders, Collections.emptyMap(), Collections.emptyMap(), null);
@@ -76,7 +85,16 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
             photoCount.setVisibility(View.GONE);
             options.setVisibility(View.GONE);
             options.setOnClickListener(null);
+            row.setOnClickListener(null);
+            row.setClickable(false);
             return row;
+        }
+
+        if (propertyOpenListener != null) {
+            row.setOnClickListener(v -> propertyOpenListener.onPropertyOpen(folder));
+        } else {
+            row.setOnClickListener(null);
+            row.setClickable(false);
         }
 
         String display = PropertyDisplayName.fromDriveFolderName(folder.name());
