@@ -804,7 +804,7 @@ private void openSavedPhotosFromHome() {
                         case "Edit Company":
                             showEditCompanyDialog();
                             break;
-                        case "Archive Review":
+                        case "Suggest Archive After":
                             showArchiveReviewSettings();
                             break;
                         case "App Status":
