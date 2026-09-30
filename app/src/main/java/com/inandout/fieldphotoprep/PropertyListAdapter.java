@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import java.time.Instant;
@@ -15,6 +16,9 @@ import java.util.List;
 import java.util.Map;
 
 final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
+    interface PropertyOptionsListener {
+        void onPropertyOptions(View anchor, DriveFolder folder);
+    }
     private static final DateTimeFormatter LAST_USED_FORMAT =
             DateTimeFormatter.ofPattern("MMM d");
 
@@ -23,16 +27,17 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
     private final List<DriveFolder> identityPeers;
     private final Map<String, Integer> protectedPhotoCountsByAddressId;
     private final Map<String, PropertyLifecycleStore.Snapshot> lifecycleByAddressId;
+    private final PropertyOptionsListener propertyOptionsListener;
 
     PropertyListAdapter(Context context, List<DriveFolder> folders) {
-        this(context, folders, folders, Collections.emptyMap(), Collections.emptyMap());
+        this(context, folders, folders, Collections.emptyMap(), Collections.emptyMap(), null);
     }
 
     PropertyListAdapter(
             Context context,
             List<DriveFolder> folders,
             Map<String, Integer> protectedPhotoCountsByAddressId) {
-        this(context, folders, folders, protectedPhotoCountsByAddressId, Collections.emptyMap());
+        this(context, folders, folders, protectedPhotoCountsByAddressId, Collections.emptyMap(), null);
     }
 
     PropertyListAdapter(
@@ -40,13 +45,15 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
             List<DriveFolder> folders,
             List<DriveFolder> identityPeers,
             Map<String, Integer> protectedPhotoCountsByAddressId,
-            Map<String, PropertyLifecycleStore.Snapshot> lifecycleByAddressId) {
+            Map<String, PropertyLifecycleStore.Snapshot> lifecycleByAddressId,
+            PropertyOptionsListener propertyOptionsListener) {
         super(context, R.layout.row_home_property, folders);
         this.inflater = LayoutInflater.from(context);
         this.folders = folders;
         this.identityPeers = identityPeers == null ? folders : identityPeers;
         this.protectedPhotoCountsByAddressId = protectedPhotoCountsByAddressId;
         this.lifecycleByAddressId = lifecycleByAddressId;
+        this.propertyOptionsListener = propertyOptionsListener;
     }
 
     @Override
@@ -60,12 +67,15 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
         TextView disambiguator = row.findViewById(R.id.property_disambiguator);
         TextView lifecycle = row.findViewById(R.id.property_lifecycle);
         TextView photoCount = row.findViewById(R.id.property_photo_count);
+        ImageButton options = row.findViewById(R.id.property_options);
         DriveFolder folder = getItem(position);
         if (folder == null) {
             name.setText("");
             disambiguator.setVisibility(View.GONE);
             lifecycle.setVisibility(View.GONE);
             photoCount.setVisibility(View.GONE);
+            options.setVisibility(View.GONE);
+            options.setOnClickListener(null);
             return row;
         }
 
@@ -98,6 +108,15 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
         } else {
             photoCount.setText("");
             photoCount.setVisibility(View.GONE);
+        }
+
+        if (propertyOptionsListener == null) {
+            options.setVisibility(View.GONE);
+            options.setOnClickListener(null);
+        } else {
+            options.setVisibility(View.VISIBLE);
+            options.setContentDescription("Options for " + display);
+            options.setOnClickListener(v -> propertyOptionsListener.onPropertyOptions(v, folder));
         }
         return row;
     }
