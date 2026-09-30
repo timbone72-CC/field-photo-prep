@@ -859,7 +859,7 @@ Goal: keep Home useful as the property history grows without turning FPP into a 
 
 Phase 13 is one Level 3 roadmap phase with staged checkpoints. The checkpoints are implementation/verification boundaries, not separate roadmap phases.
 
-### Phase 13A — Home scalability
+### Phase 13A — Home scalability — IMPLEMENTED / CI PASS
 
 - Home shows active properties only and sorts them by most recent real work activity.
 - Add compact address search at the top of Home.
