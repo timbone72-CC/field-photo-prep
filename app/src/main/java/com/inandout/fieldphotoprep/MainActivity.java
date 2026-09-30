@@ -1473,7 +1473,7 @@ private void buildLegacyWorkOrderUi() {
         setBusy("Refreshing address folders…");
         executor.execute(() -> {
             try {
-                List<DriveFolder> folders = driveClient.listFolders(
+                List<DriveFolder> folders = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, parentId);
                 runOnUiThread(() -> {
                     setDiscoveredPropertyFolders(folders);
@@ -1819,7 +1819,7 @@ private void buildLegacyWorkOrderUi() {
         setBusy("Refreshing work-order folders…");
         executor.execute(() -> {
             try {
-                List<DriveFolder> folders = driveClient.listFolders(
+                List<DriveFolder> folders = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, addressId);
                 runOnUiThread(() -> {
                     if (!isStillOnAddress(addressId)) {
