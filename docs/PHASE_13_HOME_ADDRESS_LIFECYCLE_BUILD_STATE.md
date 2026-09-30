@@ -1,15 +1,29 @@
 # Phase 13 — Home Address Lifecycle & Cleanup — Build State
 
 Date: 2026-09-29  
-Status: **LEVEL 3 — PHASE 13A–13E VERIFIED; OPERATOR MERGE APPROVAL GRANTED 2026-09-30; GOVERNED MERGE PENDING**  
+Status: **COMPLETE — PHASE 13A–13E PHYSICAL AND AUTOMATED GATES PASS; PR #93 MERGED; DISPOSABLE TEST FIXTURE FULLY CLEANED**  
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
-PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
+PR: #93 `Phase 13: Home address lifecycle and cleanup` — MERGED 2026-09-30 at `163db396eaf877cca36c674f500a6ddbb21b491c`  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
 Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.
 Final validated Phase 13 runtime head: `731a231695436da9f355cafaa6c9922d814e82ed`.
 Android CI run #1139 / `36702591737`: **PASS** on that exact runtime head.
 Physically installed Samsung internal build: `0.28.5-internal` / versionCode `42`.
-The historical Phase 13D and intermediate Phase 13E snapshots below remain as evidence of earlier checkpoints; this header and the final Phase 13E acceptance record at the end govern the current status.
+Historical Phase 13D and intermediate Phase 13E snapshots remain below as evidence of earlier checkpoints. They include prior WAITING/merge/fixture-cleanup statuses and are superseded by the post-merge final closeout immediately below.
+
+## Final closeout — 2026-09-30
+
+**Repository:** Explicit Level 3 operator approval for Phase 13 PR #93 recorded 2026-09-30. Governed PR #93 was merged to `main` at `163db396eaf877cca36c674f500a6ddbb21b491c`; no overlapping open PR remains. Runtime source validated on exact head `731a231695436da9f355cafaa6c9922d814e82ed`, physical internal build `0.28.5-internal` / versionCode 42. Full Android CI #1142 (`36705305824`) and governance were successful on the final pre-merge approval/documentation head `f1ee5fa26cce3d447ac83a755f619fef84783dd7`. The app runtime was unchanged by those later evidence/documentation commits. Production/wider-distribution gates remain separate; this closeout is not a Play Store or outside-user release approval.
+
+**Device/Drive behavior:** The approved disposable Samsung/Google Drive positive, WAITING-negative, archive-history retirement and subsequent `001` capture-numbering gates passed. The real-provider test preserved both original work-order folder entries and the separate non-photo document during app Archive. The physical Photos view showed zero prior history after Reactivate; one new uploaded photo had captured order and filename prefix `001`. Exact provider-ID bytes were not separately exported from the device; neither a cross-company ACL audit nor a wider-release production upgrade is claimed here.
+
+**Final test cleanup, explicitly authorized after PR #93 merge:** Operator initiated a last Archive of the reactivated `99998 PHASE 13 TEST` address. Physical Home screenshot showed the test address gone and 24 active properties. A fresh connected Google Drive inspection of the exact disposable address found only two direct dated work-order folders: `PHASE 13 TEST - 2026-09-29` empty and `PHASE 13 TEST B - 2026-09-29` containing only the expected non-photo Google Doc `PHASE 13 KEEP ME`; **no photos remained**. Operator then explicitly approved permanent deletion of all four remaining disposable Drive items. Using the linked personal Drive account, each exact item was verified before deletion. The test document was permanently deleted, and a fresh Test B listing showed empty; each now-empty work-order folder was deleted individually; the verified-empty disposable parent address folder was deleted last. Fresh Drive search no longer found the exact `99998 PHASE 13 TEST` parent. Only the authorized disposable test items were targeted; no live customer files were intentionally touched.
+
+**Lifecycle distinction:** App Archive intentionally preserves address/work-order folder structure and non-photo content; the later permanent removal of the four disposable test items was a separately authorized, connector-driven fixture cleanup, not new FPP app behavior. The app's device-local archived lifecycle record might remain if not manually purged; no assertion about automatic device-local deletion is made.
+
+**Disposition:** Phase 13 code, required CI, operator reality gates, merge, and disposable external fixture cleanup complete. This documentation-only closeout changes no runtime or production release state. No Phase 14 is authorized by this record. The next unrelated release-readiness decisions (production update-over-existing and business-controlled Auth email for wider distribution) remain independently governed.
+
+
 
 ## Goal
 
