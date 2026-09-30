@@ -132,7 +132,7 @@ public final class MainActivity extends Activity {
     private Button workNavPhotosButton;
     private EditText workOrderInput;
     private ListView folderList;
-    private ArrayAdapter<DriveFolder> adapter;
+    private PropertyListAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
