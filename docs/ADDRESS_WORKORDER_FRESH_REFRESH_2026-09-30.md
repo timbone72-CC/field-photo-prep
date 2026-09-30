@@ -1,6 +1,6 @@
 # Address and Work-Order Fresh Refresh — 2026-09-30
 
-Status: IMPLEMENTATION IN PROGRESS — Level 3; merge and release NOT APPROVED.
+Status: IMPLEMENTED / FULL ANDROID CI PASSED — awaiting physical Samsung/Google Drive read-only gate; Level 3 merge and release NOT APPROVED.
 Authoritative branch: `fix/address-workorder-fresh-refresh`.
 Governed base/rollback: `c9e6965dc934d697b18e7b62e5f4ebbc0dfb9656` (main, including merged Phase 13 PR #93 and closeout PR #94).
 Affected code owner: `MainActivity.refreshAddressFolders` and `MainActivity.refreshWorkOrderFolders`.
@@ -30,3 +30,13 @@ Classify Level 3 conservatively because address/work-order listings can influenc
 ## External state
 
 No Drive or runtime external state will be mutated for this implementation. The 54 live photos in `GRASS CUT - 2026-09-29` are independently verified under the intended existing Google Drive address; remote metadata/listing disagreement about the legacy undated folder remains an unresolved observation pending physical-provider verification.
+
+## Automated verification checkpoint
+
+- Scoped runtime change commit: `c5b0e3d984796efe8b266648bff6d031af6f4093`.
+- Exact runtime Android CI run `36730707716`: **SUCCESS**; single test job completed successfully, including unit tests, production identity checks, internal debug build, fail-closed production signing verification, stable test APK signer, APK evidence tooling, complete instrumented tests and internal launch smoke.
+- APK artifact `field-photo-prep-internal-apk`, GitHub artifact ID `11104807787`; signed internal build `0.28.5-internal`, versionCode `42` per the unchanged build.gradle source. Extracted `app-debug.apk` SHA-256: `57e6a3318a4d8a71f60a048b805823ee16664c3df0943a374991be0a957f21ec`.
+- Reviewed runtime PR patch confirms exactly two read-only call-site changes, both `listFolders` → `listFoldersFresh`; no change to DriveClient, photo storage, exact identities or Drive writes.
+- This documentation-only status update does not change runtime behavior. Runtime is **NOT YET** verified on a physical device; no live HNP cleanup, release or merge is authorized by this checkpoint.
+
+Next gate: operator installs the same-signer internal APK as an in-place update without uninstalling/clearing any live application data, opens HNP's intended 509 SOUTH BOUNDARY property, and supplies the actual Work Orders result. Expected verified listing is `GRASS CUT - 2026-09-29`; alternatively an explicit provider freshness/read error is informative. If old undated GRASS CUT remains, stop and diagnose local provider ID/binding instead of assuming this read-path fix cured the root cause. Preserve the live 54 photos and both currently identified Drive address folders throughout.
