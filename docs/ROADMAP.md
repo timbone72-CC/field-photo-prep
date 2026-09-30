@@ -868,7 +868,7 @@ Phase 13 is one Level 3 roadmap phase with staged checkpoints. The checkpoints a
 - Browsing, opening, searching, or reviewing a property must not reset its inactivity age.
 - No destructive Drive behavior is introduced in 13A.
 
-### Phase 13B — Archive, reactivate, and manual delete
+### Phase 13B — Archive, reactivate, and manual delete — IMPLEMENTED / CI PASS (final Archive/Delete commit gated to 13C)
 
 - Add device-local property lifecycle state keyed to the exact company/address provider identity.
 - `Archive` removes the property from the normal Home list while retaining enough lightweight state to find and reactivate it.
