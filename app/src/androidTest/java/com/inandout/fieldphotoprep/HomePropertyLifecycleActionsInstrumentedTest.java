@@ -82,7 +82,7 @@ public final class HomePropertyLifecycleActionsInstrumentedTest {
     }
 
     @Test
-    public void archiveAndDeleteStayFailClosedBeforePhase13C() throws Exception {
+    public void archiveAndDeleteRequireWritableDriveBeforeCleanup() throws Exception {
         bindCompany();
         DriveFolder active = new DriveFolder("active-id", "100_MAIN_ST");
         PropertyLifecycleStore lifecycle = new PropertyLifecycleStore(context);
@@ -99,19 +99,12 @@ public final class HomePropertyLifecycleActionsInstrumentedTest {
             assertTrue(archive.performAction(AccessibilityNodeInfo.ACTION_CLICK));
             instrumentation.waitForIdleSync();
 
-            AccessibilityNodeInfo confirmArchive =
-                    clickableAncestor(last(awaitText(instrumentation, "Archive")));
-            assertNotNull(confirmArchive);
-            assertTrue(confirmArchive.performAction(AccessibilityNodeInfo.ACTION_CLICK));
-            instrumentation.waitForIdleSync();
-
             assertEquals(
                     PropertyLifecycleStore.State.ACTIVE,
                     lifecycle.snapshot("company", active.id()).state());
-
             scenario.onActivity(activity -> {
                 TextView status = activity.findViewById(R.id.home_status_text);
-                assertTrue(status.getText().toString().contains("verified photo cleanup"));
+                assertTrue(status.getText().toString().contains("read/write access"));
             });
 
             openOptions(scenario, active);
@@ -119,12 +112,6 @@ public final class HomePropertyLifecycleActionsInstrumentedTest {
                     clickableAncestor(first(awaitText(instrumentation, "Delete Address")));
             assertNotNull(delete);
             assertTrue(delete.performAction(AccessibilityNodeInfo.ACTION_CLICK));
-            instrumentation.waitForIdleSync();
-
-            AccessibilityNodeInfo confirmDelete =
-                    clickableAncestor(last(awaitText(instrumentation, "Delete Address")));
-            assertNotNull(confirmDelete);
-            assertTrue(confirmDelete.performAction(AccessibilityNodeInfo.ACTION_CLICK));
             instrumentation.waitForIdleSync();
 
             PropertyLifecycleStore.Snapshot after =
