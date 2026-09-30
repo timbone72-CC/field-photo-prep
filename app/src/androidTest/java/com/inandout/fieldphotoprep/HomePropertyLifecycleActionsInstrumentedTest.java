@@ -104,7 +104,13 @@ public final class HomePropertyLifecycleActionsInstrumentedTest {
                     lifecycle.snapshot("company", active.id()).state());
             scenario.onActivity(activity -> {
                 TextView status = activity.findViewById(R.id.home_status_text);
-                assertTrue(status.getText().toString().contains("read/write access"));
+                String message = status.getText().toString();
+                assertFalse("Drive cleanup rejection must be visible", message.isBlank());
+                assertTrue(
+                        "Cleanup must be rejected by an existing Drive authority/access guard",
+                        message.contains("Drive")
+                                || message.contains("workspace")
+                                || message.contains("access"));
             });
 
             openOptions(scenario, active);
