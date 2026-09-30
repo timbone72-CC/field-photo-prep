@@ -1845,7 +1845,7 @@ private void buildLegacyWorkOrderUi() {
             } catch (Exception error) {
                 if (BuildConfig.DEBUG) {
                     Log.i("FPPFolderProbe", "WORK_ORDERS parentName=" + requestedAddress.name()
-                            + " parentId=" + addressId + " error="
+                            + " parentIdTail=" + probeId(requestedAddress) + " error="
                             + error.getClass().getSimpleName() + ": " + error.getMessage());
                 }
                 runOnUiThread(() -> {
@@ -2462,6 +2462,16 @@ private void buildLegacyWorkOrderUi() {
     }
 
     // TEMPORARY PR #95 INTERNAL-ONLY DIAGNOSTIC. Remove before merge.
+    // Report only the selected address and similarly numbered candidates; never raw
+    // tree URIs or full remote provider IDs in device logs.
+    private static String probeId(DriveFolder folder) {
+        if (folder == null) {
+            return "(none)";
+        }
+        String id = folder.id();
+        return "…" + id.substring(Math.max(0, id.length() - 12));
+    }
+
     private static void logFolderProbe(
             String scope,
             DriveFolder parent,
@@ -2472,12 +2482,22 @@ private void buildLegacyWorkOrderUi() {
         }
         String tag = "FPPFolderProbe";
         Log.i(tag, scope + " parentName=" + parent.name()
-                + " parentId=" + parent.id()
+                + " parentIdTail=" + probeId(parent)
                 + " savedName=" + (saved == null ? "(none)" : saved.name())
-                + " savedId=" + (saved == null ? "(none)" : saved.id())
-                + " children=" + children.size());
+                + " savedIdTail=" + probeId(saved)
+                + " childCount=" + children.size());
+        String sameStreetNumber = saved == null
+                ? null
+                : PropertyDisplayName.readableFolderName(saved.name()).split(" ", 2)[0] + " ";
         for (DriveFolder child : children) {
-            Log.i(tag, scope + " childName=" + child.name() + " childId=" + child.id());
+            if ("ADDRESSES".equals(scope) && (saved == null
+                    || (!child.id().equals(saved.id())
+                    && !PropertyDisplayName.readableFolderName(child.name())
+                            .startsWith(sameStreetNumber)))) {
+                continue;
+            }
+            Log.i(tag, scope + " childName=" + child.name()
+                    + " childIdTail=" + probeId(child));
         }
     }
 
