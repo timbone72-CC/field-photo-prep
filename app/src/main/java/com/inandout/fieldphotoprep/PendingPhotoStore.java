@@ -556,6 +556,26 @@ public final class PendingPhotoStore {
         return activeStartedAt > 0L && record.createdAtEpochMs() >= activeStartedAt;
     }
 
+    public void requireAddressCleanupSafe(String addressId) throws IOException {
+        requireText(addressId, "addressId");
+        ScanResult result = scanAllPersistedRecordsForProtection();
+        if (!result.corruptMetadataFiles().isEmpty()) {
+            throw new IOException(
+                    "Temporary photo metadata is unreadable. Resolve it before archiving or deleting an address.");
+        }
+        for (PendingPhotoRecord record : result.records()) {
+            if (!addressId.equals(record.addressId())) {
+                continue;
+            }
+            if (record.state() != PendingPhotoRecord.State.UPLOADED) {
+                throw new IOException(
+                        "This address still has an unresolved local photo ("
+                                + record.state().name()
+                                + "). Upload, reconcile, or safely discard it before cleanup.");
+            }
+        }
+    }
+
     public PendingPhotoRecord getById(String id) throws IOException {
         ensureRoot();
         File metadata = new File(root, PendingPhotoRecord.metadataFileNameFor(id));
