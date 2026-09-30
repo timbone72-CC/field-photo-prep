@@ -28,7 +28,7 @@ public final class PropertyLifecycleStoreInstrumentedTest {
     @Test
     public void workActivityPersistsWithoutChangingLifecycleState() {
         PropertyLifecycleStore store = new PropertyLifecycleStore(context);
-        store.setStateForTest("company-a", "address-a", PropertyLifecycleStore.State.ARCHIVED);
+        store.archiveAfterCleanupProven("company-a", "address-a");
         store.markWorkActivity("company-a", "address-a", 100L);
         store.markWorkActivity("company-a", "address-a", 90L);
 
@@ -69,10 +69,7 @@ public final class PropertyLifecycleStoreInstrumentedTest {
     public void companyIdentitySeparatesSameAddressProviderId() {
         PropertyLifecycleStore store = new PropertyLifecycleStore(context);
         store.markWorkActivity("company-a", "shared-address", 111L);
-        store.setStateForTest(
-                "company-b",
-                "shared-address",
-                PropertyLifecycleStore.State.ARCHIVED);
+        store.archiveAfterCleanupProven("company-b", "shared-address");
 
         assertEquals(
                 111L,
