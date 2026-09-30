@@ -1,11 +1,11 @@
 # Phase 13 — Home Address Lifecycle & Cleanup — Build State
 
 Date: 2026-09-29  
-Status: **LEVEL 3 — DESIGN APPROVED / READY FOR IMPLEMENTATION**  
+Status: **LEVEL 3 — PHASE 13A IMPLEMENTED / CI PASS; PHASE 13B NEXT**  
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
 PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
-Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.\nCurrent runtime head: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557` (no Phase 13 runtime change yet).
+Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.\nCurrent validated Phase 13A runtime head: `81ed9a39419ffba69888b940582a9beb1cf83b1a`.
 
 ## Goal
 
@@ -322,6 +322,32 @@ Because remote deletion is not reversible by source rollback, the preflight/conf
 
 ## Current progress
 
+Phase 13A completed on 2026-09-29:
+- Home now maintains one authoritative discovered-property set plus a derived visible Home list;
+- normal Home shows ACTIVE properties only;
+- address search is available directly on Home;
+- search can include ACTIVE and ARCHIVED properties while DELETED/SUPPRESSED stays out of normal results;
+- Home sorting uses persisted real-work activity, newest first, with unknown activity sorted predictably by address;
+- successful protected photo capture records real property work activity;
+- browsing/searching/refreshing does not update `Last used`;
+- rows show a quiet `Last used MMM d` line only when real activity is known;
+- archived search results are prevented from opening until Phase 13B Reactivate exists;
+- lifecycle metadata is stored in the app-private `property_lifecycle` SharedPreferences file and remains covered by the existing all-shared-preferences backup/transfer exclusion;
+- existing screenshot/navigation fixtures were updated to use the new authoritative discovered-property path rather than mutating the derived display list;
+- focused policy/persistence/Home search coverage added.
+
+Phase 13A verification:
+- Android CI run `36659787068` / run #1093: **PASS** on exact runtime head `81ed9a39419ffba69888b940582a9beb1cf83b1a`;
+- unit tests and production identity checks: PASS;
+- internal debug build: PASS;
+- production release fail-closed check: PASS;
+- stable test APK signer and APK evidence verification: PASS;
+- full connected Android instrumentation: PASS;
+- rendered light/dark/large-font verification and internal launch smoke: PASS;
+- internal APK and rendered evidence artifacts uploaded by CI.
+
+A prior Phase 13A run correctly failed because legacy test fixtures bypassed the new Home list owner and one rendered-row expectation predated the search field. Those fixtures were corrected; runtime safety was not weakened.
+
 Completed:
 - current `main` inspected;
 - no open PR or existing Phase 13 branch owned this scope;
@@ -332,13 +358,14 @@ Completed:
 - Phase 10F non-portable backup boundary confirmed.
 
 Not started:
-- runtime implementation;
-- runtime tests;
+- Phase 13B archive/reactivate/manual-delete runtime;
+- Phase 13C destructive Drive photo cleanup;
+- Phase 13D inactivity review;
 - external/Drive mutation for Phase 13;
 - Phase 13 physical reality gate.
 
 ## Next checkpoint
 
-Begin **Phase 13A — Home scalability** on this authoritative branch.
+Begin **Phase 13B — Archive, Reactivate, and Manual Delete** on this authoritative branch.
 
-Build the largest coherent safe batch that can be proven without a physical Drive mutation. Do not stop for a phone test until the next genuine external/destructive boundary under the staging doctrine.
+Keep 13B local/non-destructive with respect to Drive folder structure. Reuse the Phase 13A lifecycle owner; do not create a second property-state path. Do not begin Phase 13C Drive photo deletion until the 13B lifecycle behavior is independently proven.
