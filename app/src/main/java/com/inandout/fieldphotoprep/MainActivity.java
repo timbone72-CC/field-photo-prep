@@ -10,6 +10,8 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -59,12 +61,16 @@ public final class MainActivity extends Activity {
     private OrganizationDriveBindingGuard driveBindingGuard;
     private OrganizationDriveBindingGuard.State lastDriveBindingState;
     private final List<DriveFolder> companyFolders = new ArrayList<>();
+    private final List<DriveFolder> discoveredPropertyFolders = new ArrayList<>();
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
     private final Map<String, Integer> protectedPhotoCountByAddressId = new HashMap<>();
+    private final Map<String, PropertyLifecycleStore.Snapshot> propertyLifecycleByAddressId =
+            new HashMap<>();
     private final Map<String, Integer> protectedPhotoCountByWorkOrderId = new HashMap<>();
 
     private FolderPrefs folderPrefs;
+    private PropertyLifecycleStore propertyLifecycleStore;
     private Screen screen = Screen.ADDRESSES;
     private DriveFolder selectedAddress;
     private DriveFolder selectedWorkOrder;
@@ -74,6 +80,7 @@ public final class MainActivity extends Activity {
     private boolean busy;
     private boolean pendingStatusConnectDrive;
     private boolean pendingStatusOpenPhotos;
+    private String homeSearchQuery = "";
 
     private FrameLayout appRoot;
     private View homeRoot;
@@ -93,6 +100,7 @@ public final class MainActivity extends Activity {
     private ProgressBar homeProgress;
     private ImageButton driveOptionsButton;
     private Button homeNextActionButton;
+    private EditText homePropertySearch;
 
     private TextView addressText;
     private TextView currentWorkOrderText;
@@ -124,6 +132,7 @@ public final class MainActivity extends Activity {
         authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
         driveClient = new DriveClient(authorizationGuard);
         folderPrefs = new FolderPrefs(this);
+        propertyLifecycleStore = new PropertyLifecycleStore(this);
         driveBindingGuard = new OrganizationDriveBindingGuard(
                 folderPrefs,
                 authorizationGuard,
@@ -221,7 +230,7 @@ public final class MainActivity extends Activity {
             // Organization binding metadata, SAF grants, and queued-photo destinations remain
             // untouched so the owning Organization can safely recover them later.
             companyFolders.clear();
-            propertyFolders.clear();
+            clearHomePropertyState(false);
             workOrderFolders.clear();
             selectedAddress = null;
             selectedWorkOrder = null;
@@ -312,6 +321,7 @@ private void buildHomeUi() {
     homeProgress = homeRoot.findViewById(R.id.home_progress);
     driveOptionsButton = homeRoot.findViewById(R.id.home_drive_options_button);
     homeNextActionButton = homeRoot.findViewById(R.id.home_next_action);
+    homePropertySearch = homeRoot.findViewById(R.id.home_property_search);
 
     chooseMasterButton = homeRoot.findViewById(R.id.home_connect_button);
     refreshAddressButton = homeRoot.findViewById(R.id.home_refresh_button);
@@ -328,17 +338,36 @@ private void buildHomeUi() {
     homeCompanyClickTarget.setOnClickListener(v -> openCompanySwitcher());
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
     homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
+    homePropertySearch.addTextChangedListener(new TextWatcher() {
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+            homeSearchQuery = s == null ? "" : s.toString();
+            rebuildHomePropertyFolders();
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {}
+    });
 
     adapter = new PropertyListAdapter(
             this,
             propertyFolders,
-            protectedPhotoCountByAddressId);
+            protectedPhotoCountByAddressId,
+            propertyLifecycleByAddressId);
     folderList.setAdapter(adapter);
     folderList.setOnItemClickListener((parent, view, position, id) -> {
         if (screen != Screen.ADDRESSES || busy || position < 0 || position >= propertyFolders.size()) {
             return;
         }
-        openAddress(propertyFolders.get(position));
+        DriveFolder folder = propertyFolders.get(position);
+        if (PropertyHomePolicy.isArchived(propertyLifecycleByAddressId, folder.id())) {
+            showHomeInlineMessage("This property is archived. Reactivate it before opening.");
+            return;
+        }
+        openAddress(folder);
     });
 
     ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
@@ -355,7 +384,7 @@ private void openSavedPropertyFromHome() {
         showHomeInlineMessage("Choose a property first.");
         return;
     }
-    DriveFolder actual = DriveClient.findById(propertyFolders, saved.id());
+    DriveFolder actual = DriveClient.findById(activeHomeProperties(), saved.id());
     if (actual == null) {
         showHomeInlineMessage("Refresh Properties, then choose the property you want to open.");
         return;
@@ -566,8 +595,7 @@ private void buildLegacyWorkOrderUi() {
             String organizationId = driveBindingGuard.requireValidatedOrganizationForBinding();
             folderPrefs.bindSelectedDriveRoot(treeUri, workspace, organizationId);
             companyFolders.clear();
-            propertyFolders.clear();
-            notifyFolderAdapters();
+            clearHomePropertyState(true);
             showAddressScreen(false);
             renderSavedMaster();
             if (folderPrefs.hasWorkspace()) {
@@ -625,8 +653,7 @@ private void buildLegacyWorkOrderUi() {
                         }
                     }
 
-                    propertyFolders.clear();
-                    notifyFolderAdapters();
+                    clearHomePropertyState(true);
 
                     if (actual != null) {
                         folderPrefs.setCurrentCompany(actual);
@@ -707,7 +734,7 @@ private void buildLegacyWorkOrderUi() {
         resetWorkOrderDraft();
         selectedAddress = null;
         selectedWorkOrder = null;
-        propertyFolders.clear();
+        clearHomePropertyState(true);
         workOrderFolders.clear();
         notifyFolderAdapters();
         renderSavedMaster();
@@ -985,10 +1012,7 @@ private void buildLegacyWorkOrderUi() {
                 List<DriveFolder> folders = driveClient.listFolders(
                         getContentResolver(), treeUri, parentId);
                 runOnUiThread(() -> {
-                    propertyFolders.clear();
-                    propertyFolders.addAll(folders);
-                    notifyFolderAdapters();
-                    renderPropertyCountAndEmptyState();
+                    setDiscoveredPropertyFolders(folders);
                     clearHomeInlineMessage();
                     setNotBusy();
                 });
@@ -996,6 +1020,55 @@ private void buildLegacyWorkOrderUi() {
                 runOnUiThread(() -> showError("Could not read address folders", error));
             }
         });
+    }
+
+    private void setDiscoveredPropertyFolders(List<DriveFolder> folders) {
+        discoveredPropertyFolders.clear();
+        if (folders != null) {
+            discoveredPropertyFolders.addAll(folders);
+        }
+        rebuildHomePropertyFolders();
+    }
+
+    private void clearHomePropertyState(boolean clearSearch) {
+        discoveredPropertyFolders.clear();
+        propertyLifecycleByAddressId.clear();
+        propertyFolders.clear();
+        if (clearSearch) {
+            homeSearchQuery = "";
+            if (homePropertySearch != null && homePropertySearch.length() > 0) {
+                homePropertySearch.setText("");
+            }
+        }
+        notifyFolderAdapters();
+        renderPropertyCountAndEmptyState();
+    }
+
+    private void rebuildHomePropertyFolders() {
+        propertyLifecycleByAddressId.clear();
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company != null && propertyLifecycleStore != null) {
+            for (DriveFolder folder : discoveredPropertyFolders) {
+                propertyLifecycleByAddressId.put(
+                        folder.id(),
+                        propertyLifecycleStore.snapshot(company.id(), folder.id()));
+            }
+        }
+
+        propertyFolders.clear();
+        propertyFolders.addAll(PropertyHomePolicy.visibleProperties(
+                discoveredPropertyFolders,
+                propertyLifecycleByAddressId,
+                homeSearchQuery));
+        notifyFolderAdapters();
+        renderPropertyCountAndEmptyState();
+    }
+
+    private List<DriveFolder> activeHomeProperties() {
+        return PropertyHomePolicy.visibleProperties(
+                discoveredPropertyFolders,
+                propertyLifecycleByAddressId,
+                "");
     }
 
     private void showAddressEntryDialog() {
@@ -1078,10 +1151,7 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        propertyFolders.clear();
-                        propertyFolders.addAll(folders);
-                        notifyFolderAdapters();
-                        renderPropertyCountAndEmptyState();
+                        setDiscoveredPropertyFolders(folders);
                         showHomeInlineMessage(matches.size() + " address folders named " + requestedName
                                 + " already exist. Choose the intended property; no folder was created.");
                         setNotBusy();
@@ -1111,10 +1181,7 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        propertyFolders.clear();
-                        propertyFolders.addAll(folders);
-                        notifyFolderAdapters();
-                        renderPropertyCountAndEmptyState();
+                        setDiscoveredPropertyFolders(folders);
                         openAddress(existing);
                     });
                     return;
@@ -1128,10 +1195,7 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        propertyFolders.clear();
-                        propertyFolders.addAll(folders);
-                        notifyFolderAdapters();
-                        renderPropertyCountAndEmptyState();
+                        setDiscoveredPropertyFolders(folders);
                         showHomeInlineMessage("Possible existing property match: " + candidateName
                                 + ". Choose the intended property from the list; no folder was created.");
                         setNotBusy();
@@ -1162,10 +1226,7 @@ private void buildLegacyWorkOrderUi() {
                             return;
                         }
                         createBlockedUntilRefresh = true;
-                        propertyFolders.clear();
-                        propertyFolders.addAll(afterCreate);
-                        notifyFolderAdapters();
-                        renderPropertyCountAndEmptyState();
+                        setDiscoveredPropertyFolders(afterCreate);
                         showHomeInlineMessage("Address create result is ambiguous. Choose the intended property; no additional folder will be created until refresh.");
                         setNotBusy();
                     });
@@ -1176,10 +1237,7 @@ private void buildLegacyWorkOrderUi() {
                     if (screen != Screen.ADDRESSES) {
                         return;
                     }
-                    propertyFolders.clear();
-                    propertyFolders.addAll(afterCreate);
-                    notifyFolderAdapters();
-                    renderPropertyCountAndEmptyState();
+                    setDiscoveredPropertyFolders(afterCreate);
                     openAddress(verified);
                 });
             } catch (Exception error) {
@@ -1999,14 +2057,20 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void renderPropertyCountAndEmptyState() {
+        boolean searching = homeSearchQuery != null && !homeSearchQuery.trim().isEmpty();
         if (homePropertyCountText != null) {
             int count = propertyFolders.size();
-            homePropertyCountText.setText(count == 1 ? "1 property" : count + " properties");
+            if (searching) {
+                homePropertyCountText.setText(count == 1 ? "1 result" : count + " results");
+            } else {
+                homePropertyCountText.setText(count == 1 ? "1 property" : count + " properties");
+            }
         }
         if (homeEmptyText != null) {
             boolean connected = folderPrefs != null
                     && driveBindingGuard.current().isUsable()
                     && folderPrefs.getMasterFolder() != null;
+            homeEmptyText.setText(searching ? "No matching properties" : "No properties yet");
             homeEmptyText.setVisibility(connected && !busy && propertyFolders.isEmpty()
                     ? View.VISIBLE : View.GONE);
         }
@@ -2020,16 +2084,17 @@ private void buildLegacyWorkOrderUi() {
         DriveFolder master = folderPrefs.getMasterFolder();
         boolean workspaceConnected = driveBindingGuard.current().isUsable();
         boolean companySelected = master != null;
+        List<DriveFolder> activeProperties = activeHomeProperties();
         DriveFolder saved = folderPrefs.getCurrentAddress();
         boolean savedPropertyAvailable = saved != null
-                && DriveClient.findById(propertyFolders, saved.id()) != null;
+                && DriveClient.findById(activeProperties, saved.id()) != null;
 
         NextActionGuide.Action action = NextActionGuide.home(
                 busy,
                 workspaceConnected,
                 companySelected,
                 companyFolders.size(),
-                propertyFolders.size(),
+                activeProperties.size(),
                 savedPropertyAvailable);
         homeNextActionButton.setText(action.label());
         homeNextActionButton.setEnabled(action.enabled());
