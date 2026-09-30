@@ -878,7 +878,7 @@ Phase 13 is one Level 3 roadmap phase with staged checkpoints. The checkpoints a
 - Phase 13 does not recursively delete company/address/work-order folder structure. Drive folder identity and non-photo content are preserved.
 - Explicitly choosing/recreating an exact existing Drive address later may clear the local deleted/suppressed state rather than create a duplicate folder.
 
-### Phase 13C — Safe archive photo cleanup
+### Phase 13C — Safe archive photo cleanup — IMPLEMENTED / AUTOMATED CI PASS
 
 - FPP is not a long-term photo library. Archiving may remove old Drive photos under that address after safety checks pass.
 - Reuse the approved Clear & Reuse definition of photo cleanup: delete direct image/photo children only; preserve non-photo items and folder structure.
