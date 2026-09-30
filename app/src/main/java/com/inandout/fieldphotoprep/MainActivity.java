@@ -105,13 +105,10 @@ public final class MainActivity extends Activity {
     private Button refreshWorkOrdersButton;
     private Button dateButton;
     private Button useCreateButton;
-    private Button reuseEmptyButton;
     private Button clearReuseButton;
     private Button photosButton;
     private ListView workOrderList;
     private WorkOrderListAdapter workOrderAdapter;
-    private LinearLayout maintenanceControls;
-    private Button maintenanceButton;
     private Button homeNavWorkOrdersButton;
     private Button homeNavPhotosButton;
     private Button workNavHomeButton;
@@ -445,12 +442,9 @@ private void buildLegacyWorkOrderUi() {
     refreshWorkOrdersButton = legacyRoot.findViewById(R.id.work_order_refresh);
     dateButton = legacyRoot.findViewById(R.id.work_order_date_button);
     useCreateButton = legacyRoot.findViewById(R.id.work_order_create_button);
-    reuseEmptyButton = legacyRoot.findViewById(R.id.work_order_reuse_empty);
     clearReuseButton = legacyRoot.findViewById(R.id.work_order_clear_reuse);
     photosButton = legacyRoot.findViewById(R.id.work_order_photos);
     workOrderList = legacyRoot.findViewById(R.id.work_order_list);
-    maintenanceControls = legacyRoot.findViewById(R.id.work_order_maintenance);
-    maintenanceButton = legacyRoot.findViewById(R.id.work_order_maintenance_toggle);
     workNavHomeButton = legacyRoot.findViewById(R.id.nav_home);
     workNavPhotosButton = legacyRoot.findViewById(R.id.nav_photos);
     legacyRoot.findViewById(R.id.nav_work_orders).setSelected(true);
@@ -483,11 +477,8 @@ private void buildLegacyWorkOrderUi() {
     refreshWorkOrdersButton.setOnClickListener(v -> refreshWorkOrderFolders());
     dateButton.setOnClickListener(v -> chooseWorkOrderDate());
     useCreateButton.setOnClickListener(v -> useOrCreateWorkOrder());
-    reuseEmptyButton.setOnClickListener(v -> reuseSelectedEmptyFolder());
-    clearReuseButton.setOnClickListener(v -> prepareClearAndReuse());
+    clearReuseButton.setOnClickListener(v -> chooseClearReuseDate());
     photosButton.setOnClickListener(v -> openPhotoCapture());
-    maintenanceButton.setOnClickListener(v -> maintenanceControls.setVisibility(
-            maintenanceControls.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
     workNavHomeButton.setOnClickListener(v -> showAddressScreen(true));
     workNavPhotosButton.setOnClickListener(v -> openPhotoCapture());
 
@@ -1357,15 +1348,6 @@ private void buildLegacyWorkOrderUi() {
             return;
         }
 
-        if (selectedWorkOrder != null
-                && WorkOrderFolderName.shouldRouteSelectedFolderToReuse(
-                        selectedWorkOrder.name(),
-                        workOrderInput.getText().toString(),
-                        selectedDate.toString())) {
-            prepareClearAndReuse();
-            return;
-        }
-
         final String addressId = selectedAddress.id();
         setBusy("Checking for " + requestedName + "…");
         executor.execute(() -> {
@@ -1448,159 +1430,35 @@ private void buildLegacyWorkOrderUi() {
         });
     }
 
-    private void reuseSelectedEmptyFolder() {
+    private void chooseClearReuseDate() {
         if (selectedAddress == null) {
-            showMessage("Choose an address first.");
+            showMessage("Choose a property first.");
             return;
         }
         if (selectedWorkOrder == null) {
-            showMessage("Select the older work-order folder you want to reuse first.");
-            return;
-        }
-        Uri treeUri = usableDriveTreeOrMessage();
-        if (treeUri == null) {
-            return;
-        }
-        if (!hasPersistedWritePermission(treeUri)) {
-            showMessage("This Drive workspace is read-only. Choose it again and allow write access.");
-            return;
-        }
-        if (createBlockedUntilRefresh) {
-            showMessage("Refresh work-order folders before trying another Drive write.");
+            showMessage("Select the work order you want to clear and reuse.");
             return;
         }
 
-        final String requestedName;
-        try {
-            requestedName = WorkOrderFolderName.build(workOrderInput.getText().toString(), selectedDate.toString());
-        } catch (IllegalArgumentException error) {
-            showMessage(error.getMessage());
-            return;
-        }
-
-        final String candidateId = selectedWorkOrder.id();
-        final String candidateName = selectedWorkOrder.name();
-        if (candidateName.equals(requestedName)) {
-            showMessage("The selected folder already has the requested work-order date.");
-            return;
-        }
-        try {
-            if (!WorkOrderFolderName.isOlderSameWorkOrderFolder(
-                    candidateName, workOrderInput.getText().toString(), selectedDate.toString())) {
-                showMessage("Select an older folder for the same work order before reusing it.");
-                return;
-            }
-        } catch (IllegalArgumentException error) {
-            showMessage(error.getMessage());
-            return;
-        }
-
-        final String addressId = selectedAddress.id();
-        setBusy("Checking whether " + candidateName + " is safe to reuse…");
-        executor.execute(() -> {
-            try {
-                List<DriveFolder> folders = driveClient.listFoldersFresh(
-                        getContentResolver(), treeUri, addressId);
-                List<DriveFolder> requestedMatches = DriveClient.findExactNameMatches(folders, requestedName);
-
-                if (requestedMatches.size() > 1) {
-                    runOnUiThread(() -> {
-                        if (!isStillOnAddress(addressId)) {
-                            return;
-                        }
-                        workOrderFolders.clear();
-                        workOrderFolders.addAll(folders);
-                        notifyFolderAdapters();
-                        setStatusText(requestedMatches.size() + " folders named " + requestedName
-                                + " already exist. No old folder was renamed; select the intended existing folder.");
-                        setNotBusy();
-                    });
-                    return;
-                }
-
-                if (requestedMatches.size() == 1) {
-                    DriveFolder existing = requestedMatches.get(0);
-                    runOnUiThread(() -> {
-                        if (!isStillOnAddress(addressId)) {
-                            return;
-                        }
-                        workOrderFolders.clear();
-                        workOrderFolders.addAll(folders);
-                        notifyFolderAdapters();
-                        selectWorkOrder(existing, "Requested dated folder already exists; old folder unchanged");
-                    });
-                    return;
-                }
-
-                DriveFolder actualCandidate = DriveClient.findById(folders, candidateId);
-                if (actualCandidate == null) {
-                    runOnUiThread(() -> showMessage(
-                            "The selected old folder is no longer under this address. Refresh and choose again."));
-                    return;
-                }
-                if (!WorkOrderFolderName.isOlderSameWorkOrderFolder(
-                        actualCandidate.name(), workOrderInput.getText().toString(), selectedDate.toString())) {
-                    runOnUiThread(() -> showMessage(
-                            "The selected folder no longer matches an older occurrence of this work order."));
-                    return;
-                }
-
-                if (!driveClient.isFolderEmpty(getContentResolver(), treeUri, candidateId)) {
-                    runOnUiThread(() -> showMessage(
-                            "Selected old folder is not empty. Nothing was renamed or deleted."));
-                    return;
-                }
-
-                authorizationGuard.requireDriveMutation();
-                PendingPhotoStore photoStore = new PendingPhotoStore(
-                        new File(getFilesDir(), "pending_photos"));
-                photoStore.prepareCaptureSequenceResetForReuse(candidateId, requestedName);
-
-                authorizationGuard.requireDriveMutation();
-                DriveFolder renameResult = driveClient.renameFolder(
-                        getContentResolver(), treeUri, candidateId, requestedName);
-                if (!candidateId.equals(renameResult.id())) {
-                    throw new IOException("Drive rename changed the folder identity; refresh before proceeding.");
-                }
-
-                List<DriveFolder> afterRename = driveClient.listFoldersFresh(
-                        getContentResolver(), treeUri, addressId);
-                DriveFolder verified = DriveClient.findById(afterRename, candidateId);
-                if (verified == null || !verified.name().equals(requestedName)) {
-                    throw new IOException("Drive rename could not be verified with the original folder identity.");
-                }
-                List<DriveFolder> verifiedMatches = DriveClient.findExactNameMatches(afterRename, requestedName);
-                if (verifiedMatches.size() != 1 || !verifiedMatches.get(0).id().equals(candidateId)) {
-                    throw new IOException("The renamed folder is ambiguous. Refresh and choose the intended folder.");
-                }
-
-                photoStore.completeCaptureSequenceResetForReuse(candidateId, requestedName);
-
-                runOnUiThread(() -> {
-                    if (!isStillOnAddress(addressId)) {
-                        return;
-                    }
-                    workOrderFolders.clear();
-                    workOrderFolders.addAll(afterRename);
-                    notifyFolderAdapters();
-                    selectWorkOrder(verified, "Empty folder reused with the same identity; photo numbering restarted at 001", true);
-                });
-            } catch (Exception error) {
-                runOnUiThread(() -> {
-                    createBlockedUntilRefresh = true;
-                    showError("Folder reuse result is not safe to repeat. Refresh before trying again", error);
-                });
-            }
-        });
+        LocalDate initialDate = LocalDate.now();
+        DatePickerDialog dialog = new DatePickerDialog(
+                this,
+                (view, year, month, dayOfMonth) -> prepareClearAndReuse(
+                        LocalDate.of(year, month + 1, dayOfMonth)),
+                initialDate.getYear(),
+                initialDate.getMonthValue() - 1,
+                initialDate.getDayOfMonth());
+        dialog.setTitle("Choose new work-order date");
+        dialog.show();
     }
 
-    private void prepareClearAndReuse() {
+    private void prepareClearAndReuse(LocalDate requestedDate) {
         if (selectedAddress == null) {
-            showMessage("Choose an address first.");
+            showMessage("Choose a property first.");
             return;
         }
         if (selectedWorkOrder == null) {
-            showMessage("Select the older work-order folder you want to clear and reuse first.");
+            showMessage("Select the work order you want to clear and reuse.");
             return;
         }
         Uri treeUri = usableDriveTreeOrMessage();
@@ -1616,38 +1474,26 @@ private void buildLegacyWorkOrderUi() {
             return;
         }
 
-        final String requestedName;
-        try {
-            requestedName = WorkOrderFolderName.build(workOrderInput.getText().toString(), selectedDate.toString());
-        } catch (IllegalArgumentException error) {
-            showMessage(error.getMessage());
-            return;
-        }
-
         final String candidateId = selectedWorkOrder.id();
         final String candidateName = selectedWorkOrder.name();
-        if (candidateName.equals(requestedName)) {
-            showMessage("The selected folder already has the requested work-order date.");
-            return;
-        }
+        final String requestedName;
         try {
-            if (!WorkOrderFolderName.isOlderSameWorkOrderFolder(
-                    candidateName, workOrderInput.getText().toString(), selectedDate.toString())) {
-                showMessage("Select an older folder for the same work order before clearing it.");
-                return;
-            }
+            requestedName = WorkOrderFolderName.reuseNameForDate(
+                    candidateName,
+                    requestedDate.toString());
         } catch (IllegalArgumentException error) {
             showMessage(error.getMessage());
             return;
         }
 
         final String addressId = selectedAddress.id();
-        setBusy("Reviewing " + candidateName + " for Clear & Reuse…");
+        setBusy("Checking " + PropertyDisplayName.readableFolderName(candidateName) + "…");
         executor.execute(() -> {
             try {
                 List<DriveFolder> folders = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, addressId);
-                List<DriveFolder> requestedMatches = DriveClient.findExactNameMatches(folders, requestedName);
+                List<DriveFolder> requestedMatches =
+                        DriveClient.findExactNameMatches(folders, requestedName);
 
                 if (requestedMatches.size() > 1) {
                     runOnUiThread(() -> {
@@ -1657,8 +1503,9 @@ private void buildLegacyWorkOrderUi() {
                         workOrderFolders.clear();
                         workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
-                        setStatusText(requestedMatches.size() + " folders named " + requestedName
-                                + " already exist. Nothing was deleted; select the intended existing folder.");
+                        setStatusText(requestedMatches.size() + " work-order folders already use "
+                                + PropertyDisplayName.readableFolderName(requestedName)
+                                + ". Nothing was changed; select the intended folder.");
                         setNotBusy();
                     });
                     return;
@@ -1673,7 +1520,9 @@ private void buildLegacyWorkOrderUi() {
                         workOrderFolders.clear();
                         workOrderFolders.addAll(folders);
                         notifyFolderAdapters();
-                        selectWorkOrder(existing, "Requested dated folder already exists; old folder unchanged");
+                        selectWorkOrder(
+                                existing,
+                                "That dated work order already exists; selected it and left the old work order unchanged");
                     });
                     return;
                 }
@@ -1681,27 +1530,25 @@ private void buildLegacyWorkOrderUi() {
                 DriveFolder actualCandidate = DriveClient.findById(folders, candidateId);
                 if (actualCandidate == null) {
                     runOnUiThread(() -> showMessage(
-                            "The selected old folder is no longer under this address. Refresh and choose again."));
+                            "The selected work order is no longer under this property. Refresh and choose again."));
                     return;
                 }
                 if (!actualCandidate.name().equals(candidateName)) {
                     runOnUiThread(() -> showMessage(
-                            "The selected folder name changed. Nothing was deleted; refresh and choose again."));
+                            "The selected work-order name changed. Nothing was changed; refresh and choose again."));
                     return;
                 }
-                if (!WorkOrderFolderName.isOlderSameWorkOrderFolder(
-                        actualCandidate.name(), workOrderInput.getText().toString(), selectedDate.toString())) {
+                String revalidatedName = WorkOrderFolderName.reuseNameForDate(
+                        actualCandidate.name(),
+                        requestedDate.toString());
+                if (!requestedName.equals(revalidatedName)) {
                     runOnUiThread(() -> showMessage(
-                            "The selected folder no longer matches an older occurrence of this work order."));
+                            "The selected work order no longer matches the requested reuse. Nothing was changed."));
                     return;
                 }
 
                 DriveClient.ChildSnapshot snapshot = driveClient.listDirectChildren(
                         getContentResolver(), treeUri, candidateId);
-                if (snapshot.count() == 0) {
-                    runOnUiThread(this::reuseSelectedEmptyFolder);
-                    return;
-                }
 
                 runOnUiThread(() -> showClearReuseConfirmation(
                         treeUri,
@@ -1709,10 +1556,11 @@ private void buildLegacyWorkOrderUi() {
                         candidateId,
                         candidateName,
                         requestedName,
+                        requestedDate,
                         snapshot));
             } catch (Exception error) {
                 runOnUiThread(() -> showError(
-                        "Could not verify Clear & Reuse. Nothing was deleted", error));
+                        "Could not verify Clear & Reuse. Nothing was changed", error));
             }
         });
     }
@@ -1723,35 +1571,28 @@ private void buildLegacyWorkOrderUi() {
             String candidateId,
             String candidateName,
             String requestedName,
+            LocalDate requestedDate,
             DriveClient.ChildSnapshot snapshot) {
         if (!isStillOnAddress(addressId)
                 || selectedWorkOrder == null
                 || !selectedWorkOrder.id().equals(candidateId)) {
-            showMessage("The selected folder changed. Nothing was deleted.");
+            showMessage("The selected work order changed. Nothing was changed.");
             return;
         }
 
-        DriveFolder master = folderPrefs.getMasterFolder();
-        if (master == null || selectedAddress == null) {
-            showMessage("The folder hierarchy is incomplete. Nothing was deleted.");
-            return;
-        }
-
-        String folderWarning = snapshot.folderCount() == 0
+        String preservedNote = snapshot.preservedCount() == 0
                 ? ""
-                : "\n\n" + snapshot.folderCount() + " of those direct items "
-                + (snapshot.folderCount() == 1 ? "is a child folder" : "are child folders")
-                + "; deleting a child folder also removes its contents.";
+                : "\nOther non-photo items kept: " + snapshot.preservedCount();
 
         new AlertDialog.Builder(this)
-                .setTitle("Clear & Reuse selected folder?")
-                .setMessage("Master: " + master.name()
-                        + "\nAddress: " + selectedAddress.name()
-                        + "\nOld folder: " + candidateName
-                        + "\nDirect items to remove: " + snapshot.count()
-                        + "\nNew folder: " + requestedName
-                        + folderWarning
-                        + "\n\nOnly continue if this full path and item count are correct.")
+                .setTitle("Clear & Reuse?")
+                .setMessage("Property: "
+                        + PropertyDisplayName.fromDriveFolderName(selectedAddress.name())
+                        + "\nWork order: " + PropertyDisplayName.readableFolderName(candidateName)
+                        + "\nPhotos to remove from Drive: " + snapshot.photoCount()
+                        + "\nNew date: " + requestedDate
+                        + preservedNote
+                        + "\n\nThe work-order folder itself will be kept.")
                 .setNegativeButton("Cancel", (dialog, which) ->
                         showMessage("Clear & Reuse cancelled. Nothing was changed."))
                 .setPositiveButton("Clear & Reuse", (dialog, which) ->
@@ -1761,6 +1602,7 @@ private void buildLegacyWorkOrderUi() {
                                 candidateId,
                                 candidateName,
                                 requestedName,
+                                requestedDate,
                                 snapshot))
                 .setOnCancelListener(dialog ->
                         showMessage("Clear & Reuse cancelled. Nothing was changed."))
@@ -1773,50 +1615,56 @@ private void buildLegacyWorkOrderUi() {
             String candidateId,
             String candidateName,
             String requestedName,
+            LocalDate requestedDate,
             DriveClient.ChildSnapshot approvedSnapshot) {
         if (!isStillOnAddress(addressId)
                 || selectedWorkOrder == null
                 || !selectedWorkOrder.id().equals(candidateId)) {
-            showMessage("The selected folder changed. Nothing was deleted.");
+            showMessage("The selected work order changed. Nothing was changed.");
             return;
         }
 
-        setBusy("Rechecking approved folder before deletion…");
+        setBusy("Rechecking selected work order…");
         executor.execute(() -> {
             try {
                 List<DriveFolder> folders = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, addressId);
-                List<DriveFolder> requestedMatches = DriveClient.findExactNameMatches(folders, requestedName);
+                List<DriveFolder> requestedMatches =
+                        DriveClient.findExactNameMatches(folders, requestedName);
                 if (!requestedMatches.isEmpty()) {
                     runOnUiThread(() -> showMessage(
-                            "The requested dated folder now exists. Nothing was deleted; refresh and choose the intended folder."));
+                            "That dated work order now exists. Nothing was changed; refresh and choose the intended folder."));
                     return;
                 }
 
                 DriveFolder actualCandidate = DriveClient.findById(folders, candidateId);
                 if (actualCandidate == null) {
                     runOnUiThread(() -> showMessage(
-                            "The selected old folder is no longer under this address. Nothing was deleted."));
+                            "The selected work order is no longer under this property. Nothing was changed."));
                     return;
                 }
                 if (!actualCandidate.name().equals(candidateName)) {
                     runOnUiThread(() -> showMessage(
-                            "The selected folder name changed after confirmation. Nothing was deleted."));
+                            "The selected work-order name changed after confirmation. Nothing was changed."));
                     return;
                 }
-                if (!WorkOrderFolderName.isOlderSameWorkOrderFolder(
-                        actualCandidate.name(), workOrderInput.getText().toString(), selectedDate.toString())) {
+
+                String revalidatedName = WorkOrderFolderName.reuseNameForDate(
+                        actualCandidate.name(),
+                        requestedDate.toString());
+                if (!requestedName.equals(revalidatedName)) {
                     runOnUiThread(() -> showMessage(
-                            "The selected folder no longer matches the requested reuse. Nothing was deleted."));
+                            "The selected work order no longer matches the requested reuse. Nothing was changed."));
                     return;
                 }
 
                 DriveClient.ChildSnapshot currentSnapshot = driveClient.listDirectChildren(
                         getContentResolver(), treeUri, candidateId);
                 if (!DriveClient.sameDocumentIds(
-                        approvedSnapshot.documentIds(), currentSnapshot.documentIds())) {
+                        approvedSnapshot.photoDocumentIds(),
+                        currentSnapshot.photoDocumentIds())) {
                     runOnUiThread(() -> showMessage(
-                            "Folder contents changed after confirmation. Nothing was deleted; review Clear & Reuse again."));
+                            "The photos in this work order changed after confirmation. Nothing was removed; review Clear & Reuse again."));
                     return;
                 }
 
@@ -1825,35 +1673,35 @@ private void buildLegacyWorkOrderUi() {
                         new File(getFilesDir(), "pending_photos"));
                 photoStore.prepareCaptureSequenceResetForReuse(candidateId, requestedName);
 
-                int deletedCount = 0;
+                int removedCount = 0;
                 try {
-                    for (String childId : currentSnapshot.documentIds()) {
-                        driveClient.deleteDocument(getContentResolver(), treeUri, childId);
-                        deletedCount++;
+                    for (String photoId : currentSnapshot.photoDocumentIds()) {
+                        driveClient.deleteDocument(getContentResolver(), treeUri, photoId);
+                        removedCount++;
                     }
                 } catch (Exception error) {
-                    final int removed = deletedCount;
+                    final int removed = removedCount;
                     runOnUiThread(() -> {
                         createBlockedUntilRefresh = true;
                         showError(
                                 "Clear & Reuse stopped after removing " + removed + " of "
-                                        + currentSnapshot.count()
-                                        + " items. The work-order folder was not renamed. Refresh and inspect before retrying",
+                                        + currentSnapshot.photoCount()
+                                        + " photos. The work-order date was not changed. Refresh and inspect before retrying",
                                 error);
                     });
                     return;
                 }
 
                 try {
-                    DriveClient.ChildSnapshot afterDelete = driveClient.listDirectChildren(
+                    DriveClient.ChildSnapshot afterRemoval = driveClient.listDirectChildren(
                             getContentResolver(), treeUri, candidateId);
-                    if (afterDelete.count() != 0) {
-                        throw new IOException("Drive still reports " + afterDelete.count()
-                                + " child item" + (afterDelete.count() == 1 ? "" : "s") + ".");
+                    if (afterRemoval.photoCount() != 0) {
+                        throw new IOException("Drive still reports " + afterRemoval.photoCount()
+                                + " photo" + (afterRemoval.photoCount() == 1 ? "" : "s") + ".");
                     }
 
                     authorizationGuard.requireDriveMutation();
-                DriveFolder renameResult = driveClient.renameFolder(
+                    DriveFolder renameResult = driveClient.renameFolder(
                             getContentResolver(), treeUri, candidateId, requestedName);
                     if (!candidateId.equals(renameResult.id())) {
                         throw new IOException("Drive rename changed the folder identity.");
@@ -1863,10 +1711,13 @@ private void buildLegacyWorkOrderUi() {
                             getContentResolver(), treeUri, addressId);
                     DriveFolder verified = DriveClient.findById(afterRename, candidateId);
                     if (verified == null || !verified.name().equals(requestedName)) {
-                        throw new IOException("Drive rename could not be verified with the original folder identity.");
+                        throw new IOException(
+                                "Drive rename could not be verified with the original folder identity.");
                     }
-                    List<DriveFolder> verifiedMatches = DriveClient.findExactNameMatches(afterRename, requestedName);
-                    if (verifiedMatches.size() != 1 || !verifiedMatches.get(0).id().equals(candidateId)) {
+                    List<DriveFolder> verifiedMatches =
+                            DriveClient.findExactNameMatches(afterRename, requestedName);
+                    if (verifiedMatches.size() != 1
+                            || !verifiedMatches.get(0).id().equals(candidateId)) {
                         throw new IOException("The renamed folder is ambiguous.");
                     }
 
@@ -1879,19 +1730,22 @@ private void buildLegacyWorkOrderUi() {
                         workOrderFolders.clear();
                         workOrderFolders.addAll(afterRename);
                         notifyFolderAdapters();
-                        selectWorkOrder(verified, "Clear & Reuse complete with the same identity; photo numbering restarted at 001", true);
+                        selectWorkOrder(
+                                verified,
+                                "Clear & Reuse complete; next photo starts at 001",
+                                true);
                     });
                 } catch (Exception error) {
                     runOnUiThread(() -> {
                         createBlockedUntilRefresh = true;
                         showError(
-                                "Clear & Reuse is incomplete. Old items may have been removed, but the folder was not confirmed ready. Refresh and inspect before any further Drive write",
+                                "Clear & Reuse is incomplete. Old photos may have been removed, but the work order was not confirmed ready. Refresh and inspect before any further Drive write",
                                 error);
                     });
                 }
             } catch (Exception error) {
                 runOnUiThread(() -> showError(
-                        "Could not revalidate Clear & Reuse. Nothing was deleted", error));
+                        "Could not revalidate Clear & Reuse. Nothing was changed", error));
             }
         });
     }
@@ -2249,7 +2103,6 @@ private void buildLegacyWorkOrderUi() {
         workOrderInput.setEnabled(false);
         dateButton.setEnabled(false);
         useCreateButton.setEnabled(false);
-        reuseEmptyButton.setEnabled(false);
         clearReuseButton.setEnabled(false);
         photosButton.setEnabled(false);
         folderList.setEnabled(false);
@@ -2282,9 +2135,6 @@ private void buildLegacyWorkOrderUi() {
             workOrderInput.setEnabled(canRead);
             dateButton.setEnabled(canRead);
             useCreateButton.setEnabled(canRead && canWrite && !createBlockedUntilRefresh);
-            reuseEmptyButton.setEnabled(canRead && canWrite
-                    && selectedWorkOrder != null
-                    && !createBlockedUntilRefresh);
             clearReuseButton.setEnabled(canRead && canWrite
                     && selectedWorkOrder != null
                     && !createBlockedUntilRefresh);

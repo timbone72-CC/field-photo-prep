@@ -72,6 +72,15 @@ public final class DriveClientTest {
     }
 
     @Test
+    public void imageMimeTypesAreRecognizedWithoutTreatingFoldersAsImages() {
+        assertTrue(DriveClient.isPhotoMimeType("image/jpeg"));
+        assertTrue(DriveClient.isPhotoMimeType("image/png"));
+        assertFalse(DriveClient.isPhotoMimeType("application/pdf"));
+        assertFalse(DriveClient.isPhotoMimeType(DocumentsContract.Document.MIME_TYPE_DIR));
+        assertFalse(DriveClient.isPhotoMimeType(null));
+    }
+
+    @Test
     public void exactWorkOrderMatchDoesNotUseCaseOrPartialGuessing() {
         List<DriveFolder> folders = Arrays.asList(
                 new DriveFolder("1", "Cut Grass - 2026-09-06"),
@@ -194,13 +203,39 @@ public final class DriveClientTest {
     }
 
     @Test
-    public void childSnapshotCountsDirectItemsAndChildFolders() {
-        DriveClient.ChildSnapshot snapshot = new DriveClient.ChildSnapshot(
-                Arrays.asList("photo", "nested-folder"), 1);
+    public void photoIdentitySetCanStayStableWhileOtherItemsChange() {
+        DriveClient.ChildSnapshot first = new DriveClient.ChildSnapshot(
+                Arrays.asList("photo-1", "notes"),
+                Arrays.asList("photo-1"),
+                0);
+        DriveClient.ChildSnapshot second = new DriveClient.ChildSnapshot(
+                Arrays.asList("photo-1", "notes", "nested-folder"),
+                Arrays.asList("photo-1"),
+                1);
 
-        assertEquals(2, snapshot.count());
+        assertTrue(DriveClient.sameDocumentIds(
+                first.photoDocumentIds(),
+                second.photoDocumentIds()));
+        assertFalse(DriveClient.sameDocumentIds(
+                first.documentIds(),
+                second.documentIds()));
+    }
+
+    @Test
+    public void childSnapshotSeparatesImageFilesFromOtherItems() {
+        DriveClient.ChildSnapshot snapshot = new DriveClient.ChildSnapshot(
+                Arrays.asList("photo-1", "notes", "nested-folder"),
+                Arrays.asList("photo-1"),
+                1);
+
+        assertEquals(3, snapshot.count());
+        assertEquals(1, snapshot.photoCount());
+        assertEquals(2, snapshot.preservedCount());
         assertEquals(1, snapshot.folderCount());
-        assertEquals(Arrays.asList("photo", "nested-folder"), snapshot.documentIds());
+        assertEquals(Arrays.asList("photo-1"), snapshot.photoDocumentIds());
+        assertEquals(
+                Arrays.asList("photo-1", "notes", "nested-folder"),
+                snapshot.documentIds());
     }
 
     @Test

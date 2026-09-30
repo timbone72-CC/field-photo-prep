@@ -36,6 +36,43 @@ public final class WorkOrderFolderNameTest {
     }
 
     @Test
+    public void clearReuseKeepsSelectedWorkOrderNameAndChangesOnlyDate() {
+        assertEquals(
+                "Debris - Trash - 2026-09-29",
+                WorkOrderFolderName.reuseNameForDate(
+                        "Debris - Trash - 2026-09-20",
+                        "2026-09-29"));
+    }
+
+    @Test
+    public void clearReuseRejectsSameEarlierOrMalformedDateTarget() {
+        assertReuseNameFailure(
+                "Cut Grass - 2026-09-20",
+                "2026-09-20",
+                "Choose a date after 2026-09-20 for Clear & Reuse.");
+        assertReuseNameFailure(
+                "Cut Grass - 2026-09-20",
+                "2026-09-19",
+                "Choose a date after 2026-09-20 for Clear & Reuse.");
+        assertReuseNameFailure(
+                "Cut Grass",
+                "2026-09-29",
+                "Select a dated work-order folder before using Clear & Reuse.");
+    }
+
+    private static void assertReuseNameFailure(
+            String selectedFolderName,
+            String requestedDate,
+            String expectedMessage) {
+        try {
+            WorkOrderFolderName.reuseNameForDate(selectedFolderName, requestedDate);
+            fail("Expected Clear & Reuse name derivation to fail");
+        } catch (IllegalArgumentException expected) {
+            assertEquals(expectedMessage, expected.getMessage());
+        }
+    }
+
+    @Test
     public void olderSameWorkOrderIsEligibleForEmptyReuse() {
         assertTrue(WorkOrderFolderName.isOlderSameWorkOrderFolder(
                 "Cut Grass - 2026-09-06", "Cut Grass", "2026-09-13"));

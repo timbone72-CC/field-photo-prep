@@ -51,7 +51,9 @@ public final class Concept3UiStructureInstrumentedTest {
         assertEquals(14f, dateTextSp, 0.6f); // Android rounds sp resources to device pixels.
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, workCreate.getLayoutParams().width);
         assertNotNull(work.findViewById(R.id.work_order_photos));
-        assertEquals(View.GONE, work.findViewById(R.id.work_order_maintenance).getVisibility());
+        Button clearReuse = work.findViewById(R.id.work_order_clear_reuse);
+        assertNotNull(clearReuse);
+        assertEquals("Clear & Reuse", clearReuse.getText().toString());
 
         View photos = inflater.inflate(R.layout.screen_photos, null, false);
         assertNotNull(photos.findViewById(R.id.photos_open_camera));
