@@ -1821,13 +1821,14 @@ private void buildLegacyWorkOrderUi() {
         }
 
         createBlockedUntilRefresh = false;
-        String addressId = selectedAddress.id();
+        final DriveFolder requestedAddress = selectedAddress;
+        String addressId = requestedAddress.id();
         setBusy("Refreshing work-order folders…");
         executor.execute(() -> {
             try {
                 List<DriveFolder> folders = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, addressId);
-                logFolderProbe("WORK_ORDERS", selectedAddress,
+                logFolderProbe("WORK_ORDERS", requestedAddress,
                         folderPrefs.getCurrentWorkOrder(), folders);
                 runOnUiThread(() -> {
                     if (!isStillOnAddress(addressId)) {
@@ -1843,7 +1844,7 @@ private void buildLegacyWorkOrderUi() {
                 });
             } catch (Exception error) {
                 if (BuildConfig.DEBUG) {
-                    Log.i("FPPFolderProbe", "WORK_ORDERS parentName=" + selectedAddress.name()
+                    Log.i("FPPFolderProbe", "WORK_ORDERS parentName=" + requestedAddress.name()
                             + " parentId=" + addressId + " error="
                             + error.getClass().getSimpleName() + ": " + error.getMessage());
                 }
