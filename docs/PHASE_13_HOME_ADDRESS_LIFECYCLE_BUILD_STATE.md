@@ -1,13 +1,13 @@
 # Phase 13 — Home Address Lifecycle & Cleanup — Build State
 
 Date: 2026-09-29  
-Status: **LEVEL 3 — PHASE 13A–13C IMPLEMENTED / CI PASS; PHASE 13D NEXT**  
+Status: **LEVEL 3 — PHASE 13A–13D IMPLEMENTED / CI PASS; PHASE 13E NEXT**  
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
 PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
 Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.
-Current validated Phase 13C branch head: `c11d5aea78a695d2043c0f5bef93b08f05d422cd`.
-Current Phase 13C runtime implementation head: `14ed8883d7527aa13186d1149c96c5e786fae4d9`.
+Current validated Phase 13D runtime head: `e79219684a3b7176e9807bb747e0380dc910dc4f`.
+Android CI run #1131 / `36666095641`: **PASS** on that exact runtime head.
 Validated internal build: `0.28.2-internal` / versionCode `39`.
 
 ## Goal
@@ -401,6 +401,40 @@ Phase 13C verification:
 - rendered/test evidence artifact id `11075966941`, SHA-256 `da0ba134fcd8338eda748ccd2f9d8eace27e4b54c335e82aafc1db9ff2130fd2`;
 - no Phase 13 real-provider Drive photo deletion has been performed yet; that external behavior remains reserved for the Phase 13E disposable Samsung/Google Drive reality gate.
 
+Phase 13D completed on 2026-09-29:
+- added one app-global `Suggest archive after` preference with the approved choices 30 days, 60 days, 90 days, 6 months, 1 year, and Never;
+- default remains 90 days and invalid/missing persisted values fall back safely to 90 days;
+- the setting is stored only in app-private `property_archive_review` SharedPreferences and is not company-specific;
+- Android cloud backup and device-transfer rules were rechecked and continue excluding all SharedPreferences, so this setting remains device-local/non-portable;
+- candidate calculation considers only ACTIVE properties with a known real-work `Last used` timestamp; unknown activity is not fabricated into an inactivity age;
+- 30/60/90-day thresholds use exact day cutoffs, while 6 months and 1 year use calendar month/year cutoffs;
+- Never returns no review candidates;
+- Home exposes one compact review entry only when the current company has addresses actually due for review;
+- tapping the review entry filters the existing Home property list to those candidates and preserves the existing per-address Archive/Delete controls; tapping Show all or typing a search leaves review-only mode;
+- the setting is exposed as `Suggest Archive After` in the existing App & Drive menu rather than adding a new settings screen;
+- review mode has no code path that invokes archive/delete cleanup, performs Drive mutation, or changes lifecycle state automatically;
+- no per-company timers, tags, favorites, pinning, analytics, or storage dashboard were introduced;
+- a min-SDK compatibility review caught and removed newly introduced runtime `List.of()` usage so Phase 13D does not raise the app's Android API assumptions.
+
+Phase 13D verification:
+- focused unit coverage proves 90-day candidate selection, known-vs-unknown activity behavior, exact 6-month calendar cutoff, and Never;
+- instrumentation coverage proves the global preference defaults to 90 days and persists a changed selection;
+- App & Drive menu policy tests include the setting in both usable and authorization-blocked states without exposing stale provider/company actions;
+- Android CI run #1131 / `36666095641`: **PASS** on exact runtime head `e79219684a3b7176e9807bb747e0380dc910dc4f`;
+- unit tests and production identity checks: PASS;
+- internal debug build: PASS;
+- production release fail-closed, stable signer, and APK evidence checks: PASS;
+- full connected Android instrumentation and internal launch smoke: PASS;
+- rendered verification: PASS;
+- internal APK artifact id `11076352100`, SHA-256 `5dc76ee00f0604574c19d1ec50268b747eb4d525f24eb391562b62e145a26d51`;
+- rendered/test evidence artifact id `11076213815`, SHA-256 `2f294635b948d339507a0583e1bc05bbd8d44c1dac7cb4a1f3a5cc9bacc53f21`;
+- no Phase 13D external/Drive mutation was performed.
+
+Rollback note for Phase 13D:
+- the new preference file is `property_archive_review`;
+- source rollback may safely leave this app-private preference unused; it has no provider identity or Drive side effect;
+- uninstall/clear-app-data removes it, and existing backup/transfer rules prevent it from migrating to another installation.
+
 Completed:
 - current `main` inspected;
 - no open PR or existing Phase 13 branch owned this scope;
@@ -411,12 +445,11 @@ Completed:
 - Phase 10F non-portable backup boundary confirmed.
 
 Not started:
-- Phase 13D adjustable inactivity review;
-- external/Drive mutation for Phase 13;
-- Phase 13 physical reality gate.
+- Phase 13 disposable external/Drive mutation proof;
+- Phase 13 physical Samsung/Google Drive reality gate.
 
 ## Next checkpoint
 
-Begin **Phase 13D — Adjustable Inactivity Review** on this authoritative branch.
+Begin **Phase 13E — Verification / reality gate** on this authoritative branch.
 
-Add the approved global **Suggest archive after** threshold with choices 30 days, 60 days, 90 days, 6 months, 1 year, and Never; default 90 days. Keep it suggestion-only, expose only a compact review surface, and do not perform archive or Drive cleanup automatically. Preserve the proven Phase 13C cleanup path unchanged until the later Phase 13E reality gate.
+Use the already-approved disposable positive + negative fixture plan. Do not use live customer/job folders. Phase 13E must prove the real Google Drive cleanup/preservation behavior, archive/search/reactivate identity reuse, and unresolved/protected-work blocking before explicit Level 3 merge approval is requested.
