@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -878,7 +879,7 @@ private void openSavedPhotosFromHome() {
 
     private List<DriveFolder> archiveReviewCandidates() {
         if (propertyArchiveReviewPrefs == null) {
-            return List.of();
+            return Collections.emptyList();
         }
         return PropertyArchiveReviewPolicy.candidates(
                 discoveredPropertyFolders,
