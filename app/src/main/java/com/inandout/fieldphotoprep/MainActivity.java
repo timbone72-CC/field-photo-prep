@@ -81,6 +81,7 @@ public final class MainActivity extends Activity {
     private LocalDate selectedDate = LocalDate.now();
     private boolean createBlockedUntilRefresh;
     private boolean companyWriteBlockedUntilRefresh;
+    private String propertyCleanupBlockedAddressId;
     private boolean busy;
     private boolean pendingStatusConnectDrive;
     private boolean pendingStatusOpenPhotos;
@@ -419,10 +420,10 @@ private void buildHomeUi() {
                     reactivateProperty(folder);
                     return true;
                 case PROPERTY_ACTION_ARCHIVE:
-                    showPropertyCleanupConfirmation(folder, false);
+                    beginPropertyCleanup(folder, false);
                     return true;
                 case PROPERTY_ACTION_DELETE:
-                    showPropertyCleanupConfirmation(folder, true);
+                    beginPropertyCleanup(folder, true);
                     return true;
                 default:
                     return false;
@@ -455,38 +456,270 @@ private void buildHomeUi() {
         }
     }
 
-    private void showPropertyCleanupConfirmation(DriveFolder folder, boolean deleteAddress) {
-        if (folder == null) {
+    private void beginPropertyCleanup(DriveFolder folder, boolean deleteAddress) {
+        if (folder == null || busy) {
             return;
         }
-        String display = PropertyDisplayName.fromDriveFolderName(folder.name());
-        String title = deleteAddress ? "Delete Address?" : "Archive Address?";
-        String message = deleteAddress
-                ? display
-                    + "\n\nThis will remove old FPP photos and remove this address from normal "
-                    + "Home/search on this device. Drive folders and non-photo files stay. "
-                    + "If you add this exact address again later, FPP can reuse the existing Drive folder."
-                : display
-                    + "\n\nThis will remove old FPP photos and hide this address from Home. "
-                    + "You can still find it with Search and reactivate it later. "
-                    + "Drive folders and non-photo files stay.";
+        if (folder.id().equals(propertyCleanupBlockedAddressId)) {
+            showHomeInlineMessage(
+                    "Refresh Properties before trying cleanup on this address again.");
+            return;
+        }
+
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null) {
+            showHomeInlineMessage("Choose a company before managing this address.");
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri) || !hasPersistedWritePermission(treeUri)) {
+            showHomeInlineMessage(
+                    "The workspace needs read/write access before old Drive photos can be removed.");
+            return;
+        }
+
+        final String companyId = company.id();
+        final String addressId = folder.id();
+        final String addressName = folder.name();
+        setBusy(deleteAddress ? "Checking address deletion…" : "Checking address archive…");
+        executor.execute(() -> {
+            try {
+                List<DriveFolder> addresses = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, companyId);
+                DriveFolder actualAddress = DriveClient.findById(addresses, addressId);
+                if (actualAddress == null || !addressName.equals(actualAddress.name())) {
+                    throw new IOException(
+                            "The selected address no longer matches the Drive address that was reviewed.");
+                }
+
+                PendingPhotoStore photoStore = new PendingPhotoStore(
+                        new File(getFilesDir(), "pending_photos"));
+                photoStore.requireAddressCleanupSafe(addressId);
+
+                List<DriveFolder> directFolders = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, addressId);
+                List<DriveFolder> workOrders = datedWorkOrderFolders(directFolders);
+                Map<String, DriveClient.ChildSnapshot> snapshots = new HashMap<>();
+                for (DriveFolder workOrder : workOrders) {
+                    snapshots.put(
+                            workOrder.id(),
+                            driveClient.listDirectChildren(
+                                    getContentResolver(), treeUri, workOrder.id()));
+                }
+
+                AddressPhotoCleanupPlan plan =
+                        AddressPhotoCleanupPlan.create(actualAddress, workOrders, snapshots);
+                runOnUiThread(() -> {
+                    DriveFolder currentCompany = folderPrefs.getMasterFolder();
+                    if (currentCompany == null || !companyId.equals(currentCompany.id())) {
+                        setNotBusy();
+                        showHomeInlineMessage(
+                                "The selected company changed. Nothing was removed.");
+                        return;
+                    }
+                    setNotBusy();
+                    showPropertyCleanupConfirmation(treeUri, companyId, plan, deleteAddress);
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> showError(
+                        deleteAddress
+                                ? "Could not verify address deletion. Nothing was changed"
+                                : "Could not verify address archive. Nothing was changed",
+                        error));
+            }
+        });
+    }
+
+    private void showPropertyCleanupConfirmation(
+            Uri treeUri,
+            String companyId,
+            AddressPhotoCleanupPlan plan,
+            boolean deleteAddress) {
+        String display = PropertyDisplayName.fromDriveFolderName(plan.address().name());
+        String preservedNote = plan.totalPreservedCount() == 0
+                ? ""
+                : "\nOther direct non-photo items kept: " + plan.totalPreservedCount();
+        String message = "Property: " + display
+                + "\nWork-order folders checked: " + plan.workOrderCount()
+                + "\nPhotos to remove from Drive: " + plan.totalPhotoCount()
+                + preservedNote
+                + "\n\nAddress and work-order folders stay. Non-photo files stay."
+                + (deleteAddress
+                        ? "\nThis address will then be removed from normal FPP Home/search on this device."
+                        : "\nThis address will then be hidden from Home but remain searchable for Reactivate.");
 
         new AlertDialog.Builder(this)
-                .setTitle(title)
+                .setTitle(deleteAddress ? "Delete Address?" : "Archive Address?")
                 .setMessage(message)
                 .setPositiveButton(deleteAddress ? "Delete Address" : "Archive", (dialog, which) ->
-                        blockPropertyCleanupUntilPhase13C(deleteAddress))
-                .setNegativeButton("Cancel", null)
+                        performConfirmedPropertyCleanup(treeUri, companyId, plan, deleteAddress))
+                .setNegativeButton("Cancel", (dialog, which) ->
+                        showHomeInlineMessage("Address cleanup cancelled. Nothing was changed."))
+                .setOnCancelListener(dialog ->
+                        showHomeInlineMessage("Address cleanup cancelled. Nothing was changed."))
                 .show();
     }
 
-    private void blockPropertyCleanupUntilPhase13C(boolean deleteAddress) {
-        // Phase 13C must prove exact photo cleanup before the lifecycle state can become
-        // ARCHIVED or DELETED. Keep this intermediate branch fail-closed rather than hiding
-        // an address while its old FPP photos are still present.
-        showHomeInlineMessage(deleteAddress
-                ? "Address deletion is waiting for verified photo cleanup. No changes were made."
-                : "Archiving is waiting for verified photo cleanup. No changes were made.");
+    private void performConfirmedPropertyCleanup(
+            Uri treeUri,
+            String companyId,
+            AddressPhotoCleanupPlan approvedPlan,
+            boolean deleteAddress) {
+        if (busy) {
+            return;
+        }
+        String addressId = approvedPlan.address().id();
+        if (addressId.equals(propertyCleanupBlockedAddressId)) {
+            showHomeInlineMessage(
+                    "Refresh Properties before trying cleanup on this address again.");
+            return;
+        }
+
+        DriveFolder currentCompany = folderPrefs.getMasterFolder();
+        if (currentCompany == null || !companyId.equals(currentCompany.id())) {
+            showHomeInlineMessage("The selected company changed. Nothing was removed.");
+            return;
+        }
+
+        setBusy("Rechecking address cleanup…");
+        executor.execute(() -> {
+            int removedCount = 0;
+            boolean remoteMutationAttempted = false;
+            try {
+                List<DriveFolder> addressesBefore = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, companyId);
+                DriveFolder actualAddress = DriveClient.findById(addressesBefore, addressId);
+                if (actualAddress == null
+                        || !approvedPlan.address().name().equals(actualAddress.name())) {
+                    throw new IOException(
+                            "The selected address changed after confirmation. Nothing was removed.");
+                }
+
+                List<DriveFolder> directFoldersBefore = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, addressId);
+                List<DriveFolder> workOrdersBefore =
+                        datedWorkOrderFolders(directFoldersBefore);
+                if (!approvedPlan.matchesWorkOrderFolders(workOrdersBefore)) {
+                    throw new IOException(
+                            "The work-order folders changed after confirmation. Nothing was removed; review cleanup again.");
+                }
+
+                PendingPhotoStore photoStore = new PendingPhotoStore(
+                        new File(getFilesDir(), "pending_photos"));
+                photoStore.requireAddressCleanupSafe(addressId);
+
+                Map<String, DriveClient.ChildSnapshot> currentSnapshots = new HashMap<>();
+                for (AddressPhotoCleanupPlan.WorkOrderTarget target : approvedPlan.targets()) {
+                    DriveClient.ChildSnapshot current = driveClient.listDirectChildren(
+                            getContentResolver(), treeUri, target.folder().id());
+                    if (!approvedPlan.matchesPhotoSnapshot(target.folder().id(), current)) {
+                        throw new IOException(
+                                "The photos in "
+                                        + PropertyDisplayName.readableFolderName(target.folder().name())
+                                        + " changed after confirmation. Nothing was removed; review cleanup again.");
+                    }
+                    currentSnapshots.put(target.folder().id(), current);
+                }
+
+                authorizationGuard.requireDriveMutation();
+
+                for (AddressPhotoCleanupPlan.WorkOrderTarget target : approvedPlan.targets()) {
+                    DriveClient.ChildSnapshot snapshot =
+                            currentSnapshots.get(target.folder().id());
+                    for (String photoId : snapshot.photoDocumentIds()) {
+                        remoteMutationAttempted = true;
+                        driveClient.deleteDocument(getContentResolver(), treeUri, photoId);
+                        removedCount++;
+                    }
+                }
+
+                List<DriveFolder> directFoldersAfter = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, addressId);
+                List<DriveFolder> workOrdersAfter = datedWorkOrderFolders(directFoldersAfter);
+                if (!approvedPlan.matchesWorkOrderFolders(workOrdersAfter)) {
+                    throw new IOException(
+                            "Drive changed the work-order folder set during cleanup.");
+                }
+
+                for (AddressPhotoCleanupPlan.WorkOrderTarget target : approvedPlan.targets()) {
+                    DriveClient.ChildSnapshot after = driveClient.listDirectChildren(
+                            getContentResolver(), treeUri, target.folder().id());
+                    if (after.photoCount() != 0) {
+                        throw new IOException(
+                                "Drive still reports " + after.photoCount()
+                                        + " photo"
+                                        + (after.photoCount() == 1 ? "" : "s")
+                                        + " in "
+                                        + PropertyDisplayName.readableFolderName(target.folder().name())
+                                        + ".");
+                    }
+                }
+
+                List<DriveFolder> addressesAfter = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, companyId);
+                DriveFolder verifiedAddress = DriveClient.findById(addressesAfter, addressId);
+                if (verifiedAddress == null
+                        || !approvedPlan.address().name().equals(verifiedAddress.name())) {
+                    throw new IOException(
+                            "Drive could not verify the original address identity after cleanup.");
+                }
+
+                if (deleteAddress) {
+                    propertyLifecycleStore.deleteAfterCleanupProven(companyId, addressId);
+                } else {
+                    propertyLifecycleStore.archiveAfterCleanupProven(companyId, addressId);
+                }
+
+                final int removed = removedCount;
+                runOnUiThread(() -> {
+                    propertyCleanupBlockedAddressId = null;
+                    DriveFolder savedAddress = folderPrefs.getCurrentAddress();
+                    if (savedAddress != null && addressId.equals(savedAddress.id())) {
+                        folderPrefs.clearCurrentAddress();
+                    }
+                    setDiscoveredPropertyFolders(addressesAfter);
+                    setNotBusy();
+                    showHomeSuccessMessage(
+                            (deleteAddress ? "Address removed from FPP. " : "Address archived. ")
+                                    + removed
+                                    + (removed == 1 ? " old photo removed." : " old photos removed.")
+                                    + " Drive folders and non-photo files were kept.");
+                });
+            } catch (Exception error) {
+                final int removed = removedCount;
+                final boolean attempted = remoteMutationAttempted;
+                runOnUiThread(() -> {
+                    if (attempted) {
+                        propertyCleanupBlockedAddressId = addressId;
+                    }
+                    showError(
+                            attempted
+                                    ? "Address cleanup stopped after removing "
+                                            + removed
+                                            + " of "
+                                            + approvedPlan.totalPhotoCount()
+                                            + " approved photos. Refresh and inspect before retrying"
+                                    : "Address cleanup stopped before any photo was removed",
+                            error);
+                });
+            }
+        });
+    }
+
+    private static List<DriveFolder> datedWorkOrderFolders(List<DriveFolder> folders) {
+        List<DriveFolder> result = new ArrayList<>();
+        if (folders == null) {
+            return result;
+        }
+        for (DriveFolder folder : folders) {
+            if (folder != null && WorkOrderFolderName.isDatedWorkOrderFolder(folder.name())) {
+                result.add(folder);
+            }
+        }
+        return result;
     }
 
 
@@ -1125,6 +1358,7 @@ private void buildLegacyWorkOrderUi() {
                         getContentResolver(), treeUri, parentId);
                 runOnUiThread(() -> {
                     setDiscoveredPropertyFolders(folders);
+                    propertyCleanupBlockedAddressId = null;
                     clearHomeInlineMessage();
                     setNotBusy();
                 });
