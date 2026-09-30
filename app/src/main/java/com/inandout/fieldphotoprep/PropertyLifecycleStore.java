@@ -69,7 +69,23 @@ final class PropertyLifecycleStore {
         }
     }
 
-    void setState(String companyId, String addressId, State state) {
+    void reactivate(String companyId, String addressId) {
+        persistState(companyId, addressId, State.ACTIVE);
+    }
+
+    void archiveAfterCleanupProven(String companyId, String addressId) {
+        persistState(companyId, addressId, State.ARCHIVED);
+    }
+
+    void deleteAfterCleanupProven(String companyId, String addressId) {
+        persistState(companyId, addressId, State.DELETED);
+    }
+
+    void setStateForTest(String companyId, String addressId, State state) {
+        persistState(companyId, addressId, state);
+    }
+
+    private void persistState(String companyId, String addressId, State state) {
         if (state == null) {
             throw new IllegalArgumentException("Property lifecycle state is required.");
         }
