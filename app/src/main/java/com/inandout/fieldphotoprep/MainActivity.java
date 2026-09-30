@@ -626,14 +626,31 @@ private void buildHomeUi() {
 
                 authorizationGuard.requireDriveMutation();
 
-                for (AddressPhotoCleanupPlan.WorkOrderTarget target : approvedPlan.targets()) {
-                    DriveClient.ChildSnapshot snapshot =
-                            currentSnapshots.get(target.folder().id());
-                    for (String photoId : snapshot.photoDocumentIds()) {
-                        remoteMutationAttempted = true;
-                        driveClient.deleteDocument(getContentResolver(), treeUri, photoId);
-                        removedCount++;
-                    }
+                try {
+                    removedCount = AddressPhotoCleanupMutation.removeApprovedPhotosAndVerifyEmpty(
+                            approvedPlan,
+                            new AddressPhotoCleanupMutation.Operations() {
+                                @Override
+                                public void deletePhoto(String photoDocumentId)
+                                        throws IOException {
+                                    driveClient.deleteDocument(
+                                            getContentResolver(), treeUri, photoDocumentId);
+                                }
+
+                                @Override
+                                public DriveClient.ChildSnapshot readWorkOrderChildren(
+                                        String workOrderDocumentId) throws IOException {
+                                    return driveClient.listDirectChildren(
+                                            getContentResolver(),
+                                            treeUri,
+                                            workOrderDocumentId);
+                                }
+                            });
+                    remoteMutationAttempted = approvedPlan.totalPhotoCount() > 0;
+                } catch (AddressPhotoCleanupMutation.Failure failure) {
+                    removedCount = failure.removedCount();
+                    remoteMutationAttempted = failure.remoteMutationAttempted();
+                    throw failure;
                 }
 
                 List<DriveFolder> directFoldersAfter = driveClient.listFoldersFresh(
@@ -642,20 +659,6 @@ private void buildHomeUi() {
                 if (!approvedPlan.matchesWorkOrderFolders(workOrdersAfter)) {
                     throw new IOException(
                             "Drive changed the work-order folder set during cleanup.");
-                }
-
-                for (AddressPhotoCleanupPlan.WorkOrderTarget target : approvedPlan.targets()) {
-                    DriveClient.ChildSnapshot after = driveClient.listDirectChildren(
-                            getContentResolver(), treeUri, target.folder().id());
-                    if (after.photoCount() != 0) {
-                        throw new IOException(
-                                "Drive still reports " + after.photoCount()
-                                        + " photo"
-                                        + (after.photoCount() == 1 ? "" : "s")
-                                        + " in "
-                                        + PropertyDisplayName.readableFolderName(target.folder().name())
-                                        + ".");
-                    }
                 }
 
                 List<DriveFolder> addressesAfter = driveClient.listFoldersFresh(
