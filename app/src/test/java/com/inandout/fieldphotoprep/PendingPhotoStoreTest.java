@@ -188,6 +188,64 @@ public final class PendingPhotoStoreTest {
         assertTrue(new File(root, PendingPhotoRecord.metadataFileNameFor(ID1)).isFile());
     }
 
+    @Test
+    public void addressCleanupAllowsConfirmedUploadedHistory() throws Exception {
+        File root = temporaryFolder.newFolder("pending-cleanup-uploaded");
+        PendingPhotoStore store = store(root, ID1, 1_700_000_000_000L);
+        PendingPhotoRecord created = store.beginCapture(
+                new DriveFolder("address-id", "Address"),
+                new DriveFolder("work-id", "Work - 2026-09-09"));
+        writeImageBytes(store.imageFile(created), "bytes");
+        store.finishCaptureIfImageExists(ID1);
+        store.beginUploadAttempt(ID1);
+        store.markUploadConfirmed(ID1, "remote-photo");
+
+        store.requireAddressCleanupSafe("address-id");
+    }
+
+    @Test
+    public void addressCleanupBlocksAnyUnresolvedPhotoForTargetAddress() throws Exception {
+        File root = temporaryFolder.newFolder("pending-cleanup-blocked");
+        SequenceIds ids = new SequenceIds(ID1, ID2);
+        PendingPhotoStore store = new PendingPhotoStore(root, ids, () -> 1_700_000_000_000L);
+
+        PendingPhotoRecord target = store.beginCapture(
+                new DriveFolder("target-address", "Target"),
+                new DriveFolder("target-work", "Work - 2026-09-09"));
+        writeImageBytes(store.imageFile(target), "keep-target");
+        store.finishCaptureIfImageExists(ID1);
+
+        PendingPhotoRecord unrelated = store.beginCapture(
+                new DriveFolder("other-address", "Other"),
+                new DriveFolder("other-work", "Work - 2026-09-09"));
+        writeImageBytes(store.imageFile(unrelated), "keep-other");
+        store.finishCaptureIfImageExists(ID2);
+
+        try {
+            store.requireAddressCleanupSafe("target-address");
+            org.junit.Assert.fail("Expected unresolved target photo to block cleanup");
+        } catch (java.io.IOException expected) {
+            assertTrue(expected.getMessage().contains("WAITING"));
+        }
+
+        store.discard(ID1);
+        store.requireAddressCleanupSafe("target-address");
+    }
+
+    @Test
+    public void unreadableMetadataBlocksAddressCleanupBecauseOwnershipCannotBeProven() throws Exception {
+        File root = temporaryFolder.newFolder("pending-cleanup-corrupt");
+        File metadata = new File(root, PendingPhotoRecord.metadataFileNameFor(ID1));
+        Files.write(metadata.toPath(), "bad metadata".getBytes(StandardCharsets.UTF_8));
+
+        try {
+            new PendingPhotoStore(root).requireAddressCleanupSafe("address-id");
+            org.junit.Assert.fail("Expected unreadable metadata to block cleanup");
+        } catch (java.io.IOException expected) {
+            assertTrue(expected.getMessage().contains("metadata is unreadable"));
+        }
+    }
+
     private static PendingPhotoStore store(File root, String id, long time) {
         return new PendingPhotoStore(root, () -> id, () -> time);
     }
