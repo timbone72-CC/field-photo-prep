@@ -1167,10 +1167,7 @@ private void buildLegacyWorkOrderUi() {
                             if (screen != Screen.ADDRESSES) {
                                 return;
                             }
-                            propertyFolders.clear();
-                            propertyFolders.addAll(folders);
-                            notifyFolderAdapters();
-                            renderPropertyCountAndEmptyState();
+                            setDiscoveredPropertyFolders(folders);
                             showHomeInlineMessage("More than one possible version of this property exists. "
                                     + "Choose the intended property from the list; no folder was created.");
                             setNotBusy();
