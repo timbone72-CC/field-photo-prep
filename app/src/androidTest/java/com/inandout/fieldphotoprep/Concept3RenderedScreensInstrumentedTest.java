@@ -63,17 +63,16 @@ public final class Concept3RenderedScreensInstrumentedTest {
             FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
             main.onActivity(activity -> {
                 try {
-                    @SuppressWarnings("unchecked") List<DriveFolder> visible = (List<DriveFolder>) field(activity, "propertyFolders");
-                    visible.clear();
-                    visible.add(property);
-                    visible.add(new DriveFolder("render-property-duplicate", property.name()));
+                    List<DriveFolder> discovered = new ArrayList<>();
+                    discovered.add(property);
+                    discovered.add(new DriveFolder("render-property-duplicate", property.name()));
                     String[] names = {"101_CHUCKER_LN_ELK_CITY_OK", "150_BLUESTEM_RD_WEATHERFORD_RD",
                             "120_S_BROADWAY_ST_SAYRE_OK_73662", "510_NE_CIMARRON_CIRCLE_LAWTON_OK",
                             "4831_SE_ELLSWORTH_AVE_LAWTON_OK", "2634_SW_H_AVE_LAWTON_OK",
                             "1112_SANTA_FE_DR_CLINTON_OK", "1607_CRESTVIEW_DR_CORDELL_OK"};
-                    for (int i = 0; i < names.length; i++) visible.add(new DriveFolder("render-p-"+i, names[i]));
-                    call(activity, "notifyFolderAdapters");
-                    call(activity, "renderPropertyCountAndEmptyState");
+                    for (int i = 0; i < names.length; i++) discovered.add(new DriveFolder("render-p-"+i, names[i]));
+                    call(activity, "setDiscoveredPropertyFolders",
+                            new Class<?>[]{List.class}, discovered);
                     ((TextView) activity.findViewById(R.id.home_master_name)).setText("HNP Jobs");
                     ((TextView) activity.findViewById(R.id.home_drive_state)).setText("Drive connected");
                     activity.findViewById(R.id.home_connect_button).setVisibility(View.GONE);
@@ -88,9 +87,22 @@ public final class Concept3RenderedScreensInstrumentedTest {
             main.onActivity(activity -> {
                 try {
                     ListView list = activity.findViewById(R.id.home_property_list);
-                    assertTrue("Property list should show at least six rows at normal scale", list.getChildCount() >= 6);
-                    assertFalse(((TextView)list.getChildAt(0).findViewById(R.id.property_name)).getText().toString().contains("PRESSURE TEST"));
-                    assertEquals(View.VISIBLE, list.getChildAt(0).findViewById(R.id.property_disambiguator).getVisibility());
+                    assertTrue("Property list should show at least five rows with Home search visible",
+                            list.getChildCount() >= 5);
+                    int propertyPosition = -1;
+                    for (int i = 0; i < list.getAdapter().getCount(); i++) {
+                        DriveFolder candidate = (DriveFolder) list.getAdapter().getItem(i);
+                        if (property.id().equals(candidate.id())) {
+                            propertyPosition = i;
+                            break;
+                        }
+                    }
+                    assertTrue("Rendered fixture property must remain in the Home list", propertyPosition >= 0);
+                    View propertyRow = list.getAdapter().getView(propertyPosition, null, list);
+                    assertFalse(((TextView) propertyRow.findViewById(R.id.property_name))
+                            .getText().toString().contains("PRESSURE TEST"));
+                    assertEquals(View.VISIBLE,
+                            propertyRow.findViewById(R.id.property_disambiguator).getVisibility());
                     call(activity, "openAddress", new Class<?>[]{DriveFolder.class}, property);
                     @SuppressWarnings("unchecked") List<DriveFolder> visible = (List<DriveFolder>) field(activity, "workOrderFolders");
                     visible.clear(); visible.add(work);
