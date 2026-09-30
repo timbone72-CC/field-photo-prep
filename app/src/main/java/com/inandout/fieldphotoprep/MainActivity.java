@@ -624,6 +624,11 @@ private void buildHomeUi() {
                     currentSnapshots.put(target.folder().id(), current);
                 }
 
+                if (!hasPersistedReadPermission(treeUri)
+                        || !hasPersistedWritePermission(treeUri)) {
+                    throw new IOException(
+                            "The workspace no longer has read/write access. Nothing was removed.");
+                }
                 authorizationGuard.requireDriveMutation();
 
                 try {
