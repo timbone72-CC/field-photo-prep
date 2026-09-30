@@ -101,6 +101,20 @@ The Phase 3B and Phase 4 development branches implement repeated matching settle
 14. Ordinary **Add Work Order** remains non-destructive and must not silently invoke Clear & Reuse merely because an older work-order occurrence is selected.
 15. General bulk cleanup, address-folder deletion, child-folder deletion, non-photo-file deletion, and deletion of arbitrary Drive content remain outside the reuse scope.
 
+## Phase 13 address archive/delete cleanup contract
+
+1. Phase 13 cleanup is not general Drive cleanup. It is limited to one exact address under the currently selected exact company provider identity.
+2. The app must enumerate the exact direct work-order folder identities under that address from authoritative-enough provider state before presenting destructive cleanup.
+3. For each direct work-order folder, only direct child files classified by provider MIME type as images/photos are eligible for removal. Work-order folders, child folders, and non-image files are preserved.
+4. Before confirmation, the app must show the exact property plus a bounded summary of work orders/photos that will be affected. Confirmation authorizes only the exact address/work-order/photo provider identity snapshot collected for that operation.
+5. Immediately before the first deletion, the app must re-read the exact address's direct work-order folder identity set and the direct-photo identity set for each approved work-order folder. A changed folder set or changed photo set stops cleanup before deletion.
+6. The existing persisted tree grant and exact provider IDs remain the only Android Drive authority. Visible names, search text, lifecycle age, or archive state alone never authorize a Drive deletion.
+7. Any affected local photo in `CAPTURING`, `WAITING`, `UPLOADING`, `FAILED`, `UNCERTAIN`, or otherwise unresolved/protected state blocks the destructive cleanup before remote deletion begins.
+8. If deletion partially succeeds, provider state becomes uncertain, or a refreshed snapshot cannot be proven, stop. Do not continue to later work orders and do not blindly retry. Require refresh/inspection and preserve a visible incomplete result.
+9. Archive/reactivate/manual local suppression must not rename, move, recreate, or delete the address/work-order folders themselves.
+10. Inactivity suggestions never perform a Drive write. They only surface properties for operator review.
+
+
 ## Photo upload contract
 
 1. Every queued photo carries the exact destination work-order provider document ID captured when that photo entered the work occurrence.
@@ -134,7 +148,7 @@ The Phase 3B and Phase 4 development branches implement repeated matching settle
 ## Access and permissions
 
 1. Android remote access is granted through the operator-selected persisted SAF tree URI, not through app-managed Google OAuth credentials.
-2. Use the least tree/document access that can support selecting the field-work workspace, discovering/creating/renaming company folders, discovering address/work-order folders, creating folders, uploading photos, and the explicitly approved work-order-folder rename/child-deletion reuse flow.
+2. Use the least tree/document access that can support selecting the field-work workspace, discovering/creating/renaming company folders, discovering address/work-order folders, creating folders, uploading photos, the explicitly approved work-order-folder rename/photo-deletion reuse flow, and the explicitly approved Phase 13 address-scoped photo-cleanup flow.
 3. Any requested platform permission or provider access that can expose metadata or content outside the approved workflow must be documented with its exact purpose before merge.
 4. If pre-existing-folder discovery or approved recycling cannot be implemented within the currently approved persisted tree grant, any broader access mechanism must be explicitly reviewed rather than silently added.
 5. Persisted URI/access data and remote identities must not be exposed unnecessarily in logs, exported job data, image metadata added by the app, or repository files.
@@ -176,18 +190,20 @@ Any Android runtime change that alters or depends on workspace-tree access, comp
 7. Prove one exact existing folder is reused without creating a duplicate and that multiple same-named folders require operator choice at each relevant level.
 8. Prove an empty old same-work-order folder can be renamed/reused without changing its provider document ID or parent.
 9. For **Clear & Reuse**, use a disposable test work order containing photos plus at least one preserved non-photo item or child folder. Prove the operator flow is select work order → Clear & Reuse → choose later date → confirm; confirmation shows the correct property/work order and Drive photo count; only the confirmed image/photo files are removed; preserved non-photo content remains; zero-photo state is verified; and the same provider identity is renamed/reused.
-10. Attempt a safe deterministic child-deletion or rename failure when it can be produced without a production destructive testing backdoor or risk to unrelated content. If it cannot be produced safely, document that limitation and do not claim the real-provider failure path was tested.
+10. For Phase 13 archive/delete cleanup, use one disposable address with multiple direct work-order folders. Include FPP-uploaded photos and at least one preserved non-photo item. Prove archive removes only the approved photos, preserves folder structure/non-photo content, hides the property from Home, search can find the archived property, and Reactivate reuses the same address provider identity without creating/renaming/moving it.
+13. For the Phase 13 negative gate, leave one affected local photo in an unresolved/protected state and prove archive/delete cleanup stops before any Drive photo is removed.
+14. Attempt a safe deterministic child-deletion or rename failure when it can be produced without a production destructive testing backdoor or risk to unrelated content. If it cannot be produced safely, document that limitation and do not claim the real-provider failure path was tested.
 11. For newly created folders/files, inspect the actual Drive item and confirm it is under the expected parent and has the expected type/name.
 12. Confirm the app persisted the returned/selected workspace, company, address, work-order, and remote-file provider identities as applicable and can reopen/retry without creating duplicates.
-13. Confirm unrelated test Drive content is unchanged.
-14. For upload changes, force or simulate one interrupted/failed attempt and prove the temporary recoverable photo and exact work-order destination identity survive.
-15. After confirmed upload, prove the app can remove unnecessary temporary image data without deleting the Drive copy.
-16. For selectable batch upload, use at least four disposable prepared photos under one safe test work order. Select only a subset, upload it with one action, and prove exactly that subset is created under the stored work-order parent while unselected photos remain local/unattempted.
-17. After the first subset is confirmed, upload the remaining disposable photos and verify no duplicate remote files were created and no selected photo was sent to a wrong parent.
-18. Verify the batch executes sequentially from the operator's perspective and that the UI/result identifies which photos confirmed, failed retry-safely, or stopped the batch.
-19. Do not deliberately manufacture an ambiguous remote create solely to satisfy an `UNCERTAIN` batch test. If a safe deterministic ambiguous condition cannot be induced, rely on focused automated stop-on-uncertainty coverage and record the real-provider limitation.
-20. If a real provider result naturally becomes uncertain during batch testing, stop immediately, preserve evidence, do not retry the uncertain photo, and confirm later selected photos were not attempted.
-21. If rollout steps are ordered, do not perform the later step until the required earlier evidence exists.
+15. Confirm unrelated test Drive content is unchanged.
+16. For upload changes, force or simulate one interrupted/failed attempt and prove the temporary recoverable photo and exact work-order destination identity survive.
+17. After confirmed upload, prove the app can remove unnecessary temporary image data without deleting the Drive copy.
+18. For selectable batch upload, use at least four disposable prepared photos under one safe test work order. Select only a subset, upload it with one action, and prove exactly that subset is created under the stored work-order parent while unselected photos remain local/unattempted.
+19. After the first subset is confirmed, upload the remaining disposable photos and verify no duplicate remote files were created and no selected photo was sent to a wrong parent.
+20. Verify the batch executes sequentially from the operator's perspective and that the UI/result identifies which photos confirmed, failed retry-safely, or stopped the batch.
+21. Do not deliberately manufacture an ambiguous remote create solely to satisfy an `UNCERTAIN` batch test. If a safe deterministic ambiguous condition cannot be induced, rely on focused automated stop-on-uncertainty coverage and record the real-provider limitation.
+22. If a real provider result naturally becomes uncertain during batch testing, stop immediately, preserve evidence, do not retry the uncertain photo, and confirm later selected photos were not attempted.
+23. If rollout steps are ordered, do not perform the later step until the required earlier evidence exists.
 
 ## Future platform implementation
 
