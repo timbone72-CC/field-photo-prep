@@ -46,6 +46,15 @@
             android:textColor="@color/home_text_secondary"
             android:textSize="11sp"
             android:visibility="gone" />
+        <TextView
+            android:id="@+id/property_lifecycle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:maxLines="1"
+            android:textColor="@color/home_text_secondary"
+            android:textSize="11sp"
+            android:visibility="gone" />
     </LinearLayout>
     <TextView
         android:id="@+id/property_photo_count"
