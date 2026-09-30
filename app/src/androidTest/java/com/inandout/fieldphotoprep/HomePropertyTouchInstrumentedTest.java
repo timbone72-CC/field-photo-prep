@@ -53,10 +53,14 @@ public final class HomePropertyTouchInstrumentedTest {
                 seedHome(activity, address);
                 EditText search = activity.findViewById(R.id.home_property_search);
                 search.setText("99998");
+            });
+            // Adapter data changes are synchronous; row inflation/layout is not. Let Android
+            // measure and draw the list before obtaining the physical tap location.
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> {
                 ListView list = activity.findViewById(R.id.home_property_list);
                 assertEquals(1, list.getAdapter().getCount());
-                // A synthetic DocumentsProvider URI cannot pass the real binding guard. Force
-                // the row-enabled state to isolate the actual Android touch routing.
+                // Synthetic DocumentsProvider fixtures are not real SAF grants.
                 list.setEnabled(true);
                 View row = list.getChildAt(0);
                 assertTrue("Search result row must be laid out", row != null && row.getHeight() > 0);
@@ -85,6 +89,9 @@ public final class HomePropertyTouchInstrumentedTest {
                 seedHome(activity, address);
                 EditText search = activity.findViewById(R.id.home_property_search);
                 search.setText("99998");
+            });
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> {
                 ListView list = activity.findViewById(R.id.home_property_list);
                 assertEquals(1, list.getAdapter().getCount());
                 list.setEnabled(true);
