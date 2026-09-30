@@ -50,9 +50,7 @@ final class AddressPhotoCleanupMutation {
                     operations.deletePhoto(photoId);
                     removedCount++;
                 }
-            }
 
-            for (AddressPhotoCleanupPlan.WorkOrderTarget target : plan.targets()) {
                 DriveClient.ChildSnapshot after =
                         operations.readWorkOrderChildren(target.folder().id());
                 if (after.photoCount() != 0) {
