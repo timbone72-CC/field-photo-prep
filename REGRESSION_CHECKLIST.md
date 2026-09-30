@@ -143,13 +143,33 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] App does not create public Drive links automatically.
 - [ ] App does not alter Drive sharing permissions automatically.
 - [ ] Ordinary discover/create/upload flow does not move/rename/delete existing Drive content.
-- [ ] **Drive photo deletion** occurs only inside confirmed **Clear & Reuse** for one exact selected work-order folder.
+- [ ] **Drive photo deletion** occurs only inside confirmed **Clear & Reuse** for one exact selected work-order folder or inside the explicit operator-confirmed Phase 13 archive/delete cleanup for one exact address.
 - [ ] Clear & Reuse deletion is limited to direct image/photo files; child folders and non-image files are preserved.
 - [ ] Explicit local-photo discard never calls Drive/provider deletion and cannot delete a Drive photo or folder.
 - [ ] App does not delete the selected work-order folder itself during **Clear & Reuse**.
-- [ ] App does not delete address folders, child folders, non-photo files, or arbitrary Drive content through the reuse feature.
+- [ ] App does not delete address folders, work-order folders, child folders, non-photo files, or arbitrary Drive content through Clear & Reuse or Phase 13 lifecycle cleanup.
 - [ ] Persisted provider access data and remote identities are not exposed unnecessarily in logs or exported app data.
 - [ ] Android runtime does not invent or persist Google OAuth credentials for the SAF workflow.
+
+## L2. Phase 13 property lifecycle / archive cleanup
+
+- [ ] Home shows active properties only and sorts them by most recent real work activity.
+- [ ] Searching, browsing, opening, refreshing, archiving, and reactivating do not falsely update `Last used`.
+- [ ] Search can find both active and archived properties by address text.
+- [ ] Archived properties are absent from normal Home and can be reactivated using the same provider address identity.
+- [ ] Manual Delete Address suppresses the property from normal Home/search state on the installation and does not recursively delete Drive folder structure.
+- [ ] Deliberately re-adding/choosing an exact locally deleted Drive address may clear suppression and reuse the same provider identity instead of creating a duplicate.
+- [ ] Archive/Delete cleanup enumerates the exact direct work-order folders under the exact target address.
+- [ ] Cleanup removes only confirmed direct image/photo files from those work-order folders.
+- [ ] Address/work-order/child folders and non-image files remain unchanged.
+- [ ] Confirmation is bound to the exact address/work-order/photo provider-identity snapshot and deletion stops if the work-order set or any photo set changes before mutation.
+- [ ] Any affected `CAPTURING`, `WAITING`, `UPLOADING`, `FAILED`, `UNCERTAIN`, or otherwise protected/unresolved photo blocks cleanup before Drive deletion begins.
+- [ ] Partial/ambiguous remote deletion stops further affected mutation and requires refresh/inspection rather than blind retry.
+- [ ] Inactivity threshold is configurable as 30 days / 60 days / 90 days / 6 months / 1 year / Never, defaults to 90 days, and never auto-archives or auto-deletes.
+- [ ] Lifecycle state is device-local/provider-context-bound and remains excluded from Android backup/transfer under the existing Phase 10F rules.
+- [ ] No company/address/work-order provider ID or queued-photo destination is rewritten by archive, reactivate, search, review, or cleanup.
+- [ ] After a fully verified Archive/Delete, old confirmed local photo records and residual copies for exactly the cleaned dated work-order provider IDs are retired; after Reactivate or deliberate re-add, each cleared work order starts at capture number `001`.
+- [ ] Failed or blocked Archive/Delete, including a target WAITING photo or partial local-history retirement, never resets active capture numbering or deletes protected/unrelated local records.
 
 ## M. Minimal field workflow
 
@@ -178,7 +198,7 @@ For unrelated changes, confirm the change did not accidentally introduce or requ
 - workbook integration;
 - Free Map Router integration;
 - automatic sharing changes;
-- general-purpose Drive deletion outside approved **Clear & Reuse**;
+- general-purpose Drive deletion outside approved **Clear & Reuse** or Phase 13 address-scoped photo cleanup;
 - app-managed Google OAuth tokens for the Android SAF workflow;
 - video capture;
 - background location tracking;

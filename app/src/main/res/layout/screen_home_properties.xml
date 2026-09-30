@@ -183,6 +183,36 @@
                 android:textStyle="normal"
                 style="@style/FieldAction" />
         </LinearLayout>
+        <EditText
+            android:id="@+id/home_property_search"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_concept_card"
+            android:hint="Search addresses"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:singleLine="true"
+            android:textColor="@color/home_text_primary"
+            android:textColorHint="@color/home_text_secondary"
+            android:textSize="14sp" />
+        <TextView
+            android:id="@+id/home_archive_review_entry"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_concept_card"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="Addresses ready for review"
+            android:textColor="@color/home_primary"
+            android:textSize="12sp"
+            android:visibility="gone" />
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"

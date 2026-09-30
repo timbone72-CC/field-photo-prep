@@ -18,6 +18,9 @@ import static org.junit.Assert.assertTrue;
 public final class PendingPhotoStoreTest {
     private static final String ID1 = "11111111-1111-4111-8111-111111111111";
     private static final String ID2 = "22222222-2222-4222-8222-222222222222";
+    private static final String ID3 = "33333333-3333-4333-8333-333333333333";
+    private static final String ID4 = "44444444-4444-4444-8444-444444444444";
+    private static final String ID5 = "55555555-5555-4555-8555-555555555555";
 
     @Rule
     public final TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -186,6 +189,167 @@ public final class PendingPhotoStoreTest {
         assertEquals(1, scan.unusableWaitingPhotoIds().size());
         assertEquals(ID1, scan.unusableWaitingPhotoIds().get(0));
         assertTrue(new File(root, PendingPhotoRecord.metadataFileNameFor(ID1)).isFile());
+    }
+
+    @Test
+    public void addressCleanupAllowsConfirmedUploadedHistory() throws Exception {
+        File root = temporaryFolder.newFolder("pending-cleanup-uploaded");
+        PendingPhotoStore store = store(root, ID1, 1_700_000_000_000L);
+        PendingPhotoRecord created = store.beginCapture(
+                new DriveFolder("address-id", "Address"),
+                new DriveFolder("work-id", "Work - 2026-09-09"));
+        writeImageBytes(store.imageFile(created), "bytes");
+        store.finishCaptureIfImageExists(ID1);
+        store.beginUploadAttempt(ID1);
+        store.markUploadConfirmed(ID1, "remote-photo");
+
+        store.requireAddressCleanupSafe("address-id");
+    }
+
+    @Test
+    public void addressCleanupBlocksAnyUnresolvedPhotoForTargetAddress() throws Exception {
+        File root = temporaryFolder.newFolder("pending-cleanup-blocked");
+        SequenceIds ids = new SequenceIds(ID1, ID2);
+        PendingPhotoStore store = new PendingPhotoStore(root, ids, () -> 1_700_000_000_000L);
+
+        PendingPhotoRecord target = store.beginCapture(
+                new DriveFolder("target-address", "Target"),
+                new DriveFolder("target-work", "Work - 2026-09-09"));
+        writeImageBytes(store.imageFile(target), "keep-target");
+        store.finishCaptureIfImageExists(ID1);
+
+        PendingPhotoRecord unrelated = store.beginCapture(
+                new DriveFolder("other-address", "Other"),
+                new DriveFolder("other-work", "Work - 2026-09-09"));
+        writeImageBytes(store.imageFile(unrelated), "keep-other");
+        store.finishCaptureIfImageExists(ID2);
+
+        try {
+            store.requireAddressCleanupSafe("target-address");
+            org.junit.Assert.fail("Expected unresolved target photo to block cleanup");
+        } catch (java.io.IOException expected) {
+            assertTrue(expected.getMessage().contains("WAITING"));
+        }
+
+        store.discard(ID1);
+        store.requireAddressCleanupSafe("target-address");
+    }
+
+    @Test
+    public void unreadableMetadataBlocksAddressCleanupBecauseOwnershipCannotBeProven() throws Exception {
+        File root = temporaryFolder.newFolder("pending-cleanup-corrupt");
+        File metadata = new File(root, PendingPhotoRecord.metadataFileNameFor(ID1));
+        Files.write(metadata.toPath(), "bad metadata".getBytes(StandardCharsets.UTF_8));
+
+        try {
+            new PendingPhotoStore(root).requireAddressCleanupSafe("address-id");
+            org.junit.Assert.fail("Expected unreadable metadata to block cleanup");
+        } catch (java.io.IOException expected) {
+            assertTrue(expected.getMessage().contains("metadata is unreadable"));
+        }
+    }
+
+    @Test
+    public void verifiedAddressArchiveRetiresOldHistoryAndStartsBothWorkOrdersAt001()
+            throws Exception {
+        File root = temporaryFolder.newFolder("retire-archive");
+        PhotoPreparer preparer = new PhotoPreparer(temporaryFolder.newFolder("retire-prepared"));
+        SequenceIds ids = new SequenceIds(ID1, ID2, ID3, ID4, ID5);
+        PendingPhotoStore store = new PendingPhotoStore(
+                root, ids, new java.util.concurrent.atomic.AtomicLong(1_700_000_000_000L)::getAndIncrement);
+        DriveFolder address = new DriveFolder("target-address", "99998 TEST");
+        DriveFolder workA = new DriveFolder("work-a", "TEST A - 2026-09-29");
+        DriveFolder workB = new DriveFolder("work-b", "TEST B - 2026-09-29");
+        DriveFolder unrelated = new DriveFolder("other-work", "OTHER - 2026-09-29");
+        for (DriveFolder work : java.util.Arrays.asList(workA, workB)) {
+            PendingPhotoRecord photo = store.beginCapture(address, work);
+            writeImageBytes(store.imageFile(photo), "old-image");
+            store.finishCaptureIfImageExists(photo.id());
+            store.beginUploadAttempt(photo.id());
+            store.markUploadConfirmed(photo.id(), "confirmed-" + work.id());
+            writeImageBytes(preparer.preparedFile(photo.id()), "leftover-prepared");
+        }
+        PendingPhotoRecord outside = store.beginCapture(
+                new DriveFolder("unrelated-address", "Other"), unrelated);
+        writeImageBytes(store.imageFile(outside), "protected-and-untouched");
+        store.finishCaptureIfImageExists(outside.id());
+
+        int retired = store.retireConfirmedAddressHistoryAfterVerifiedRemoteCleanup(
+                address.id(), java.util.Arrays.asList(workA, workB), preparer);
+        assertEquals(2, retired);
+        assertNull(store.getById(ID1));
+        assertNull(store.getById(ID2));
+        assertFalse(new File(root, PendingPhotoRecord.imageFileNameFor(ID1)).exists());
+        assertFalse(new File(root, PendingPhotoRecord.imageFileNameFor(ID2)).exists());
+        assertFalse(preparer.preparedFile(ID1).exists());
+        assertFalse(preparer.preparedFile(ID2).exists());
+        assertEquals(PendingPhotoRecord.State.WAITING, store.getById(outside.id()).state());
+        assertTrue(store.hasImageData(outside));
+        assertEquals(1, store.beginCapture(address, workA).captureSequence());
+        assertEquals(1, store.beginCapture(address, workB).captureSequence());
+    }
+
+    @Test
+    public void unresolvedPhotoPreventsHistoryRetirementAndSequenceReset() throws Exception {
+        File root = temporaryFolder.newFolder("retire-blocked");
+        SequenceIds ids = new SequenceIds(ID1, ID2, ID3);
+        PendingPhotoStore store = new PendingPhotoStore(root, ids, () -> 1_700_000_000_000L);
+        PhotoPreparer preparer = new PhotoPreparer(temporaryFolder.newFolder("blocked-prepared"));
+        DriveFolder address = new DriveFolder("target-address", "Address");
+        DriveFolder work = new DriveFolder("work-a", "TEST - 2026-09-29");
+        PendingPhotoRecord old = store.beginCapture(address, work);
+        writeImageBytes(store.imageFile(old), "uploaded");
+        store.finishCaptureIfImageExists(old.id());
+        store.beginUploadAttempt(old.id());
+        store.markUploadConfirmed(old.id(), "remote-old");
+        PendingPhotoRecord waiting = store.beginCapture(address, work);
+        writeImageBytes(store.imageFile(waiting), "protect-waiting");
+        store.finishCaptureIfImageExists(waiting.id());
+
+        try {
+            store.retireConfirmedAddressHistoryAfterVerifiedRemoteCleanup(
+                    address.id(), java.util.Collections.singletonList(work), preparer);
+            org.junit.Assert.fail("Expected WAITING record to block retirement");
+        } catch (java.io.IOException expected) {
+            assertTrue(expected.getMessage().contains("WAITING"));
+        }
+        assertEquals(PendingPhotoRecord.State.UPLOADED, store.getById(old.id()).state());
+        assertTrue(store.hasImageData(waiting));
+        assertEquals(3, store.beginCapture(address, work).captureSequence());
+    }
+
+    @Test
+    public void failedLocalRetirementKeepsMetadataAndDoesNotResetSequence()
+            throws Exception {
+        File root = temporaryFolder.newFolder("retire-io-fail");
+        SequenceIds ids = new SequenceIds(ID1, ID2);
+        PendingPhotoStore store = new PendingPhotoStore(root, ids, () -> 1_700_000_000_000L);
+        PhotoPreparer preparer = new PhotoPreparer(temporaryFolder.newFolder("failed-prepared"));
+        DriveFolder address = new DriveFolder("target-address", "Address");
+        DriveFolder work = new DriveFolder("work-a", "TEST - 2026-09-29");
+        PendingPhotoRecord old = store.beginCapture(address, work);
+        writeImageBytes(store.imageFile(old), "uploaded");
+        store.finishCaptureIfImageExists(old.id());
+        store.beginUploadAttempt(old.id());
+        store.markUploadConfirmed(old.id(), "remote-old");
+        // A non-empty directory at the derivative path simulates an undeletable leftover.
+        File blocked = preparer.preparedFile(old.id());
+        assertTrue(blocked.mkdirs());
+        writeImageBytes(new File(blocked, "block"), "keep");
+        try {
+            store.retireConfirmedAddressHistoryAfterVerifiedRemoteCleanup(
+                    address.id(), java.util.Collections.singletonList(work), preparer);
+            org.junit.Assert.fail("Expected local retirement to stop on I/O failure");
+        } catch (java.io.IOException expected) {
+            assertTrue(expected.getMessage().contains("prepared local copy"));
+        }
+        assertTrue(store.getById(old.id()) != null);
+        assertTrue(new File(blocked, "block").delete());
+        assertTrue(blocked.delete());
+        assertEquals(1, store.retireConfirmedAddressHistoryAfterVerifiedRemoteCleanup(
+                address.id(), java.util.Collections.singletonList(work), preparer));
+        assertNull(store.getById(old.id()));
+        assertEquals(1, store.beginCapture(address, work).captureSequence());
     }
 
     private static PendingPhotoStore store(File root, String id, long time) {

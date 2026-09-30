@@ -9,7 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -554,6 +556,110 @@ public final class PendingPhotoStore {
         }
         long activeStartedAt = readActiveOccurrenceStartedAt(ledger, record.workOrderId());
         return activeStartedAt > 0L && record.createdAtEpochMs() >= activeStartedAt;
+    }
+
+    public void requireAddressCleanupSafe(String addressId) throws IOException {
+        requireText(addressId, "addressId");
+        ScanResult result = scanAllPersistedRecordsForProtection();
+        if (!result.corruptMetadataFiles().isEmpty()) {
+            throw new IOException(
+                    "Temporary photo metadata is unreadable. Resolve it before archiving or deleting an address.");
+        }
+        for (PendingPhotoRecord record : result.records()) {
+            if (!addressId.equals(record.addressId())) {
+                continue;
+            }
+            if (record.state() != PendingPhotoRecord.State.UPLOADED) {
+                throw new IOException(
+                        "This address still has an unresolved local photo ("
+                                + record.state().name()
+                                + "). Upload, reconcile, or safely discard it before cleanup.");
+            }
+        }
+    }
+
+    /**
+     * Retires only uploaded history for exact dated work-order folders after the caller has
+     * verified that their approved remote photos are absent and the original address identity
+     * and work-order set are unchanged. This method must NEVER be used as the remote proof.
+     *
+     * All records bound to this address are rechecked first; a concurrent or corrupt local
+     * capture fails closed before any local history is retired. Completed records are removed
+     * from both app-private image stores and metadata; only after every retirement succeeds
+     * does each cleared work-order's capture ledger start a new 001 occurrence.
+     *
+     * A partial local I/O failure is retried safely only after the caller repeats the complete
+     * Drive verification. Ledger counters are not reset on partial metadata retirement.
+     */
+    int retireConfirmedAddressHistoryAfterVerifiedRemoteCleanup(
+            String addressId,
+            List<DriveFolder> verifiedWorkOrders,
+            PhotoPreparer preparer) throws IOException {
+        requireText(addressId, "addressId");
+        if (verifiedWorkOrders == null || preparer == null) {
+            throw new IOException("Exact verified work orders and the prepared-photo store are required.");
+        }
+        synchronized (CAPTURE_SEQUENCE_LOCK) {
+            ensureRoot();
+            Map<String, DriveFolder> targetWorkOrders = new HashMap<>();
+            for (DriveFolder workOrder : verifiedWorkOrders) {
+                if (workOrder == null
+                        || normalizeOptional(workOrder.id()) == null
+                        || normalizeOptional(workOrder.name()) == null
+                        || targetWorkOrders.put(workOrder.id(), workOrder) != null) {
+                    throw new IOException("Verified work-order identities are missing or ambiguous.");
+                }
+            }
+            ScanResult scan = scanAllPersistedRecordsForProtection();
+            if (!scan.corruptMetadataFiles().isEmpty()) {
+                throw new IOException(
+                        "Unreadable local photo metadata blocks post-archive history cleanup.");
+            }
+            List<PendingPhotoRecord> retiring = new ArrayList<>();
+            for (PendingPhotoRecord record : scan.records()) {
+                if (!addressId.equals(record.addressId())) {
+                    continue;
+                }
+                if (record.state() != PendingPhotoRecord.State.UPLOADED) {
+                    throw new IOException(
+                            "An unresolved local photo (" + record.state().name()
+                                    + ") appeared before history cleanup; existing photos were kept.");
+                }
+                if (targetWorkOrders.containsKey(record.workOrderId())) {
+                    if (record.remoteFileId() == null) {
+                        throw new IOException(
+                                "Confirmed photo identity is missing; local history was not cleared.");
+                    }
+                    retiring.add(record);
+                }
+            }
+            Properties ledger = readCaptureSequenceLedger();
+            for (DriveFolder workOrder : targetWorkOrders.values()) {
+                if (normalizeOptional(ledger.getProperty(resetTargetKey(workOrder.id()))) != null) {
+                    throw new IOException(
+                            "A work-order reuse reset remains pending. Resolve it before archive cleanup.");
+                }
+                // Validate the existing ledger BEFORE any metadata can be deleted.
+                readLedgerSequence(ledger, workOrder.id());
+                readActiveOccurrenceStartedAt(ledger, workOrder.id());
+            }
+            for (PendingPhotoRecord record : retiring) {
+                // A confirmed local residual copy may still be present after upload. Remote
+                // photo absence has already been proven by the caller for this work-order ID.
+                removeProtectedImageAfterConfirmedUpload(record.id());
+                preparer.removePreparedCopyAfterConfirmedUpload(record);
+                File metadata = metadataFile(record);
+                if (metadata.exists() && !metadata.delete()) {
+                    throw new IOException(
+                            "Could not retire confirmed local photo history; archive remains incomplete.");
+                }
+            }
+            for (DriveFolder workOrder : targetWorkOrders.values()) {
+                activateReuseReset(ledger, workOrder.id(), workOrder.name());
+            }
+            writeCaptureSequenceLedger(ledger);
+            return retiring.size();
+        }
     }
 
     public PendingPhotoRecord getById(String id) throws IOException {

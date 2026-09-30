@@ -108,6 +108,18 @@ public final class WorkOrderFolderNameTest {
                 "Debris - Trash - 2026-09-06", "Debris - Trash", "2026-09-13"));
     }
     @Test
+    public void cleanupRecognizesOnlyDatedWorkOrderFolders() {
+        assertTrue(WorkOrderFolderName.isDatedWorkOrderFolder(
+                "Cut Grass - 2026-09-29"));
+        assertTrue(WorkOrderFolderName.isDatedWorkOrderFolder(
+                "Debris - Trash - 2026-09-29"));
+        assertFalse(WorkOrderFolderName.isDatedWorkOrderFolder(
+                "Reference Photos"));
+        assertFalse(WorkOrderFolderName.isDatedWorkOrderFolder(
+                "Cut Grass - not-a-date"));
+    }
+
+    @Test
     public void addWorkOrderRoutesSelectedOlderSameOccurrenceToReuse() {
         assertTrue(WorkOrderFolderName.shouldRouteSelectedFolderToReuse(
                 "TREE TRIM 3 - 2026-09-17", "TREE TRIM 3", "2026-09-18"));

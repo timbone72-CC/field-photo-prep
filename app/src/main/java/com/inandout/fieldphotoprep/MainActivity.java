@@ -10,6 +10,8 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +23,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -35,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +47,9 @@ import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_MASTER_FOLDER = 1001;
+    private static final int PROPERTY_ACTION_ARCHIVE = 1;
+    private static final int PROPERTY_ACTION_REACTIVATE = 2;
+    private static final int PROPERTY_ACTION_DELETE = 3;
     static final String EXTRA_OPEN_DRIVE_PICKER_FROM_STATUS =
             "com.inandout.fieldphotoprep.extra.OPEN_DRIVE_PICKER_FROM_STATUS";
     static final String EXTRA_OPEN_PHOTOS_FROM_STATUS =
@@ -59,21 +66,29 @@ public final class MainActivity extends Activity {
     private OrganizationDriveBindingGuard driveBindingGuard;
     private OrganizationDriveBindingGuard.State lastDriveBindingState;
     private final List<DriveFolder> companyFolders = new ArrayList<>();
+    private final List<DriveFolder> discoveredPropertyFolders = new ArrayList<>();
     private final List<DriveFolder> propertyFolders = new ArrayList<>();
     private final List<DriveFolder> workOrderFolders = new ArrayList<>();
     private final Map<String, Integer> protectedPhotoCountByAddressId = new HashMap<>();
+    private final Map<String, PropertyLifecycleStore.Snapshot> propertyLifecycleByAddressId =
+            new HashMap<>();
     private final Map<String, Integer> protectedPhotoCountByWorkOrderId = new HashMap<>();
 
     private FolderPrefs folderPrefs;
+    private PropertyLifecycleStore propertyLifecycleStore;
+    private PropertyArchiveReviewPrefs propertyArchiveReviewPrefs;
     private Screen screen = Screen.ADDRESSES;
     private DriveFolder selectedAddress;
     private DriveFolder selectedWorkOrder;
     private LocalDate selectedDate = LocalDate.now();
     private boolean createBlockedUntilRefresh;
     private boolean companyWriteBlockedUntilRefresh;
+    private String propertyCleanupBlockedAddressId;
     private boolean busy;
     private boolean pendingStatusConnectDrive;
     private boolean pendingStatusOpenPhotos;
+    private String homeSearchQuery = "";
+    private boolean homeArchiveReviewOnly;
 
     private FrameLayout appRoot;
     private View homeRoot;
@@ -93,6 +108,8 @@ public final class MainActivity extends Activity {
     private ProgressBar homeProgress;
     private ImageButton driveOptionsButton;
     private Button homeNextActionButton;
+    private EditText homePropertySearch;
+    private TextView homeArchiveReviewEntry;
 
     private TextView addressText;
     private TextView currentWorkOrderText;
@@ -115,7 +132,7 @@ public final class MainActivity extends Activity {
     private Button workNavPhotosButton;
     private EditText workOrderInput;
     private ListView folderList;
-    private ArrayAdapter<DriveFolder> adapter;
+    private PropertyListAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,6 +141,8 @@ public final class MainActivity extends Activity {
         authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
         driveClient = new DriveClient(authorizationGuard);
         folderPrefs = new FolderPrefs(this);
+        propertyLifecycleStore = new PropertyLifecycleStore(this);
+        propertyArchiveReviewPrefs = new PropertyArchiveReviewPrefs(this);
         driveBindingGuard = new OrganizationDriveBindingGuard(
                 folderPrefs,
                 authorizationGuard,
@@ -188,6 +207,9 @@ public final class MainActivity extends Activity {
                     }));
         }
         refreshProtectedPhotoCounts();
+        if (!discoveredPropertyFolders.isEmpty()) {
+            rebuildHomePropertyFolders();
+        }
 
         if (pendingStatusConnectDrive) {
             pendingStatusConnectDrive = false;
@@ -221,7 +243,7 @@ public final class MainActivity extends Activity {
             // Organization binding metadata, SAF grants, and queued-photo destinations remain
             // untouched so the owning Organization can safely recover them later.
             companyFolders.clear();
-            propertyFolders.clear();
+            clearHomePropertyState(false);
             workOrderFolders.clear();
             selectedAddress = null;
             selectedWorkOrder = null;
@@ -312,6 +334,8 @@ private void buildHomeUi() {
     homeProgress = homeRoot.findViewById(R.id.home_progress);
     driveOptionsButton = homeRoot.findViewById(R.id.home_drive_options_button);
     homeNextActionButton = homeRoot.findViewById(R.id.home_next_action);
+    homePropertySearch = homeRoot.findViewById(R.id.home_property_search);
+    homeArchiveReviewEntry = homeRoot.findViewById(R.id.home_archive_review_entry);
 
     chooseMasterButton = homeRoot.findViewById(R.id.home_connect_button);
     refreshAddressButton = homeRoot.findViewById(R.id.home_refresh_button);
@@ -320,6 +344,8 @@ private void buildHomeUi() {
     homeNavWorkOrdersButton = homeRoot.findViewById(R.id.nav_work_orders);
     homeNavPhotosButton = homeRoot.findViewById(R.id.nav_photos);
     homeRoot.findViewById(R.id.nav_home).setSelected(true);
+    homeRoot.setFocusableInTouchMode(true);
+    homeRoot.requestFocus();
 
     chooseMasterButton.setOnClickListener(v -> chooseMasterFolder());
     refreshAddressButton.setOnClickListener(v -> refreshHomeFolders());
@@ -328,17 +354,38 @@ private void buildHomeUi() {
     homeCompanyClickTarget.setOnClickListener(v -> openCompanySwitcher());
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
     homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
+    homeArchiveReviewEntry.setOnClickListener(v -> toggleArchiveReview());
+    homePropertySearch.addTextChangedListener(new TextWatcher() {
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+            homeSearchQuery = s == null ? "" : s.toString();
+            if (homeArchiveReviewOnly && !homeSearchQuery.trim().isEmpty()) {
+                homeArchiveReviewOnly = false;
+            }
+            rebuildHomePropertyFolders();
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {}
+    });
 
     adapter = new PropertyListAdapter(
             this,
             propertyFolders,
-            protectedPhotoCountByAddressId);
+            discoveredPropertyFolders,
+            protectedPhotoCountByAddressId,
+            propertyLifecycleByAddressId,
+            this::showPropertyOptions);
+    adapter.setPropertyOpenListener(this::selectHomeProperty);
     folderList.setAdapter(adapter);
+    // Keep ListView's native item callback as fallback for assistive navigation.
     folderList.setOnItemClickListener((parent, view, position, id) -> {
-        if (screen != Screen.ADDRESSES || busy || position < 0 || position >= propertyFolders.size()) {
-            return;
+        if (position >= 0 && position < adapter.getCount()) {
+            selectHomeProperty(adapter.getItem(position));
         }
-        openAddress(propertyFolders.get(position));
     });
 
     ViewCompat.setOnApplyWindowInsetsListener(homeRoot, (view, insets) -> {
@@ -349,13 +396,392 @@ private void buildHomeUi() {
     ViewCompat.requestApplyInsets(homeRoot);
 }
 
+    private void selectHomeProperty(DriveFolder folder) {
+        if (screen != Screen.ADDRESSES || busy || folder == null) {
+            return;
+        }
+        if (PropertyHomePolicy.isArchived(propertyLifecycleByAddressId, folder.id())) {
+            showHomeInlineMessage("This property is archived. Use its options menu to Reactivate it.");
+            return;
+        }
+        openAddress(folder);
+    }
+
+    private void showPropertyOptions(View anchor, DriveFolder folder) {
+        if (busy || folder == null) {
+            if (busy) {
+                showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            }
+            return;
+        }
+
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null || propertyLifecycleStore == null) {
+            showHomeInlineMessage("Choose a company before managing this address.");
+            return;
+        }
+
+        PropertyLifecycleStore.Snapshot snapshot =
+                propertyLifecycleStore.snapshot(company.id(), folder.id());
+        PopupMenu menu = new PopupMenu(this, anchor);
+        if (snapshot.state() == PropertyLifecycleStore.State.ARCHIVED) {
+            menu.getMenu().add(0, PROPERTY_ACTION_REACTIVATE, 0, "Reactivate");
+        } else if (snapshot.state() == PropertyLifecycleStore.State.ACTIVE) {
+            menu.getMenu().add(0, PROPERTY_ACTION_ARCHIVE, 0, "Archive");
+        }
+        menu.getMenu().add(0, PROPERTY_ACTION_DELETE, 1, "Delete Address");
+
+        menu.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case PROPERTY_ACTION_REACTIVATE:
+                    reactivateProperty(folder);
+                    return true;
+                case PROPERTY_ACTION_ARCHIVE:
+                    beginPropertyCleanup(folder, false);
+                    return true;
+                case PROPERTY_ACTION_DELETE:
+                    beginPropertyCleanup(folder, true);
+                    return true;
+                default:
+                    return false;
+            }
+        });
+        menu.show();
+    }
+
+    private void reactivateProperty(DriveFolder folder) {
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null || folder == null || propertyLifecycleStore == null) {
+            showHomeInlineMessage("Could not reactivate that address.");
+            return;
+        }
+
+        PropertyLifecycleStore.Snapshot before =
+                propertyLifecycleStore.snapshot(company.id(), folder.id());
+        if (before.state() != PropertyLifecycleStore.State.ARCHIVED) {
+            rebuildHomePropertyFolders();
+            showHomeInlineMessage("That address is already active.");
+            return;
+        }
+
+        try {
+            propertyLifecycleStore.reactivate(company.id(), folder.id());
+            rebuildHomePropertyFolders();
+            showHomeSuccessMessage("Address reactivated. Tap it to continue.");
+        } catch (RuntimeException error) {
+            showError("Could not reactivate address", error);
+        }
+    }
+
+    private void beginPropertyCleanup(DriveFolder folder, boolean deleteAddress) {
+        if (folder == null || busy) {
+            return;
+        }
+        if (folder.id().equals(propertyCleanupBlockedAddressId)) {
+            showHomeInlineMessage(
+                    "Refresh Properties before trying cleanup on this address again.");
+            return;
+        }
+
+        Uri treeUri = usableDriveTreeOrMessage();
+        if (treeUri == null) {
+            return;
+        }
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null) {
+            showHomeInlineMessage("Choose a company before managing this address.");
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri) || !hasPersistedWritePermission(treeUri)) {
+            showHomeInlineMessage(
+                    "The workspace needs read/write access before old Drive photos can be removed.");
+            return;
+        }
+
+        final String companyId = company.id();
+        final String addressId = folder.id();
+        final String addressName = folder.name();
+        setBusy(deleteAddress ? "Checking address deletion…" : "Checking address archive…");
+        executor.execute(() -> {
+            try {
+                List<DriveFolder> addresses = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, companyId);
+                DriveFolder actualAddress = DriveClient.findById(addresses, addressId);
+                if (actualAddress == null || !addressName.equals(actualAddress.name())) {
+                    throw new IOException(
+                            "The selected address no longer matches the Drive address that was reviewed.");
+                }
+
+                PendingPhotoStore photoStore = new PendingPhotoStore(
+                        new File(getFilesDir(), "pending_photos"));
+                photoStore.requireAddressCleanupSafe(addressId);
+
+                List<DriveFolder> directFolders = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, addressId);
+                List<DriveFolder> workOrders = datedWorkOrderFolders(directFolders);
+                Map<String, DriveClient.ChildSnapshot> snapshots = new HashMap<>();
+                for (DriveFolder workOrder : workOrders) {
+                    snapshots.put(
+                            workOrder.id(),
+                            driveClient.listDirectChildren(
+                                    getContentResolver(), treeUri, workOrder.id()));
+                }
+
+                AddressPhotoCleanupPlan plan =
+                        AddressPhotoCleanupPlan.create(actualAddress, workOrders, snapshots);
+                runOnUiThread(() -> {
+                    DriveFolder currentCompany = folderPrefs.getMasterFolder();
+                    if (currentCompany == null || !companyId.equals(currentCompany.id())) {
+                        setNotBusy();
+                        showHomeInlineMessage(
+                                "The selected company changed. Nothing was removed.");
+                        return;
+                    }
+                    setNotBusy();
+                    showPropertyCleanupConfirmation(treeUri, companyId, plan, deleteAddress);
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> showError(
+                        deleteAddress
+                                ? "Could not verify address deletion. Nothing was changed"
+                                : "Could not verify address archive. Nothing was changed",
+                        error));
+            }
+        });
+    }
+
+    private void showPropertyCleanupConfirmation(
+            Uri treeUri,
+            String companyId,
+            AddressPhotoCleanupPlan plan,
+            boolean deleteAddress) {
+        String display = PropertyDisplayName.fromDriveFolderName(plan.address().name());
+        String preservedNote = plan.totalPreservedCount() == 0
+                ? ""
+                : "\nOther direct non-photo items kept: " + plan.totalPreservedCount();
+        String message = "Property: " + display
+                + "\nWork-order folders checked: " + plan.workOrderCount()
+                + "\nPhotos to remove from Drive: " + plan.totalPhotoCount()
+                + preservedNote
+                + "\n\nAddress and work-order folders stay. Non-photo files stay."
+                + (deleteAddress
+                        ? "\nThis address will then be removed from normal FPP Home/search on this device."
+                        : "\nThis address will then be hidden from Home but remain searchable for Reactivate.");
+
+        new AlertDialog.Builder(this)
+                .setTitle(deleteAddress ? "Delete Address?" : "Archive Address?")
+                .setMessage(message)
+                .setPositiveButton(deleteAddress ? "Delete Address" : "Archive", (dialog, which) ->
+                        performConfirmedPropertyCleanup(treeUri, companyId, plan, deleteAddress))
+                .setNegativeButton("Cancel", (dialog, which) ->
+                        showHomeInlineMessage("Address cleanup cancelled. Nothing was changed."))
+                .setOnCancelListener(dialog ->
+                        showHomeInlineMessage("Address cleanup cancelled. Nothing was changed."))
+                .show();
+    }
+
+    private void performConfirmedPropertyCleanup(
+            Uri treeUri,
+            String companyId,
+            AddressPhotoCleanupPlan approvedPlan,
+            boolean deleteAddress) {
+        if (busy) {
+            return;
+        }
+        String addressId = approvedPlan.address().id();
+        if (addressId.equals(propertyCleanupBlockedAddressId)) {
+            showHomeInlineMessage(
+                    "Refresh Properties before trying cleanup on this address again.");
+            return;
+        }
+
+        DriveFolder currentCompany = folderPrefs.getMasterFolder();
+        if (currentCompany == null || !companyId.equals(currentCompany.id())) {
+            showHomeInlineMessage("The selected company changed. Nothing was removed.");
+            return;
+        }
+
+        setBusy("Rechecking address cleanup…");
+        executor.execute(() -> {
+            int removedCount = 0;
+            boolean remoteMutationAttempted = false;
+            boolean remoteCleanupVerifiedForLocalRetirement = false;
+            try {
+                List<DriveFolder> addressesBefore = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, companyId);
+                DriveFolder actualAddress = DriveClient.findById(addressesBefore, addressId);
+                if (actualAddress == null
+                        || !approvedPlan.address().name().equals(actualAddress.name())) {
+                    throw new IOException(
+                            "The selected address changed after confirmation. Nothing was removed.");
+                }
+
+                List<DriveFolder> directFoldersBefore = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, addressId);
+                List<DriveFolder> workOrdersBefore =
+                        datedWorkOrderFolders(directFoldersBefore);
+                if (!approvedPlan.matchesWorkOrderFolders(workOrdersBefore)) {
+                    throw new IOException(
+                            "The work-order folders changed after confirmation. Nothing was removed; review cleanup again.");
+                }
+
+                PendingPhotoStore photoStore = new PendingPhotoStore(
+                        new File(getFilesDir(), "pending_photos"));
+                photoStore.requireAddressCleanupSafe(addressId);
+
+                Map<String, DriveClient.ChildSnapshot> currentSnapshots = new HashMap<>();
+                for (AddressPhotoCleanupPlan.WorkOrderTarget target : approvedPlan.targets()) {
+                    DriveClient.ChildSnapshot current = driveClient.listDirectChildren(
+                            getContentResolver(), treeUri, target.folder().id());
+                    if (!approvedPlan.matchesPhotoSnapshot(target.folder().id(), current)) {
+                        throw new IOException(
+                                "The photos in "
+                                        + PropertyDisplayName.readableFolderName(target.folder().name())
+                                        + " changed after confirmation. Nothing was removed; review cleanup again.");
+                    }
+                    currentSnapshots.put(target.folder().id(), current);
+                }
+
+                if (!hasPersistedReadPermission(treeUri)
+                        || !hasPersistedWritePermission(treeUri)) {
+                    throw new IOException(
+                            "The workspace no longer has read/write access. Nothing was removed.");
+                }
+                authorizationGuard.requireDriveMutation();
+
+                try {
+                    removedCount = AddressPhotoCleanupMutation.removeApprovedPhotosAndVerifyEmpty(
+                            approvedPlan,
+                            new AddressPhotoCleanupMutation.Operations() {
+                                @Override
+                                public void deletePhoto(String photoDocumentId)
+                                        throws IOException {
+                                    driveClient.deleteDocument(
+                                            getContentResolver(), treeUri, photoDocumentId);
+                                }
+
+                                @Override
+                                public DriveClient.ChildSnapshot readWorkOrderChildren(
+                                        String workOrderDocumentId) throws IOException {
+                                    return driveClient.listDirectChildren(
+                                            getContentResolver(),
+                                            treeUri,
+                                            workOrderDocumentId);
+                                }
+                            });
+                    remoteMutationAttempted = approvedPlan.totalPhotoCount() > 0;
+                } catch (AddressPhotoCleanupMutation.Failure failure) {
+                    removedCount = failure.removedCount();
+                    remoteMutationAttempted = failure.remoteMutationAttempted();
+                    throw failure;
+                }
+
+                List<DriveFolder> directFoldersAfter = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, addressId);
+                List<DriveFolder> workOrdersAfter = datedWorkOrderFolders(directFoldersAfter);
+                if (!approvedPlan.matchesWorkOrderFolders(workOrdersAfter)) {
+                    throw new IOException(
+                            "Drive changed the work-order folder set during cleanup.");
+                }
+
+                List<DriveFolder> addressesAfter = driveClient.listFoldersFresh(
+                        getContentResolver(), treeUri, companyId);
+                DriveFolder verifiedAddress = DriveClient.findById(addressesAfter, addressId);
+                if (verifiedAddress == null
+                        || !approvedPlan.address().name().equals(verifiedAddress.name())) {
+                    throw new IOException(
+                            "Drive could not verify the original address identity after cleanup.");
+                }
+
+                // This second settled read protects the history/sequence transition even if
+                // another uploader writes to an earlier work order during later-folder cleanup.
+                for (AddressPhotoCleanupPlan.WorkOrderTarget target : approvedPlan.targets()) {
+                    DriveClient.ChildSnapshot finalChildren = driveClient.listDirectChildren(
+                            getContentResolver(), treeUri, target.folder().id());
+                    if (finalChildren.photoCount() != 0) {
+                        throw new IOException(
+                                "A work order received another photo during cleanup. "
+                                        + "Local history and capture numbering were not reset.");
+                    }
+                }
+                remoteCleanupVerifiedForLocalRetirement = true;
+                photoStore.requireAddressCleanupSafe(addressId);
+                int retiredHistoryCount =
+                        photoStore.retireConfirmedAddressHistoryAfterVerifiedRemoteCleanup(
+                                addressId,
+                                workOrdersAfter,
+                                new PhotoPreparer(new File(getFilesDir(), "prepared_photos")));
+
+                if (deleteAddress) {
+                    propertyLifecycleStore.deleteAfterCleanupProven(companyId, addressId);
+                } else {
+                    propertyLifecycleStore.archiveAfterCleanupProven(companyId, addressId);
+                }
+
+                final int removed = removedCount;
+                final int retired = retiredHistoryCount;
+                runOnUiThread(() -> {
+                    propertyCleanupBlockedAddressId = null;
+                    DriveFolder savedAddress = folderPrefs.getCurrentAddress();
+                    if (savedAddress != null && addressId.equals(savedAddress.id())) {
+                        folderPrefs.clearCurrentAddress();
+                    }
+                    setDiscoveredPropertyFolders(addressesAfter);
+                    setNotBusy();
+                    showHomeSuccessMessage(
+                            (deleteAddress ? "Address removed from FPP. " : "Address archived. ")
+                                    + removed
+                                    + (removed == 1 ? " old photo removed." : " old photos removed.")
+                                    + " Old local photo history cleared (" + retired
+                                    + "). Numbering reset for cleared work orders."
+                                    + " Drive folders and non-photo files were kept.");
+                });
+            } catch (Exception error) {
+                final int removed = removedCount;
+                final boolean attempted = remoteMutationAttempted;
+                final boolean verifiedForLocal = remoteCleanupVerifiedForLocalRetirement;
+                runOnUiThread(() -> {
+                    if (attempted || verifiedForLocal) {
+                        propertyCleanupBlockedAddressId = addressId;
+                    }
+                    showError(
+                            verifiedForLocal
+                                    ? "Drive cleanup verified, but local history/numbering could not"
+                                            + " finish. Refresh and inspect before retrying"
+                                    : attempted
+                                            ? "Address cleanup stopped after removing "
+                                                    + removed
+                                                    + " of "
+                                                    + approvedPlan.totalPhotoCount()
+                                                    + " approved photos. Refresh and inspect before retrying"
+                                            : "Address cleanup stopped before any photo was removed",
+                            error);
+                });
+            }
+        });
+    }
+
+    private static List<DriveFolder> datedWorkOrderFolders(List<DriveFolder> folders) {
+        List<DriveFolder> result = new ArrayList<>();
+        if (folders == null) {
+            return result;
+        }
+        for (DriveFolder folder : folders) {
+            if (folder != null && WorkOrderFolderName.isDatedWorkOrderFolder(folder.name())) {
+                result.add(folder);
+            }
+        }
+        return result;
+    }
+
+
 private void openSavedPropertyFromHome() {
     DriveFolder saved = folderPrefs.getCurrentAddress();
     if (saved == null) {
         showHomeInlineMessage("Choose a property first.");
         return;
     }
-    DriveFolder actual = DriveClient.findById(propertyFolders, saved.id());
+    DriveFolder actual = DriveClient.findById(activeHomeProperties(), saved.id());
     if (actual == null) {
         showHomeInlineMessage("Refresh Properties, then choose the property you want to open.");
         return;
@@ -412,6 +838,9 @@ private void openSavedPhotosFromHome() {
                         case "Edit Company":
                             showEditCompanyDialog();
                             break;
+                        case "Suggest Archive After":
+                            showArchiveReviewSettings();
+                            break;
                         case "App Status":
                             startActivity(new Intent(this, AppStatusActivity.class));
                             break;
@@ -427,6 +856,70 @@ private void openSavedPhotosFromHome() {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void showArchiveReviewSettings() {
+        if (propertyArchiveReviewPrefs == null) {
+            showHomeInlineMessage("Archive review setting is unavailable.");
+            return;
+        }
+
+        PropertyArchiveReviewPrefs.Threshold[] thresholds =
+                PropertyArchiveReviewPrefs.Threshold.values();
+        CharSequence[] labels = PropertyArchiveReviewPrefs.labels();
+        int checked = PropertyArchiveReviewPrefs.indexOf(
+                propertyArchiveReviewPrefs.threshold());
+
+        new AlertDialog.Builder(this)
+                .setTitle("Suggest archive after")
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    try {
+                        PropertyArchiveReviewPrefs.Threshold selected = thresholds[which];
+                        propertyArchiveReviewPrefs.setThreshold(selected);
+                        homeArchiveReviewOnly = false;
+                        rebuildHomePropertyFolders();
+                        showHomeSuccessMessage("Archive review set to " + selected.label() + ".");
+                    } catch (RuntimeException error) {
+                        showHomeInlineMessage("Could not save the archive review setting.");
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void toggleArchiveReview() {
+        if (busy) {
+            showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            return;
+        }
+
+        List<DriveFolder> candidates = archiveReviewCandidates();
+        if (candidates.isEmpty()) {
+            homeArchiveReviewOnly = false;
+            rebuildHomePropertyFolders();
+            return;
+        }
+
+        homeArchiveReviewOnly = !homeArchiveReviewOnly;
+        if (homeArchiveReviewOnly
+                && homePropertySearch != null
+                && homePropertySearch.length() > 0) {
+            homePropertySearch.setText("");
+            return;
+        }
+        rebuildHomePropertyFolders();
+    }
+
+    private List<DriveFolder> archiveReviewCandidates() {
+        if (propertyArchiveReviewPrefs == null) {
+            return Collections.emptyList();
+        }
+        return PropertyArchiveReviewPolicy.candidates(
+                discoveredPropertyFolders,
+                propertyLifecycleByAddressId,
+                propertyArchiveReviewPrefs.threshold(),
+                System.currentTimeMillis());
     }
 
 private void buildLegacyWorkOrderUi() {
@@ -566,8 +1059,7 @@ private void buildLegacyWorkOrderUi() {
             String organizationId = driveBindingGuard.requireValidatedOrganizationForBinding();
             folderPrefs.bindSelectedDriveRoot(treeUri, workspace, organizationId);
             companyFolders.clear();
-            propertyFolders.clear();
-            notifyFolderAdapters();
+            clearHomePropertyState(true);
             showAddressScreen(false);
             renderSavedMaster();
             if (folderPrefs.hasWorkspace()) {
@@ -625,8 +1117,7 @@ private void buildLegacyWorkOrderUi() {
                         }
                     }
 
-                    propertyFolders.clear();
-                    notifyFolderAdapters();
+                    clearHomePropertyState(true);
 
                     if (actual != null) {
                         folderPrefs.setCurrentCompany(actual);
@@ -707,7 +1198,7 @@ private void buildLegacyWorkOrderUi() {
         resetWorkOrderDraft();
         selectedAddress = null;
         selectedWorkOrder = null;
-        propertyFolders.clear();
+        clearHomePropertyState(true);
         workOrderFolders.clear();
         notifyFolderAdapters();
         renderSavedMaster();
@@ -985,10 +1476,8 @@ private void buildLegacyWorkOrderUi() {
                 List<DriveFolder> folders = driveClient.listFolders(
                         getContentResolver(), treeUri, parentId);
                 runOnUiThread(() -> {
-                    propertyFolders.clear();
-                    propertyFolders.addAll(folders);
-                    notifyFolderAdapters();
-                    renderPropertyCountAndEmptyState();
+                    setDiscoveredPropertyFolders(folders);
+                    propertyCleanupBlockedAddressId = null;
                     clearHomeInlineMessage();
                     setNotBusy();
                 });
@@ -996,6 +1485,69 @@ private void buildLegacyWorkOrderUi() {
                 runOnUiThread(() -> showError("Could not read address folders", error));
             }
         });
+    }
+
+    private void setDiscoveredPropertyFolders(List<DriveFolder> folders) {
+        discoveredPropertyFolders.clear();
+        if (folders != null) {
+            discoveredPropertyFolders.addAll(folders);
+        }
+        rebuildHomePropertyFolders();
+    }
+
+    private void clearHomePropertyState(boolean clearSearch) {
+        discoveredPropertyFolders.clear();
+        propertyLifecycleByAddressId.clear();
+        propertyFolders.clear();
+        homeArchiveReviewOnly = false;
+        if (clearSearch) {
+            homeSearchQuery = "";
+            if (homePropertySearch != null && homePropertySearch.length() > 0) {
+                homePropertySearch.setText("");
+            }
+        }
+        notifyFolderAdapters();
+        renderPropertyCountAndEmptyState();
+    }
+
+    private void rebuildHomePropertyFolders() {
+        propertyLifecycleByAddressId.clear();
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company != null && propertyLifecycleStore != null) {
+            for (DriveFolder folder : discoveredPropertyFolders) {
+                propertyLifecycleByAddressId.put(
+                        folder.id(),
+                        propertyLifecycleStore.snapshot(company.id(), folder.id()));
+            }
+        }
+
+        propertyFolders.clear();
+        if (homeArchiveReviewOnly) {
+            List<DriveFolder> reviewCandidates = archiveReviewCandidates();
+            if (reviewCandidates.isEmpty()) {
+                homeArchiveReviewOnly = false;
+                propertyFolders.addAll(PropertyHomePolicy.visibleProperties(
+                        discoveredPropertyFolders,
+                        propertyLifecycleByAddressId,
+                        homeSearchQuery));
+            } else {
+                propertyFolders.addAll(reviewCandidates);
+            }
+        } else {
+            propertyFolders.addAll(PropertyHomePolicy.visibleProperties(
+                    discoveredPropertyFolders,
+                    propertyLifecycleByAddressId,
+                    homeSearchQuery));
+        }
+        notifyFolderAdapters();
+        renderPropertyCountAndEmptyState();
+    }
+
+    private List<DriveFolder> activeHomeProperties() {
+        return PropertyHomePolicy.visibleProperties(
+                discoveredPropertyFolders,
+                propertyLifecycleByAddressId,
+                "");
     }
 
     private void showAddressEntryDialog() {
@@ -1078,10 +1630,7 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        propertyFolders.clear();
-                        propertyFolders.addAll(folders);
-                        notifyFolderAdapters();
-                        renderPropertyCountAndEmptyState();
+                        setDiscoveredPropertyFolders(folders);
                         showHomeInlineMessage(matches.size() + " address folders named " + requestedName
                                 + " already exist. Choose the intended property; no folder was created.");
                         setNotBusy();
@@ -1097,10 +1646,7 @@ private void buildLegacyWorkOrderUi() {
                             if (screen != Screen.ADDRESSES) {
                                 return;
                             }
-                            propertyFolders.clear();
-                            propertyFolders.addAll(folders);
-                            notifyFolderAdapters();
-                            renderPropertyCountAndEmptyState();
+                            setDiscoveredPropertyFolders(folders);
                             showHomeInlineMessage("More than one possible version of this property exists. "
                                     + "Choose the intended property from the list; no folder was created.");
                             setNotBusy();
@@ -1111,11 +1657,8 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        propertyFolders.clear();
-                        propertyFolders.addAll(folders);
-                        notifyFolderAdapters();
-                        renderPropertyCountAndEmptyState();
-                        openAddress(existing);
+                        setDiscoveredPropertyFolders(folders);
+                        handleExistingAddressFromCreate(existing);
                     });
                     return;
                 }
@@ -1128,10 +1671,7 @@ private void buildLegacyWorkOrderUi() {
                         if (screen != Screen.ADDRESSES) {
                             return;
                         }
-                        propertyFolders.clear();
-                        propertyFolders.addAll(folders);
-                        notifyFolderAdapters();
-                        renderPropertyCountAndEmptyState();
+                        setDiscoveredPropertyFolders(folders);
                         showHomeInlineMessage("Possible existing property match: " + candidateName
                                 + ". Choose the intended property from the list; no folder was created.");
                         setNotBusy();
@@ -1162,10 +1702,7 @@ private void buildLegacyWorkOrderUi() {
                             return;
                         }
                         createBlockedUntilRefresh = true;
-                        propertyFolders.clear();
-                        propertyFolders.addAll(afterCreate);
-                        notifyFolderAdapters();
-                        renderPropertyCountAndEmptyState();
+                        setDiscoveredPropertyFolders(afterCreate);
                         showHomeInlineMessage("Address create result is ambiguous. Choose the intended property; no additional folder will be created until refresh.");
                         setNotBusy();
                     });
@@ -1176,10 +1713,7 @@ private void buildLegacyWorkOrderUi() {
                     if (screen != Screen.ADDRESSES) {
                         return;
                     }
-                    propertyFolders.clear();
-                    propertyFolders.addAll(afterCreate);
-                    notifyFolderAdapters();
-                    renderPropertyCountAndEmptyState();
+                    setDiscoveredPropertyFolders(afterCreate);
                     openAddress(verified);
                 });
             } catch (Exception error) {
@@ -1189,6 +1723,41 @@ private void buildLegacyWorkOrderUi() {
                 });
             }
         });
+    }
+
+    private void handleExistingAddressFromCreate(DriveFolder address) {
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null || address == null || propertyLifecycleStore == null) {
+            openAddress(address);
+            return;
+        }
+
+        PropertyLifecycleStore.Snapshot snapshot =
+                propertyLifecycleStore.snapshot(company.id(), address.id());
+        if (snapshot.state() == PropertyLifecycleStore.State.ACTIVE) {
+            openAddress(address);
+            return;
+        }
+
+        String display = PropertyDisplayName.fromDriveFolderName(address.name());
+        boolean deleted = snapshot.state() == PropertyLifecycleStore.State.DELETED;
+        new AlertDialog.Builder(this)
+                .setTitle(deleted ? "Add Address Back?" : "Reactivate Address?")
+                .setMessage(deleted
+                        ? display + "\n\nThis exact Drive address already exists but was removed from FPP. "
+                            + "Add it back using the same Drive folder?"
+                        : display + "\n\nThis exact address is archived. Reactivate it using the same Drive folder?")
+                .setPositiveButton(deleted ? "Add Back" : "Reactivate", (dialog, which) -> {
+                    try {
+                        propertyLifecycleStore.reactivate(company.id(), address.id());
+                        rebuildHomePropertyFolders();
+                        openAddress(address);
+                    } catch (RuntimeException error) {
+                        showError("Could not restore address", error);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void openAddress(DriveFolder address) {
@@ -1999,14 +2568,50 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void renderPropertyCountAndEmptyState() {
+        boolean reviewing = homeArchiveReviewOnly;
+        boolean searching = !reviewing
+                && homeSearchQuery != null
+                && !homeSearchQuery.trim().isEmpty();
+        boolean connected = folderPrefs != null
+                && driveBindingGuard.current().isUsable()
+                && folderPrefs.getMasterFolder() != null;
+        List<DriveFolder> reviewCandidates = archiveReviewCandidates();
+
+        if (homeArchiveReviewEntry != null) {
+            boolean showReview = connected && !reviewCandidates.isEmpty();
+            homeArchiveReviewEntry.setVisibility(showReview ? View.VISIBLE : View.GONE);
+            homeArchiveReviewEntry.setEnabled(showReview && !busy);
+            if (showReview) {
+                int reviewCount = reviewCandidates.size();
+                if (reviewing) {
+                    homeArchiveReviewEntry.setText(
+                            "Reviewing " + reviewCount + (reviewCount == 1 ? " address" : " addresses")
+                                    + " • Show all");
+                } else {
+                    homeArchiveReviewEntry.setText(
+                            reviewCount + (reviewCount == 1
+                                    ? " address ready for review"
+                                    : " addresses ready for review"));
+                }
+            }
+        }
+
         if (homePropertyCountText != null) {
             int count = propertyFolders.size();
-            homePropertyCountText.setText(count == 1 ? "1 property" : count + " properties");
+            if (reviewing) {
+                homePropertyCountText.setText(count == 1 ? "1 to review" : count + " to review");
+            } else if (searching) {
+                homePropertyCountText.setText(count == 1 ? "1 result" : count + " results");
+            } else {
+                homePropertyCountText.setText(count == 1 ? "1 property" : count + " properties");
+            }
         }
         if (homeEmptyText != null) {
-            boolean connected = folderPrefs != null
-                    && driveBindingGuard.current().isUsable()
-                    && folderPrefs.getMasterFolder() != null;
+            if (reviewing) {
+                homeEmptyText.setText("No addresses ready for review");
+            } else {
+                homeEmptyText.setText(searching ? "No matching properties" : "No properties yet");
+            }
             homeEmptyText.setVisibility(connected && !busy && propertyFolders.isEmpty()
                     ? View.VISIBLE : View.GONE);
         }
@@ -2020,16 +2625,17 @@ private void buildLegacyWorkOrderUi() {
         DriveFolder master = folderPrefs.getMasterFolder();
         boolean workspaceConnected = driveBindingGuard.current().isUsable();
         boolean companySelected = master != null;
+        List<DriveFolder> activeProperties = activeHomeProperties();
         DriveFolder saved = folderPrefs.getCurrentAddress();
         boolean savedPropertyAvailable = saved != null
-                && DriveClient.findById(propertyFolders, saved.id()) != null;
+                && DriveClient.findById(activeProperties, saved.id()) != null;
 
         NextActionGuide.Action action = NextActionGuide.home(
                 busy,
                 workspaceConnected,
                 companySelected,
                 companyFolders.size(),
-                propertyFolders.size(),
+                activeProperties.size(),
                 savedPropertyAvailable);
         homeNextActionButton.setText(action.label());
         homeNextActionButton.setEnabled(action.enabled());

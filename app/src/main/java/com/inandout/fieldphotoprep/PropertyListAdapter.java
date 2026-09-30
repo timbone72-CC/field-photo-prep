@@ -5,29 +5,64 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
+    interface PropertyOptionsListener {
+        void onPropertyOptions(View anchor, DriveFolder folder);
+    }
+
+    interface PropertyOpenListener {
+        void onPropertyOpen(DriveFolder folder);
+    }
+    private static final DateTimeFormatter LAST_USED_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d");
+
     private final LayoutInflater inflater;
     private final List<DriveFolder> folders;
+    private final List<DriveFolder> identityPeers;
     private final Map<String, Integer> protectedPhotoCountsByAddressId;
+    private final Map<String, PropertyLifecycleStore.Snapshot> lifecycleByAddressId;
+    private final PropertyOptionsListener propertyOptionsListener;
+    private PropertyOpenListener propertyOpenListener;
+
+    void setPropertyOpenListener(PropertyOpenListener listener) {
+        propertyOpenListener = listener;
+    }
 
     PropertyListAdapter(Context context, List<DriveFolder> folders) {
-        this(context, folders, Collections.emptyMap());
+        this(context, folders, folders, Collections.emptyMap(), Collections.emptyMap(), null);
     }
 
     PropertyListAdapter(
             Context context,
             List<DriveFolder> folders,
             Map<String, Integer> protectedPhotoCountsByAddressId) {
+        this(context, folders, folders, protectedPhotoCountsByAddressId, Collections.emptyMap(), null);
+    }
+
+    PropertyListAdapter(
+            Context context,
+            List<DriveFolder> folders,
+            List<DriveFolder> identityPeers,
+            Map<String, Integer> protectedPhotoCountsByAddressId,
+            Map<String, PropertyLifecycleStore.Snapshot> lifecycleByAddressId,
+            PropertyOptionsListener propertyOptionsListener) {
         super(context, R.layout.row_home_property, folders);
         this.inflater = LayoutInflater.from(context);
         this.folders = folders;
+        this.identityPeers = identityPeers == null ? folders : identityPeers;
         this.protectedPhotoCountsByAddressId = protectedPhotoCountsByAddressId;
+        this.lifecycleByAddressId = lifecycleByAddressId;
+        this.propertyOptionsListener = propertyOptionsListener;
     }
 
     @Override
@@ -39,17 +74,31 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
 
         TextView name = row.findViewById(R.id.property_name);
         TextView disambiguator = row.findViewById(R.id.property_disambiguator);
+        TextView lifecycle = row.findViewById(R.id.property_lifecycle);
         TextView photoCount = row.findViewById(R.id.property_photo_count);
+        ImageButton options = row.findViewById(R.id.property_options);
         DriveFolder folder = getItem(position);
         if (folder == null) {
             name.setText("");
             disambiguator.setVisibility(View.GONE);
+            lifecycle.setVisibility(View.GONE);
             photoCount.setVisibility(View.GONE);
+            options.setVisibility(View.GONE);
+            options.setOnClickListener(null);
+            row.setOnClickListener(null);
+            row.setClickable(false);
             return row;
         }
 
+        if (propertyOpenListener != null) {
+            row.setOnClickListener(v -> propertyOpenListener.onPropertyOpen(folder));
+        } else {
+            row.setOnClickListener(null);
+            row.setClickable(false);
+        }
+
         String display = PropertyDisplayName.fromDriveFolderName(folder.name());
-        boolean ambiguous = AddressFolderAmbiguity.hasAmbiguousPeer(folder, folders);
+        boolean ambiguous = AddressFolderAmbiguity.hasAmbiguousPeer(folder, identityPeers);
         name.setText(ambiguous ? folder.name() : display);
 
         if (ambiguous) {
@@ -63,6 +112,11 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
             disambiguator.setVisibility(View.GONE);
         }
 
+        PropertyLifecycleStore.Snapshot snapshot = lifecycleByAddressId == null
+                ? null
+                : lifecycleByAddressId.get(folder.id());
+        renderLifecycle(lifecycle, snapshot);
+
         int count = protectedPhotoCountsByAddressId == null
                 ? 0
                 : protectedPhotoCountsByAddressId.getOrDefault(folder.id(), 0);
@@ -73,12 +127,51 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
             photoCount.setText("");
             photoCount.setVisibility(View.GONE);
         }
+
+        if (propertyOptionsListener == null) {
+            options.setVisibility(View.GONE);
+            options.setOnClickListener(null);
+        } else {
+            options.setVisibility(View.VISIBLE);
+            options.setContentDescription("Options for " + display);
+            options.setOnClickListener(v -> propertyOptionsListener.onPropertyOptions(v, folder));
+        }
         return row;
+    }
+
+    private void renderLifecycle(
+            TextView lifecycle,
+            PropertyLifecycleStore.Snapshot snapshot) {
+        boolean archived = snapshot != null
+                && snapshot.state() == PropertyLifecycleStore.State.ARCHIVED;
+        boolean hasLastUsed = snapshot != null && snapshot.hasLastUsed();
+
+        if (!archived && !hasLastUsed) {
+            lifecycle.setText("");
+            lifecycle.setVisibility(View.GONE);
+            return;
+        }
+
+        StringBuilder label = new StringBuilder();
+        if (archived) {
+            label.append("Archived");
+        }
+        if (hasLastUsed) {
+            if (label.length() > 0) {
+                label.append(" · ");
+            }
+            label.append("Last used ")
+                    .append(LAST_USED_FORMAT.format(
+                            Instant.ofEpochMilli(snapshot.lastUsedEpochMs())
+                                    .atZone(ZoneId.systemDefault())));
+        }
+        lifecycle.setText(label.toString());
+        lifecycle.setVisibility(View.VISIBLE);
     }
 
     private boolean hasDuplicateDisplayName(String displayName) {
         int count = 0;
-        for (DriveFolder folder : folders) {
+        for (DriveFolder folder : identityPeers) {
             if (PropertyDisplayName.fromDriveFolderName(folder.name()).equals(displayName)
                     && ++count > 1) {
                 return true;

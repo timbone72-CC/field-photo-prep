@@ -20,6 +20,30 @@ import java.util.List;
 @RunWith(AndroidJUnit4.class)
 public final class PropertyListAdapterAmbiguityInstrumentedTest {
     @Test
+    public void cardTapAndOptionsTapKeepSelectedProviderIdentitySeparate() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        DriveFolder address = new DriveFolder("selected-provider-id", "99998_PHASE_13_TEST");
+        List<DriveFolder> folders = new ArrayList<>();
+        folders.add(address);
+        final String[] opened = {null};
+        final String[] optioned = {null};
+        PropertyListAdapter adapter = new PropertyListAdapter(context, folders, folders,
+                java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+                (anchor, folder) -> optioned[0] = folder.id());
+        adapter.setPropertyOpenListener(folder -> opened[0] = folder.id());
+
+        View row = adapter.getView(0, null, new FrameLayout(context));
+        assertTrue("Card itself must be clickable", row.isClickable());
+        assertTrue(row.performClick());
+        assertEquals(address.id(), opened[0]);
+        assertEquals(null, optioned[0]);
+        View options = row.findViewById(R.id.property_options);
+        assertTrue(options.performClick());
+        assertEquals(address.id(), optioned[0]);
+        assertEquals("Menu must not open card", address.id(), opened[0]);
+    }
+
+    @Test
     public void ambiguousRowsShowRawProviderNameAndCompactIdentity() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         List<DriveFolder> folders = new ArrayList<>();

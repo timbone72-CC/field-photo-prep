@@ -46,6 +46,15 @@
             android:textColor="@color/home_text_secondary"
             android:textSize="11sp"
             android:visibility="gone" />
+        <TextView
+            android:id="@+id/property_lifecycle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:maxLines="1"
+            android:textColor="@color/home_text_secondary"
+            android:textSize="11sp"
+            android:visibility="gone" />
     </LinearLayout>
     <TextView
         android:id="@+id/property_photo_count"
@@ -63,10 +72,14 @@
         android:textSize="12sp"
         android:textStyle="bold"
         android:visibility="gone" />
-    <ImageView
+    <ImageButton
+        android:id="@+id/property_options"
         android:layout_width="40dp"
         android:layout_height="48dp"
-        android:contentDescription="Open property"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Property options"
+        android:focusable="false"
         android:padding="8dp"
-        android:src="@drawable/ic_home_chevron_24" />
+        android:src="@drawable/ic_home_more_24"
+        android:tint="@color/home_text_secondary" />
 </LinearLayout>

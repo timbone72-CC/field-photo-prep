@@ -851,6 +851,91 @@ Safe design work may overlap where recorded in the master plan, but multiple run
 
 Settled Phase 12A/12B decisions must not drift without contradictory evidence or an explicit governed design change.
 
+## Phase 13 — Home Address Lifecycle & Cleanup — DESIGN APPROVED / READY FOR IMPLEMENTATION
+
+Date approved: 2026-09-29
+
+Goal: keep Home useful as the property history grows without turning FPP into a photo archive or a property-management system.
+
+Phase 13 is one Level 3 roadmap phase with staged checkpoints. The checkpoints are implementation/verification boundaries, not separate roadmap phases.
+
+### Phase 13A — Home scalability — IMPLEMENTED / CI PASS
+
+- Home shows active properties only and sorts them by most recent real work activity.
+- Add compact address search at the top of Home.
+- Search covers active and archived properties; deleted/suppressed properties are not normal search results.
+- Show a quiet `Last used` value where useful.
+- Browsing, opening, searching, or reviewing a property must not reset its inactivity age.
+- No destructive Drive behavior is introduced in 13A.
+
+### Phase 13B — Archive, reactivate, and manual delete — IMPLEMENTED / CI PASS (final Archive/Delete commit gated to 13C)
+
+- Add device-local property lifecycle state keyed to the exact company/address provider identity.
+- `Archive` removes the property from the normal Home list while retaining enough lightweight state to find and reactivate it.
+- `Reactivate` returns an archived property to Home without recreating or renaming its Drive folder.
+- A secondary manual `Delete Address` action is available for junk/test/incorrect addresses.
+- Delete removes the address from normal FPP Home/search state on that installation after the same safety checks used by archive cleanup.
+- Phase 13 does not recursively delete company/address/work-order folder structure. Drive folder identity and non-photo content are preserved.
+- Explicitly choosing/recreating an exact existing Drive address later may clear the local deleted/suppressed state rather than create a duplicate folder.
+
+### Phase 13C — Safe archive photo cleanup — IMPLEMENTED / AUTOMATED CI PASS
+
+- FPP is not a long-term photo library. Archiving may remove old Drive photos under that address after safety checks pass.
+- Reuse the approved Clear & Reuse definition of photo cleanup: delete direct image/photo children only; preserve non-photo items and folder structure.
+- Apply that rule across the address's direct work-order folders.
+- Before deletion, obtain authoritative/fresh provider state, bind confirmation to the exact photo identity sets, and revalidate those sets before mutation.
+- Any unresolved/protected local work for the affected address/work orders blocks archive/delete cleanup.
+- `WAITING`, `UPLOADING`, `FAILED`, `UNCERTAIN`, CAPTURING, or otherwise unresolved/protected work must never be discarded by archive/delete.
+- Partial or ambiguous remote deletion fails closed and blocks further affected Drive mutation until refresh/inspection.
+- No unrelated Drive content is deleted.
+
+### Phase 13D — Adjustable inactivity review
+
+Add one global setting:
+
+**Suggest archive after:** 30 days / 60 days / 90 days / 6 months / 1 year / Never.
+
+- Default: 90 days.
+- This threshold creates suggestions only; it never auto-archives or auto-deletes.
+- Use a compact `Addresses ready for review` entry rather than recurring pop-up prompts.
+- Review supports individual or bounded multi-select archive actions without creating a general storage-management dashboard.
+- Do not add per-company timers, tags, favorites, folders, pinning, storage analytics, or other management features unless field evidence later justifies them.
+
+### Phase 13E — Verification / reality gate
+
+Automated coverage must prove:
+- active vs archived vs deleted Home/search behavior;
+- most-recent-work sorting and inactivity calculations;
+- browsing/searching does not change `Last used`;
+- provider/company identity remains exact;
+- archive/reactivate does not recreate or rename Drive folders;
+- unresolved/protected work blocks cleanup;
+- photo-only cleanup preserves non-photo items and folder structure;
+- confirmation/revalidation detects changed provider photo state;
+- partial/ambiguous deletion fails closed;
+- existing upload destination, retry/reconciliation, Clear & Reuse, multi-company, auth, and Drive-binding behavior remains intact;
+- lifecycle metadata stays device-local/non-portable under the existing Phase 10F backup rules.
+
+Physical Google Drive proof must use a disposable fixture and demonstrate:
+
+**active property → completed work/photos → archive → old Drive photos removed while non-photo/folder structure remains → property absent from Home → search finds archived property → reactivate → same provider property identity is reused.**
+
+A separate negative gate must prove unresolved/protected work blocks archive/delete cleanup without removing Drive photos.
+
+### Phase 13 boundaries
+
+Keep out unless separately approved:
+- automatic archive or automatic deletion;
+- recursive deletion of address/work-order folder structure;
+- deletion of non-photo Drive content;
+- a permanent in-app photo library;
+- storage analytics/dashboard;
+- per-company retention rules;
+- Supabase property/work-order/photo storage;
+- cross-device portability of provider-bound lifecycle state.
+
+Authoritative design/build-state record: `docs/PHASE_13_HOME_ADDRESS_LIFECYCLE_BUILD_STATE.md`.
+
 ## Phase development staging rule
 
 The governed process is recorded in:
