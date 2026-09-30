@@ -75,6 +75,7 @@ public final class MainActivity extends Activity {
 
     private FolderPrefs folderPrefs;
     private PropertyLifecycleStore propertyLifecycleStore;
+    private PropertyArchiveReviewPrefs propertyArchiveReviewPrefs;
     private Screen screen = Screen.ADDRESSES;
     private DriveFolder selectedAddress;
     private DriveFolder selectedWorkOrder;
@@ -86,6 +87,7 @@ public final class MainActivity extends Activity {
     private boolean pendingStatusConnectDrive;
     private boolean pendingStatusOpenPhotos;
     private String homeSearchQuery = "";
+    private boolean homeArchiveReviewOnly;
 
     private FrameLayout appRoot;
     private View homeRoot;
@@ -106,6 +108,7 @@ public final class MainActivity extends Activity {
     private ImageButton driveOptionsButton;
     private Button homeNextActionButton;
     private EditText homePropertySearch;
+    private TextView homeArchiveReviewEntry;
 
     private TextView addressText;
     private TextView currentWorkOrderText;
@@ -138,6 +141,7 @@ public final class MainActivity extends Activity {
         driveClient = new DriveClient(authorizationGuard);
         folderPrefs = new FolderPrefs(this);
         propertyLifecycleStore = new PropertyLifecycleStore(this);
+        propertyArchiveReviewPrefs = new PropertyArchiveReviewPrefs(this);
         driveBindingGuard = new OrganizationDriveBindingGuard(
                 folderPrefs,
                 authorizationGuard,
@@ -330,6 +334,7 @@ private void buildHomeUi() {
     driveOptionsButton = homeRoot.findViewById(R.id.home_drive_options_button);
     homeNextActionButton = homeRoot.findViewById(R.id.home_next_action);
     homePropertySearch = homeRoot.findViewById(R.id.home_property_search);
+    homeArchiveReviewEntry = homeRoot.findViewById(R.id.home_archive_review_entry);
 
     chooseMasterButton = homeRoot.findViewById(R.id.home_connect_button);
     refreshAddressButton = homeRoot.findViewById(R.id.home_refresh_button);
@@ -348,6 +353,7 @@ private void buildHomeUi() {
     homeCompanyClickTarget.setOnClickListener(v -> openCompanySwitcher());
     homeNavWorkOrdersButton.setOnClickListener(v -> openSavedPropertyFromHome());
     homeNavPhotosButton.setOnClickListener(v -> openSavedPhotosFromHome());
+    homeArchiveReviewEntry.setOnClickListener(v -> toggleArchiveReview());
     homePropertySearch.addTextChangedListener(new TextWatcher() {
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -355,6 +361,9 @@ private void buildHomeUi() {
         @Override
         public void onTextChanged(CharSequence s, int start, int before, int count) {
             homeSearchQuery = s == null ? "" : s.toString();
+            if (homeArchiveReviewOnly && !homeSearchQuery.trim().isEmpty()) {
+                homeArchiveReviewOnly = false;
+            }
             rebuildHomePropertyFolders();
         }
 
@@ -794,6 +803,9 @@ private void openSavedPhotosFromHome() {
                         case "Edit Company":
                             showEditCompanyDialog();
                             break;
+                        case "Archive Review":
+                            showArchiveReviewSettings();
+                            break;
                         case "App Status":
                             startActivity(new Intent(this, AppStatusActivity.class));
                             break;
@@ -809,6 +821,70 @@ private void openSavedPhotosFromHome() {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void showArchiveReviewSettings() {
+        if (propertyArchiveReviewPrefs == null) {
+            showHomeInlineMessage("Archive review setting is unavailable.");
+            return;
+        }
+
+        PropertyArchiveReviewPrefs.Threshold[] thresholds =
+                PropertyArchiveReviewPrefs.Threshold.values();
+        CharSequence[] labels = PropertyArchiveReviewPrefs.labels();
+        int checked = PropertyArchiveReviewPrefs.indexOf(
+                propertyArchiveReviewPrefs.threshold());
+
+        new AlertDialog.Builder(this)
+                .setTitle("Suggest archive after")
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    try {
+                        PropertyArchiveReviewPrefs.Threshold selected = thresholds[which];
+                        propertyArchiveReviewPrefs.setThreshold(selected);
+                        homeArchiveReviewOnly = false;
+                        rebuildHomePropertyFolders();
+                        showHomeSuccessMessage("Archive review set to " + selected.label() + ".");
+                    } catch (RuntimeException error) {
+                        showHomeInlineMessage("Could not save the archive review setting.");
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void toggleArchiveReview() {
+        if (busy) {
+            showHomeInlineMessage("Wait for the current Drive operation to finish.");
+            return;
+        }
+
+        List<DriveFolder> candidates = archiveReviewCandidates();
+        if (candidates.isEmpty()) {
+            homeArchiveReviewOnly = false;
+            rebuildHomePropertyFolders();
+            return;
+        }
+
+        homeArchiveReviewOnly = !homeArchiveReviewOnly;
+        if (homeArchiveReviewOnly
+                && homePropertySearch != null
+                && homePropertySearch.length() > 0) {
+            homePropertySearch.setText("");
+            return;
+        }
+        rebuildHomePropertyFolders();
+    }
+
+    private List<DriveFolder> archiveReviewCandidates() {
+        if (propertyArchiveReviewPrefs == null) {
+            return List.of();
+        }
+        return PropertyArchiveReviewPolicy.candidates(
+                discoveredPropertyFolders,
+                propertyLifecycleByAddressId,
+                propertyArchiveReviewPrefs.threshold(),
+                System.currentTimeMillis());
     }
 
 private void buildLegacyWorkOrderUi() {
@@ -1388,6 +1464,7 @@ private void buildLegacyWorkOrderUi() {
         discoveredPropertyFolders.clear();
         propertyLifecycleByAddressId.clear();
         propertyFolders.clear();
+        homeArchiveReviewOnly = false;
         if (clearSearch) {
             homeSearchQuery = "";
             if (homePropertySearch != null && homePropertySearch.length() > 0) {
@@ -1410,10 +1487,23 @@ private void buildLegacyWorkOrderUi() {
         }
 
         propertyFolders.clear();
-        propertyFolders.addAll(PropertyHomePolicy.visibleProperties(
-                discoveredPropertyFolders,
-                propertyLifecycleByAddressId,
-                homeSearchQuery));
+        if (homeArchiveReviewOnly) {
+            List<DriveFolder> reviewCandidates = archiveReviewCandidates();
+            if (reviewCandidates.isEmpty()) {
+                homeArchiveReviewOnly = false;
+                propertyFolders.addAll(PropertyHomePolicy.visibleProperties(
+                        discoveredPropertyFolders,
+                        propertyLifecycleByAddressId,
+                        homeSearchQuery));
+            } else {
+                propertyFolders.addAll(reviewCandidates);
+            }
+        } else {
+            propertyFolders.addAll(PropertyHomePolicy.visibleProperties(
+                    discoveredPropertyFolders,
+                    propertyLifecycleByAddressId,
+                    homeSearchQuery));
+        }
         notifyFolderAdapters();
         renderPropertyCountAndEmptyState();
     }
@@ -2443,20 +2533,50 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void renderPropertyCountAndEmptyState() {
-        boolean searching = homeSearchQuery != null && !homeSearchQuery.trim().isEmpty();
+        boolean reviewing = homeArchiveReviewOnly;
+        boolean searching = !reviewing
+                && homeSearchQuery != null
+                && !homeSearchQuery.trim().isEmpty();
+        boolean connected = folderPrefs != null
+                && driveBindingGuard.current().isUsable()
+                && folderPrefs.getMasterFolder() != null;
+        List<DriveFolder> reviewCandidates = archiveReviewCandidates();
+
+        if (homeArchiveReviewEntry != null) {
+            boolean showReview = connected && !reviewCandidates.isEmpty();
+            homeArchiveReviewEntry.setVisibility(showReview ? View.VISIBLE : View.GONE);
+            homeArchiveReviewEntry.setEnabled(showReview && !busy);
+            if (showReview) {
+                int reviewCount = reviewCandidates.size();
+                if (reviewing) {
+                    homeArchiveReviewEntry.setText(
+                            "Reviewing " + reviewCount + (reviewCount == 1 ? " address" : " addresses")
+                                    + " • Show all");
+                } else {
+                    homeArchiveReviewEntry.setText(
+                            reviewCount + (reviewCount == 1
+                                    ? " address ready for review"
+                                    : " addresses ready for review"));
+                }
+            }
+        }
+
         if (homePropertyCountText != null) {
             int count = propertyFolders.size();
-            if (searching) {
+            if (reviewing) {
+                homePropertyCountText.setText(count == 1 ? "1 to review" : count + " to review");
+            } else if (searching) {
                 homePropertyCountText.setText(count == 1 ? "1 result" : count + " results");
             } else {
                 homePropertyCountText.setText(count == 1 ? "1 property" : count + " properties");
             }
         }
         if (homeEmptyText != null) {
-            boolean connected = folderPrefs != null
-                    && driveBindingGuard.current().isUsable()
-                    && folderPrefs.getMasterFolder() != null;
-            homeEmptyText.setText(searching ? "No matching properties" : "No properties yet");
+            if (reviewing) {
+                homeEmptyText.setText("No addresses ready for review");
+            } else {
+                homeEmptyText.setText(searching ? "No matching properties" : "No properties yet");
+            }
             homeEmptyText.setVisibility(connected && !busy && propertyFolders.isEmpty()
                     ? View.VISIBLE : View.GONE);
         }
