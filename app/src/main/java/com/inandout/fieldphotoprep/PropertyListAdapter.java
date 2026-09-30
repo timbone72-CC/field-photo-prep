@@ -20,28 +20,31 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
 
     private final LayoutInflater inflater;
     private final List<DriveFolder> folders;
+    private final List<DriveFolder> identityPeers;
     private final Map<String, Integer> protectedPhotoCountsByAddressId;
     private final Map<String, PropertyLifecycleStore.Snapshot> lifecycleByAddressId;
 
     PropertyListAdapter(Context context, List<DriveFolder> folders) {
-        this(context, folders, Collections.emptyMap(), Collections.emptyMap());
+        this(context, folders, folders, Collections.emptyMap(), Collections.emptyMap());
     }
 
     PropertyListAdapter(
             Context context,
             List<DriveFolder> folders,
             Map<String, Integer> protectedPhotoCountsByAddressId) {
-        this(context, folders, protectedPhotoCountsByAddressId, Collections.emptyMap());
+        this(context, folders, folders, protectedPhotoCountsByAddressId, Collections.emptyMap());
     }
 
     PropertyListAdapter(
             Context context,
             List<DriveFolder> folders,
+            List<DriveFolder> identityPeers,
             Map<String, Integer> protectedPhotoCountsByAddressId,
             Map<String, PropertyLifecycleStore.Snapshot> lifecycleByAddressId) {
         super(context, R.layout.row_home_property, folders);
         this.inflater = LayoutInflater.from(context);
         this.folders = folders;
+        this.identityPeers = identityPeers == null ? folders : identityPeers;
         this.protectedPhotoCountsByAddressId = protectedPhotoCountsByAddressId;
         this.lifecycleByAddressId = lifecycleByAddressId;
     }
@@ -67,7 +70,7 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
         }
 
         String display = PropertyDisplayName.fromDriveFolderName(folder.name());
-        boolean ambiguous = AddressFolderAmbiguity.hasAmbiguousPeer(folder, folders);
+        boolean ambiguous = AddressFolderAmbiguity.hasAmbiguousPeer(folder, identityPeers);
         name.setText(ambiguous ? folder.name() : display);
 
         if (ambiguous) {
@@ -131,7 +134,7 @@ final class PropertyListAdapter extends ArrayAdapter<DriveFolder> {
 
     private boolean hasDuplicateDisplayName(String displayName) {
         int count = 0;
-        for (DriveFolder folder : folders) {
+        for (DriveFolder folder : identityPeers) {
             if (PropertyDisplayName.fromDriveFolderName(folder.name()).equals(displayName)
                     && ++count > 1) {
                 return true;
