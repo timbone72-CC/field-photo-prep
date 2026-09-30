@@ -3,9 +3,9 @@
 Date: 2026-09-29  
 Status: **LEVEL 3 — DESIGN APPROVED / READY FOR IMPLEMENTATION**  
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
-PR: pending at record creation  
+PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
-Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.
+Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.\nCurrent runtime head: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557` (no Phase 13 runtime change yet).
 
 ## Goal
 
