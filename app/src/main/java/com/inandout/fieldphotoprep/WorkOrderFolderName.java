@@ -43,6 +43,10 @@ public final class WorkOrderFolderName {
                 && candidate.date.isBefore(requestedDate);
     }
 
+    public static boolean isDatedWorkOrderFolder(String folderName) {
+        return parseExisting(folderName) != null;
+    }
+
     public static boolean shouldRouteSelectedFolderToReuse(
             String selectedFolderName,
             String requestedWorkOrderName,
