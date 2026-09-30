@@ -1,11 +1,11 @@
 # Phase 13 — Home Address Lifecycle & Cleanup — Build State
 
 Date: 2026-09-29  
-Status: **LEVEL 3 — PHASE 13A IMPLEMENTED / CI PASS; PHASE 13B NEXT**  
+Status: **LEVEL 3 — PHASE 13A–13B IMPLEMENTED / CI PASS; PHASE 13C NEXT**  
 Authoritative branch: `phase-13/home-address-lifecycle-cleanup`  
 PR: #93 `Phase 13: Home address lifecycle and cleanup` (draft)  
 Governed base / rollback: `6d3b77f527ae58c3e3dd026887644ee3c0cb6557`  
-Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.\nCurrent validated Phase 13A runtime head: `81ed9a39419ffba69888b940582a9beb1cf83b1a`.
+Base meaning: current governed `main`, including merged PR #92 Clear & Reuse photo-only cleanup.\nCurrent validated Phase 13B runtime head: `b88f15142626d1b0697cd8387620cbbd359b2f01`.
 
 ## Goal
 
@@ -348,6 +348,27 @@ Phase 13A verification:
 
 A prior Phase 13A run correctly failed because legacy test fixtures bypassed the new Home list owner and one rendered-row expectation predated the search field. Those fixtures were corrected; runtime safety was not weakened.
 
+Phase 13B completed as a safe staged checkpoint on 2026-09-29:
+- each Home property row now uses one compact overflow affordance instead of adding another visible action button;
+- ACTIVE property options expose **Archive** and secondary **Delete Address**;
+- ARCHIVED search results expose **Reactivate** and secondary **Delete Address**;
+- Reactivate changes only device-local lifecycle state, preserves `Last used`, and does not rename/move/recreate any Drive folder;
+- deliberately choosing/adding an exact ARCHIVED or DELETED/SUPPRESSED Drive address prompts to restore it and reuses the exact same address provider ID;
+- lifecycle APIs now distinguish `reactivate`, `archiveAfterCleanupProven`, and `deleteAfterCleanupProven`;
+- Archive/Delete confirmation copy states the final intended cleanup boundary: old FPP photos removed, Drive folder structure and non-photo items retained;
+- this intermediate checkpoint intentionally blocks final ARCHIVED/DELETED state after confirmation because Phase 13C photo cleanup has not yet been proven;
+- no Phase 13B Drive deletion, rename, folder creation, folder removal, or sharing mutation exists.
+
+Phase 13B verification:
+- initial CI run #1102 correctly failed at compile because the new lifecycle methods were inserted inside `buildHomeUi()`; the methods were moved to class scope with no behavior change;
+- Android CI run `36662771353` / run #1103: **PASS** on exact runtime head `b88f15142626d1b0697cd8387620cbbd359b2f01`;
+- unit tests and production identity checks: PASS;
+- internal debug build and production fail-closed/signing/APK identity checks: PASS;
+- full connected Android instrumentation: PASS;
+- focused lifecycle tests prove Reactivate preserves `Last used`, Archive/Delete remain fail-closed before 13C, and exact removed-address re-add reuses the same provider ID;
+- rendered-screen variants and internal launch smoke: PASS;
+- internal APK and rendered evidence artifacts uploaded by CI.
+
 Completed:
 - current `main` inspected;
 - no open PR or existing Phase 13 branch owned this scope;
@@ -358,7 +379,6 @@ Completed:
 - Phase 10F non-portable backup boundary confirmed.
 
 Not started:
-- Phase 13B archive/reactivate/manual-delete runtime;
 - Phase 13C destructive Drive photo cleanup;
 - Phase 13D inactivity review;
 - external/Drive mutation for Phase 13;
@@ -366,6 +386,6 @@ Not started:
 
 ## Next checkpoint
 
-Begin **Phase 13B — Archive, Reactivate, and Manual Delete** on this authoritative branch.
+Begin **Phase 13C — Safe Archive/Delete Photo Cleanup** on this authoritative branch.
 
-Keep 13B local/non-destructive with respect to Drive folder structure. Reuse the Phase 13A lifecycle owner; do not create a second property-state path. Do not begin Phase 13C Drive photo deletion until the 13B lifecycle behavior is independently proven.
+Replace the current fail-closed Archive/Delete completion placeholder with the governed exact-address cleanup pipeline. Do not commit `ARCHIVED` or `DELETED` until all required work-order/photo identity snapshots are fresh, protected/unresolved local work is absent, the operator confirms the exact bounded cleanup, revalidation still matches, and remote photo-only cleanup is proven complete. Preserve address/work-order folders and all non-photo content.
