@@ -39,8 +39,8 @@ public final class AddressPhotoCleanupMutationTest {
         assertEquals(Arrays.asList(
                 "delete:p1",
                 "delete:p2",
-                "delete:p3",
                 "read:work-1",
+                "delete:p3",
                 "read:work-2"), calls);
     }
 
@@ -76,18 +76,22 @@ public final class AddressPhotoCleanupMutationTest {
     }
 
     @Test
-    public void postDeleteNonEmptyVerificationFailsClosed() {
+    public void postDeleteNonEmptyVerificationStopsBeforeLaterWorkOrder() {
         AddressPhotoCleanupPlan plan = planWithThreePhotos();
+        List<String> calls = new ArrayList<>();
 
         try {
             AddressPhotoCleanupMutation.removeApprovedPhotosAndVerifyEmpty(
                     plan,
                     new AddressPhotoCleanupMutation.Operations() {
                         @Override
-                        public void deletePhoto(String photoDocumentId) {}
+                        public void deletePhoto(String photoDocumentId) {
+                            calls.add("delete:" + photoDocumentId);
+                        }
 
                         @Override
                         public DriveClient.ChildSnapshot readWorkOrderChildren(String workOrderId) {
+                            calls.add("read:" + workOrderId);
                             if ("work-1".equals(workOrderId)) {
                                 return new DriveClient.ChildSnapshot(
                                         List.of("late-photo"),
@@ -99,8 +103,12 @@ public final class AddressPhotoCleanupMutationTest {
                     });
             fail("Expected post-delete verification failure");
         } catch (AddressPhotoCleanupMutation.Failure expected) {
-            assertEquals(3, expected.removedCount());
+            assertEquals(2, expected.removedCount());
             assertTrue(expected.remoteMutationAttempted());
+            assertEquals(Arrays.asList(
+                    "delete:p1",
+                    "delete:p2",
+                    "read:work-1"), calls);
         }
     }
 
