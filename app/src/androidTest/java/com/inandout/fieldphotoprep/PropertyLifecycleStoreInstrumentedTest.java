@@ -28,7 +28,7 @@ public final class PropertyLifecycleStoreInstrumentedTest {
     @Test
     public void workActivityPersistsWithoutChangingLifecycleState() {
         PropertyLifecycleStore store = new PropertyLifecycleStore(context);
-        store.setState("company-a", "address-a", PropertyLifecycleStore.State.ARCHIVED);
+        store.setStateForTest("company-a", "address-a", PropertyLifecycleStore.State.ARCHIVED);
         store.markWorkActivity("company-a", "address-a", 100L);
         store.markWorkActivity("company-a", "address-a", 90L);
 
@@ -42,10 +42,34 @@ public final class PropertyLifecycleStoreInstrumentedTest {
     }
 
     @Test
+    public void explicitLifecycleTransitionsPreserveLastUsed() {
+        PropertyLifecycleStore store = new PropertyLifecycleStore(context);
+        store.markWorkActivity("company", "address", 123L);
+
+        store.archiveAfterCleanupProven("company", "address");
+        assertEquals(
+                PropertyLifecycleStore.State.ARCHIVED,
+                store.snapshot("company", "address").state());
+        assertEquals(123L, store.snapshot("company", "address").lastUsedEpochMs());
+
+        store.reactivate("company", "address");
+        assertEquals(
+                PropertyLifecycleStore.State.ACTIVE,
+                store.snapshot("company", "address").state());
+        assertEquals(123L, store.snapshot("company", "address").lastUsedEpochMs());
+
+        store.deleteAfterCleanupProven("company", "address");
+        assertEquals(
+                PropertyLifecycleStore.State.DELETED,
+                store.snapshot("company", "address").state());
+        assertEquals(123L, store.snapshot("company", "address").lastUsedEpochMs());
+    }
+
+    @Test
     public void companyIdentitySeparatesSameAddressProviderId() {
         PropertyLifecycleStore store = new PropertyLifecycleStore(context);
         store.markWorkActivity("company-a", "shared-address", 111L);
-        store.setState(
+        store.setStateForTest(
                 "company-b",
                 "shared-address",
                 PropertyLifecycleStore.State.ARCHIVED);
