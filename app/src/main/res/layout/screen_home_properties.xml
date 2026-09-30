@@ -183,6 +183,21 @@
                 android:textStyle="normal"
                 style="@style/FieldAction" />
         </LinearLayout>
+        <EditText
+            android:id="@+id/home_property_search"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_concept_card"
+            android:hint="Search addresses"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:singleLine="true"
+            android:textColor="@color/home_text_primary"
+            android:textColorHint="@color/home_text_secondary"
+            android:textSize="14sp" />
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
