@@ -49,6 +49,7 @@ public final class PhotoCaptureActivity extends Activity {
     private final LinkedHashSet<String> batchSelectedPhotoIds = new LinkedHashSet<>();
 
     private FolderPrefs folderPrefs;
+    private PropertyLifecycleStore propertyLifecycleStore;
     private PendingPhotoStore photoStore;
     private PhotoPreparer photoPreparer;
     private AuthorizationActionGuard authorizationGuard;
@@ -93,6 +94,7 @@ public final class PhotoCaptureActivity extends Activity {
         FieldPhotoPrepApplication app = (FieldPhotoPrepApplication) getApplication();
         authorizationGuard = new AuthorizationActionGuard(app.authorizationManager());
         folderPrefs = new FolderPrefs(this);
+        propertyLifecycleStore = new PropertyLifecycleStore(this);
         driveBindingGuard = new OrganizationDriveBindingGuard(
                 folderPrefs,
                 authorizationGuard,
@@ -385,6 +387,7 @@ private void buildUi() {
                 if (cameraError != null && !cameraError.trim().isEmpty()) {
                     summary += " Camera note: " + cameraError;
                 }
+                summary += recordPropertyWorkActivityNote();
                 showPhotoSuccess(summary);
             } else if (cameraError != null && !cameraError.trim().isEmpty()) {
                 showPhotoStatus(cameraError);
@@ -397,6 +400,19 @@ private void buildUi() {
             showError("Camera returned, but the protected photo state needs inspection", error);
         }
         refreshPhotoList();
+    }
+
+    private String recordPropertyWorkActivityNote() {
+        DriveFolder company = folderPrefs == null ? null : folderPrefs.getMasterFolder();
+        if (company == null || address == null || propertyLifecycleStore == null) {
+            return "";
+        }
+        try {
+            propertyLifecycleStore.markWorkActivity(company.id(), address.id());
+            return "";
+        } catch (RuntimeException error) {
+            return " Home recent-use date could not be saved.";
+        }
     }
 
     private void reconcileAndRefresh() {
