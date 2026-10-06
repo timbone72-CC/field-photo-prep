@@ -17,6 +17,7 @@ import java.util.UUID;
 
 public final class PendingPhotoStore {
     static final String CAPTURE_SEQUENCE_LEDGER_FILE = "capture-sequences.properties";
+    private static final String EXPLICIT_REUSE_COMPLETION_PREFIX = "__reuse_explicit_completion__:";
     private static final String CAPTURE_SEQUENCE_RESET_TARGET_PREFIX = "__reuse_target__:";
     private static final String CAPTURE_SEQUENCE_ACTIVE_OCCURRENCE_PREFIX = "__reuse_active__:";
     private static final String CAPTURE_SEQUENCE_ACTIVE_OCCURRENCE_STARTED_PREFIX = "__reuse_started__:";
@@ -139,6 +140,13 @@ public final class PendingPhotoStore {
     public void prepareCaptureSequenceResetForReuse(
             String workOrderId,
             String requestedWorkOrderName) throws IOException {
+        prepareCaptureSequenceResetForReuse(workOrderId, requestedWorkOrderName, false);
+    }
+
+    public void prepareCaptureSequenceResetForReuse(
+            String workOrderId,
+            String requestedWorkOrderName,
+            boolean explicitCompletionRequired) throws IOException {
         requireText(workOrderId, "workOrderId");
         requireText(requestedWorkOrderName, "requestedWorkOrderName");
         synchronized (CAPTURE_SEQUENCE_LOCK) {
@@ -166,6 +174,9 @@ public final class PendingPhotoStore {
                         "A different work-order reuse reset is already pending for this folder. Complete that reuse before starting another.");
             }
             ledger.setProperty(targetKey, requestedWorkOrderName);
+            if (explicitCompletionRequired) {
+                ledger.setProperty(EXPLICIT_REUSE_COMPLETION_PREFIX + workOrderId, "true");
+            }
             writeCaptureSequenceLedger(ledger);
         }
     }
@@ -177,6 +188,14 @@ public final class PendingPhotoStore {
     public void completeCaptureSequenceResetForReuse(
             String workOrderId,
             String requestedWorkOrderName) throws IOException {
+        completeCaptureSequenceResetForReuse(workOrderId, requestedWorkOrderName, null);
+    }
+
+    /** Called only after confirmed remote photo absence and unchanged folder identity. */
+    public void completeCaptureSequenceResetForReuse(
+            String workOrderId,
+            String requestedWorkOrderName,
+            PhotoPreparer preparer) throws IOException {
         requireText(workOrderId, "workOrderId");
         requireText(requestedWorkOrderName, "requestedWorkOrderName");
         synchronized (CAPTURE_SEQUENCE_LOCK) {
@@ -194,8 +213,38 @@ public final class PendingPhotoStore {
             if (!pendingTarget.equals(requestedWorkOrderName)) {
                 throw new IOException("Capture-order reuse reset target does not match the verified folder name.");
             }
+            if (Boolean.parseBoolean(ledger.getProperty(EXPLICIT_REUSE_COMPLETION_PREFIX + workOrderId))
+                    && preparer == null) {
+                throw new IOException("Confirmed work-order history cleanup is required before reuse can complete.");
+            }
+            if (preparer != null) {
+                readLedgerSequence(ledger, workOrderId);
+                readActiveOccurrenceStartedAt(ledger, workOrderId);
+                ScanResult scan = scanAllPersistedRecordsForProtection();
+                if (!scan.corruptMetadataFiles().isEmpty()) {
+                    throw new IOException("Unreadable photo records block work-order cleanup.");
+                }
+                List<PendingPhotoRecord> retiring = new ArrayList<>();
+                for (PendingPhotoRecord record : scan.records()) {
+                    if (!workOrderId.equals(record.workOrderId())) { continue; }
+                    if (record.state() != PendingPhotoRecord.State.UPLOADED
+                            || record.remoteFileId() == null) {
+                        throw new IOException("Unresolved photos block work-order cleanup; local photos were kept.");
+                    }
+                    retiring.add(record);
+                }
+                for (PendingPhotoRecord record : retiring) {
+                    removeProtectedImageAfterConfirmedUpload(record.id());
+                    preparer.removePreparedCopyAfterConfirmedUpload(record);
+                    File metadata = metadataFile(record);
+                    if (metadata.exists() && !metadata.delete()) {
+                        throw new IOException("Could not clear old uploaded entries; work-order reuse is incomplete.");
+                    }
+                }
+            }
             activateReuseReset(ledger, workOrderId, requestedWorkOrderName);
             ledger.remove(targetKey);
+            ledger.remove(EXPLICIT_REUSE_COMPLETION_PREFIX + workOrderId);
             writeCaptureSequenceLedger(ledger);
         }
     }
@@ -206,6 +255,9 @@ public final class PendingPhotoStore {
         String targetKey = resetTargetKey(workOrderId);
         String pendingTarget = normalizeOptional(ledger.getProperty(targetKey));
         if (pendingTarget != null) {
+            if (Boolean.parseBoolean(ledger.getProperty(EXPLICIT_REUSE_COMPLETION_PREFIX + workOrderId))) {
+                throw new IOException("Clear & Reuse is incomplete. Finish the confirmed cleanup before taking new photos.");
+            }
             if (!pendingTarget.equals(workOrder.name())) {
                 throw new IOException(
                         "This work-order folder has an unfinished reuse reset. Refresh and complete the intended reuse before taking new photos.");

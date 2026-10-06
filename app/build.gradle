@@ -3,8 +3,8 @@ plugins {
 }
 
 def productionApplicationId = 'com.inandout.fieldphotoprep'
-def productionVersionCode = 43
-def productionVersionName = '0.28.6'
+def productionVersionCode = 44
+def productionVersionName = '0.28.7'
 def supabaseUrl = 'https://vtyiktvqhbgabawotkrj.supabase.co'
 def supabasePublishableKey = 'sb_publishable_QXGedlj5wCmMpV2HncZp9A_kfgLzuAQ'
 def productionAuthRedirectScheme = productionApplicationId

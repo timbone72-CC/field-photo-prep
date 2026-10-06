@@ -24,9 +24,9 @@ public final class WorkOrderFolderName {
             throw new IllegalArgumentException(
                     "Select a dated work-order folder before using Clear & Reuse.");
         }
-        if (!selected.date.isBefore(requestedDate)) {
+        if (requestedDate.isBefore(selected.date)) {
             throw new IllegalArgumentException(
-                    "Choose a date after " + selected.date + " for Clear & Reuse.");
+                    "Choose a date on or after " + selected.date + " for Clear & Reuse.");
         }
         return selected.workOrder + DATE_SEPARATOR + requestedDate;
     }
