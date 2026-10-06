@@ -1947,7 +1947,7 @@ private void buildLegacyWorkOrderUi() {
                 final boolean uncertain = renameAttempted;
                 runOnUiThread(() -> {
                     workOrderEditInProgress = false;
-                    if (!isStillOnAddress(addressId)) { return; }
+                    if (!isStillOnAddress(addressId)) { setNotBusy(); return; }
                     createBlockedUntilRefresh = true;
                     if (uncertain) {
                         selectedWorkOrder = null;
