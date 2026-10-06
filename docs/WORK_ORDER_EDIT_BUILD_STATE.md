@@ -14,3 +14,5 @@
 - Verification: focused naming/collision tests, emulator edit controls, complete CI final head, physical disposable WO rename with photos preserved, restart, collision/cancel and failed listing. Real Drive gate pending.
 - Recovery: refresh and inspect actual exact folder after uncertain response; never blindly rename again. Revert scoped commit without touching protected originals or queued destinations.
 - Merge approval: not granted. Implementation/test results will be appended here.
+
+- Additional protected boundary: read-only PendingPhotoStore guard blocks editing an unfinished Clear & Reuse reset. No ledger writes/schema changes. Loaded rules/testing/UPLOAD_QUEUE_RETRY.md for this guard; targeted tests assert waiting-original/destination/sequence preservation and pending-reset refusal.

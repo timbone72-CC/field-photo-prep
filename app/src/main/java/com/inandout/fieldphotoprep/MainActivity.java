@@ -1918,6 +1918,8 @@ private void buildLegacyWorkOrderUi() {
                 List<DriveFolder> before = driveClient.listFoldersFresh(
                         getContentResolver(), treeUri, addressId);
                 WorkOrderEditPolicy.validate(before, original.id(), original.name(), requested);
+                new PendingPhotoStore(new File(getFilesDir(), "pending_photos"))
+                        .requireWorkOrderCorrectionSafe(original.id());
                 if (!requested.equals(original.name())) {
                     authorizationGuard.requireDriveMutation();
                     renameAttempted = true;

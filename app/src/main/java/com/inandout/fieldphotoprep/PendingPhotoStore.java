@@ -125,6 +125,17 @@ public final class PendingPhotoStore {
      * This happens before the existing reuse Drive write so another capture cannot race into the
      * old occurrence while reuse is in progress. Only confirmed old uploads may remain locally.
      */
+    /** A name correction must not invalidate an unfinished destructive reuse transition. */
+    public void requireWorkOrderCorrectionSafe(String workOrderId) throws IOException {
+        requireText(workOrderId, "workOrderId");
+        synchronized (CAPTURE_SEQUENCE_LOCK) {
+            Properties ledger = readCaptureSequenceLedger();
+            if (normalizeOptional(ledger.getProperty(resetTargetKey(workOrderId))) != null) {
+                throw new IOException("This work order has unfinished Clear & Reuse. Complete or recover it before editing.");
+            }
+        }
+    }
+
     public void prepareCaptureSequenceResetForReuse(
             String workOrderId,
             String requestedWorkOrderName) throws IOException {
