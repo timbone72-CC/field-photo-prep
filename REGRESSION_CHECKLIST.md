@@ -53,6 +53,16 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] No-match creation creates exactly one work-order folder under the selected address folder.
 - [ ] A work-order folder is never accidentally created at the workspace root or company-folder root.
 
+## Work-order correction
+
+- [ ] Edit Work Order is visible on the Work Orders screen, enabled for a selected writable folder.
+- [ ] Edit prefills the existing name/date; either or both can change without clearing photos.
+- [ ] Cancel leaves folder and selection unchanged; invalid name/date stays in the dialog.
+- [ ] Sibling name/date collision, changed source name, missing ID and unsettled provider block rename.
+- [ ] Save verifies the original folder ID and parent; photos, queued destinations and capture sequence remain unchanged.
+- [ ] Reopening the app shows the corrected folder name/date under the same identity.
+- [ ] Empty/error folder discovery has a visible explanation; no silent blank list.
+
 ## E. Work-order folder reuse
 
 - [ ] The operator can select an existing dated work order and start **Clear & Reuse** directly without retyping the work-order name.

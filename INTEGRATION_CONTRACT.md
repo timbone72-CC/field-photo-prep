@@ -216,3 +216,7 @@ No workbook or Free Map Router handoff is part of the initial build. If one is l
 ## When extra work is not required
 
 A change that cannot affect remote document-provider access, folder discovery, folder identity, folder creation, folder recycling, deletion, rename, upload, retry, remote state, or permissions needs only: `No Google Drive integration impact.` It does not require a real Drive smoke test.
+
+## Non-destructive work-order correction
+
+Explicit **Edit Work Order** authorizes correcting the selected existing folder's name and date while keeping all photos, child content, capture sequence and immutable queued destinations. It is the same work occurrence, not Clear & Reuse. Use the exact selected provider ID and address parent; fresh sibling state must verify the original identity/name, reject another folder with the requested exact name, and verify the returned unchanged identity/name after rename. Cancel writes nothing. Uncertain rename results require refresh/inspection before further writes or capture into that selection. No queue or occurrence-reset state is rewritten.

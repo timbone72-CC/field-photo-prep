@@ -5,6 +5,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.widget.EditText;
+import androidx.test.espresso.Espresso;
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.action.ViewActions.click;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -75,6 +82,38 @@ public final class WorkOrderChildDiscoveryUiInstrumentedTest {
         } finally {
             raw.edit().clear().commit();
         }
+    }
+
+    @Test
+    public void editDialogPrefillsExistingNameDateAndCancelPreservesSelection() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
+            scenario.onActivity(activity -> {
+                try {
+                    fieldSet(activity, "selectedAddress", new DriveFolder("address", "Test address"));
+                    fieldSet(activity, "selectedWorkOrder", new DriveFolder("wo", "GRASS CUT - 2026-09-29"));
+                    fieldSet(activity, "busy", false);
+                    call(activity, "showEditWorkOrderDialog");
+                } catch (Exception error) { throw new AssertionError(error); }
+            });
+            onView(withText("GRASS CUT")).check(matches(isDisplayed()));
+            onView(withText("Date: 2026-09-29")).check(matches(isDisplayed()));
+            onView(withText("Cancel")).perform(click());
+            scenario.onActivity(activity -> {
+                try {
+                    DriveFolder selected = (DriveFolder) field(activity, "selectedWorkOrder");
+                    org.junit.Assert.assertEquals("wo", selected.id());
+                    org.junit.Assert.assertEquals("GRASS CUT - 2026-09-29", selected.name());
+                    assertTrue(activity.findViewById(R.id.work_order_edit) != null);
+                } catch (Exception error) { throw new AssertionError(error); }
+            });
+        }
+    }
+
+    private static void fieldSet(Object owner, String name, Object value) throws Exception {
+        Field field = owner.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(owner, value);
     }
 
     private static Object field(Object owner, String name) throws Exception {

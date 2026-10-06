@@ -127,7 +127,7 @@ The Phase 12K production identity/release path is now approved behavior:
 18. The app must not guess a destination from a folder name when a stored remote folder identity exists.
 19. Reopening the app, address, or work order must not create a second Drive folder merely because the app restarted.
 20. If a stored destination folder can no longer be accessed, the app must stop the affected upload and report the problem rather than silently creating or choosing another folder.
-21. Except for the approved folder-reuse controls below and the explicit Phase 13 address archive/delete photo-cleanup workflow, the app must not move, rename, delete, or change sharing permissions on existing Drive content.
+21. Except for explicit non-destructive work-order correction, the approved folder-reuse controls below and the explicit Phase 13 address archive/delete photo-cleanup workflow, the app must not move, rename, delete, or change sharing permissions on existing Drive content.
 22. No additional permanent work-order number or app-generated business identifier is required in the initial model. If same-property, same-work-order, same-date occurrences become a real ambiguity, that case must be designed explicitly rather than guessed around.
 23. **Clear & Reuse** operates only on the exact work-order folder the operator selected under the current address. The selected dated folder supplies the work-order name automatically; the operator does not retype it.
 24. The user-facing reuse flow is **select work order → Clear & Reuse → choose a later date → confirm**. The app may keep provider freshness, identity, authorization, collision, local-protection, and sequence-reset checks in the background.
@@ -227,7 +227,7 @@ The Phase 12K production identity/release path is now approved behavior:
 11. The app must not automatically share uploaded photos or folders, change inherited permissions, or create public links.
 12. Files created under a shared parent may inherit that parent's Drive permissions; the app does not independently broaden sharing.
 13. Loss of platform/document-provider access must not delete temporary photos that have not yet been confirmed in Drive.
-14. Company-folder rename is permitted only through the explicit company-edit workflow and must preserve exact provider identity. Work-order-folder rename and child deletion remain permitted only through the approved empty-folder reuse or confirmed **Clear & Reuse** workflow in Section 2.
+14. Company-folder rename is permitted only through the explicit company-edit workflow and must preserve exact provider identity. Work-order-folder correction is also permitted through explicit Edit Work Order. Child deletion remains permitted only through the approved empty-folder reuse or confirmed **Clear & Reuse** workflow in Section 2.
 15. A folder reuse operation must operate by exact stable remote folder identity; visible folder names alone may never authorize deletion or rename.
 
 ## 6. Upload queue, selection, batch execution, local discard, and retry
@@ -345,3 +345,7 @@ The following are not required for the first working version unless separately a
 ## 11. Safety priority
 
 When two behaviors conflict, preserve any photo not yet confirmed in Drive and preserve its exact work-order-folder destination identity before optimizing convenience, speed, cleanup, or storage use. The only exception for an unconfirmed local photo is an explicit operator discard that passes the approved stored-identity and discard-safe queue-state guards immediately before local deletion. Destructive Drive reuse must remain operator-initiated, narrowly scoped, and fail closed. A selected upload batch must stop rather than continue through an uncertain or unverified remote result. After confirmed Drive storage, the app should favor removing unnecessary local image copies rather than becoming a second photo archive.
+
+## Non-destructive work-order correction
+
+Explicit **Edit Work Order** authorizes correcting the selected existing folder's name and date while keeping all photos, child content, capture sequence and immutable queued destinations. It is the same work occurrence, not Clear & Reuse. Use the exact selected provider ID and address parent; fresh sibling state must verify the original identity/name, reject another folder with the requested exact name, and verify the returned unchanged identity/name after rename. Cancel writes nothing. Uncertain rename results require refresh/inspection before further writes or capture into that selection. No queue or occurrence-reset state is rewritten.
