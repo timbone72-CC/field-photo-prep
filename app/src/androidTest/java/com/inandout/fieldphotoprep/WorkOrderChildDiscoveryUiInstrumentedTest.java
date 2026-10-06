@@ -5,8 +5,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
-import android.widget.EditText;
-import androidx.test.espresso.Espresso;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
@@ -105,6 +103,12 @@ public final class WorkOrderChildDiscoveryUiInstrumentedTest {
                     org.junit.Assert.assertEquals("wo", selected.id());
                     org.junit.Assert.assertEquals("GRASS CUT - 2026-09-29", selected.name());
                     assertTrue(activity.findViewById(R.id.work_order_edit) != null);
+                    fieldSet(activity, "workOrderEditInProgress", true);
+                    fieldSet(activity, "busy", true);
+                    call(activity, "setNotBusy");
+                    assertTrue("Auth revalidation must not unlock concurrent edits",
+                            (Boolean) field(activity, "busy"));
+                    fieldSet(activity, "workOrderEditInProgress", false);
                 } catch (Exception error) { throw new AssertionError(error); }
             });
         }

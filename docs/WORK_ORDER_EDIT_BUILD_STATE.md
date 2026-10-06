@@ -16,3 +16,5 @@
 - Merge approval: not granted. Implementation/test results will be appended here.
 
 - Additional protected boundary: read-only PendingPhotoStore guard blocks editing an unfinished Clear & Reuse reset. No ledger writes/schema changes. Loaded rules/testing/UPLOAD_QUEUE_RETRY.md for this guard; targeted tests assert waiting-original/destination/sequence preservation and pending-reset refusal.
+
+- Async authorization callbacks cannot unlock the UI during a work-order rename; instrumented coverage asserts the edit-operation latch.

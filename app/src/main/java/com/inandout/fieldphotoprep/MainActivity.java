@@ -124,6 +124,7 @@ public final class MainActivity extends Activity {
     private Button useCreateButton;
     private Button clearReuseButton;
     private Button editWorkOrderButton;
+    private boolean workOrderEditInProgress;
     private Button photosButton;
     private ListView workOrderList;
     private WorkOrderListAdapter workOrderAdapter;
@@ -1911,6 +1912,7 @@ private void buildLegacyWorkOrderUi() {
             showMessage("Refresh work orders and confirm Drive write access before editing.");
             return;
         }
+        workOrderEditInProgress = true;
         setBusy("Saving work-order name and date…");
         executor.execute(() -> {
             boolean renameAttempted = false;
@@ -1934,7 +1936,8 @@ private void buildLegacyWorkOrderUi() {
                 WorkOrderEditPolicy.validate(after, original.id(), requested, requested);
                 DriveFolder verified = DriveClient.findById(after, original.id());
                 runOnUiThread(() -> {
-                    if (!isStillOnAddress(addressId)) { return; }
+                    workOrderEditInProgress = false;
+                    if (!isStillOnAddress(addressId)) { setNotBusy(); return; }
                     workOrderFolders.clear();
                     workOrderFolders.addAll(after);
                     notifyFolderAdapters();
@@ -1943,6 +1946,7 @@ private void buildLegacyWorkOrderUi() {
             } catch (Exception error) {
                 final boolean uncertain = renameAttempted;
                 runOnUiThread(() -> {
+                    workOrderEditInProgress = false;
                     if (!isStillOnAddress(addressId)) { return; }
                     createBlockedUntilRefresh = true;
                     if (uncertain) {
@@ -2831,6 +2835,7 @@ private void buildLegacyWorkOrderUi() {
     }
 
     private void setNotBusy() {
+        if (workOrderEditInProgress) { return; }
         busy = false;
         Uri treeUri = folderPrefs.getMasterTreeUri();
         boolean canRead = driveBindingGuard.current().isUsable();
