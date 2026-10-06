@@ -18,3 +18,5 @@
 - Additional protected boundary: read-only PendingPhotoStore guard blocks editing an unfinished Clear & Reuse reset. No ledger writes/schema changes. Loaded rules/testing/UPLOAD_QUEUE_RETRY.md for this guard; targeted tests assert waiting-original/destination/sequence preservation and pending-reset refusal.
 
 - Async authorization callbacks cannot unlock the UI during a work-order rename; instrumented coverage asserts the edit-operation latch.
+
+- First CI d8eeeca: unit tests/app build/signer checks passed; instrumentation compilation failed because Espresso is not a repository dependency. Corrected the test to existing Android accessibility automation; final complete suite pending. No failed candidate delivered.

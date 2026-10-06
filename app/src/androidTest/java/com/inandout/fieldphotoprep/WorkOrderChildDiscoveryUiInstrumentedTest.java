@@ -5,11 +5,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
-import static androidx.test.espresso.Espresso.onView;
-import static androidx.test.espresso.matcher.ViewMatchers.withText;
-import static androidx.test.espresso.assertion.ViewAssertions.matches;
-import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
-import static androidx.test.espresso.action.ViewActions.click;
+import android.view.accessibility.AccessibilityNodeInfo;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -94,9 +90,11 @@ public final class WorkOrderChildDiscoveryUiInstrumentedTest {
                     call(activity, "showEditWorkOrderDialog");
                 } catch (Exception error) { throw new AssertionError(error); }
             });
-            onView(withText("GRASS CUT")).check(matches(isDisplayed()));
-            onView(withText("Date: 2026-09-29")).check(matches(isDisplayed()));
-            onView(withText("Cancel")).perform(click());
+            assertFalse(awaitText("GRASS CUT").isEmpty());
+            assertFalse(awaitText("Date: 2026-09-29").isEmpty());
+            assertTrue(awaitText("Cancel").get(0)
+                    .performAction(AccessibilityNodeInfo.ACTION_CLICK));
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
             scenario.onActivity(activity -> {
                 try {
                     DriveFolder selected = (DriveFolder) field(activity, "selectedWorkOrder");
@@ -112,6 +110,19 @@ public final class WorkOrderChildDiscoveryUiInstrumentedTest {
                 } catch (Exception error) { throw new AssertionError(error); }
             });
         }
+    }
+
+    private static List<AccessibilityNodeInfo> awaitText(String text) throws Exception {
+        for (int attempt = 0; attempt < 80; attempt++) {
+            AccessibilityNodeInfo root = InstrumentationRegistry.getInstrumentation()
+                    .getUiAutomation().getRootInActiveWindow();
+            if (root != null) {
+                List<AccessibilityNodeInfo> found = root.findAccessibilityNodeInfosByText(text);
+                if (!found.isEmpty()) { return found; }
+            }
+            Thread.sleep(25L);
+        }
+        throw new AssertionError("Missing dialog control: " + text);
     }
 
     private static void fieldSet(Object owner, String name, Object value) throws Exception {
