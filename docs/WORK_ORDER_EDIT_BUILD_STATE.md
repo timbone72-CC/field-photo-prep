@@ -20,3 +20,11 @@
 - Async authorization callbacks cannot unlock the UI during a work-order rename; instrumented coverage asserts the edit-operation latch.
 
 - First CI d8eeeca: unit tests/app build/signer checks passed; instrumentation compilation failed because Espresso is not a repository dependency. Corrected the test to existing Android accessibility automation; final complete suite pending. No failed candidate delivered.
+
+## Verified candidate handoff — October 6
+
+- Runtime branch head: afd29c654e448d6ad853fb0a51d8b6b6c8a692ed. Final full Android CI 37508637427 SUCCESS; governance 37508632536 SUCCESS. Unit policy tests 4/4 and storage continuity tests 2/2 passed. Full instrumentation and launch smoke passed, including edit dialog prefill/cancel and async-lock test.
+- Actions PR merge source built: d2c2af4ccabecc3d960503488e3de05fbcdc9350. Candidate 0.28.6-internal, code 43, existing internal package and signer verified. APK SHA256: 453681172bda80223631a39e19f8f186ae7fcda43f8c5b3dbfdb33175c1ed76b.
+- Candidate delivered as Field-Photo-Prep-0.28.6-internal-WO-Edit.apk. No production release, customer Drive mutation or merge performed.
+- Remaining gate: install over existing Internal package without clearing data; verify on Samsung using disposable WO that name/date correction preserves photos/provider identity/sequence and survives restart, collision/cancel stops writes; examine reported blank existing-WO list under the correct company/address. Google-provider cache causality remains unproven.
+- Explicit merge approval remains pending. This is a verified automated candidate, not completed physical Drive proof.
