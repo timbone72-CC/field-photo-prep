@@ -75,6 +75,16 @@ If scope expands, reclassify first. When uncertain between levels, use the highe
 
 Level 3 requires explicit operator approval before merge.
 
+## Workflow completeness before planning
+
+Before committing a feature plan or claiming an existing surface complete, review the operator's whole affected workflow: create/select, correct mistakes, repeat/reuse, cancel, fail/recover, and reopen/restart as applicable. In the existing scope record, identify each as supported, intentionally excluded with rationale, or unresolved. An omission from a contract is a planning gap to assess, not evidence that the operator does not need it. Do not silently invent behavior or expand scope; resolve material decisions under existing authorization rules.
+
+Compare the approved requirements, roadmap, implementation, and evidence. Existing contractual requirements remain mandatory even when a plan or test omits them. Record disagreements before implementation or closeout.
+
+## Evidence-backed explanations
+
+Before explaining a failure's cause, inspect the relevant source, requirements and history. Distinguish an explicit requirement violated, an omitted requirement, an intentional restriction, and an unproven hypothesis. Cite the inspected revision/section in the scope record. A screenshot proves the visible result, not an unseen remote mutation or the action sequence. Correct unsupported prior explanations explicitly.
+
 ## Largest-safe-batch rule
 
 Prefer the largest coherent batch with stable scope, understood dependencies/ownership, known rollback, and a verification boundary that can prove the whole batch.
@@ -124,6 +134,8 @@ A phase/scope is complete only when:
 - competing lines are closed/quarantined;
 - required approval is recorded;
 - merge/deployment state is unambiguous.
+
+Closeout must reconcile the requirement/evidence table required by `CHANGE_CONTROL_CONTRACT.md`. Report automated, physical/external, and merge status separately. Unchecked checklists and broad feedback such as “so far it works” cannot prove unspecified checks. Historical passed gates remain historical evidence; a new contradictory field report reopens the affected current claim without erasing that history.
 
 ## GitHub enforcement boundary
 
