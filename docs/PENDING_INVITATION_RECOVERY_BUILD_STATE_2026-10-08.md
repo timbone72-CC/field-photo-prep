@@ -1,7 +1,7 @@
 # Pending Invitation Recovery — Impact / Build State
 
 Date: 2026-10-08
-Status: IN PROGRESS — IMPLEMENTATION NOT MERGED, NOT DEPLOYED
+Status: SOURCE IMPLEMENTED / AUTOMATED CI PASS / LIVE BACKEND UNCHANGED — REALITY GATES PENDING
 Scope key: fpp-verified-invitation-recovery
 Change level: **Level 3** — membership/authentication authorization, new constrained Supabase RPC.
 
@@ -34,3 +34,31 @@ When a password is valid but ordinary Membership validation finds zero ACTIVE me
 - No code on `main`, no live schema/config changes, no new APK distribution from this branch until gates pass.
 - Rollback: revert this branch/new client changes and, if deployed later, revoke the added RPC EXECUTE grant or drop only that RPC through governed forward migration. Preserve all real invitations, Auth users, protected photos, queue, SAF grants, and Drive data.
 - Explicit Level-3 approval required before merge and deployment. No claim of a successful real recipient activation until physically verified.
+
+## 2026-10-08 verification checkpoint
+
+Authoritative draft PR: [#97](https://github.com/timbone72-CC/field-photo-prep/pull/97).
+Runtime source head: `5d0d694de6b4a556909897e202b8996b27e63067`.
+Implementation-only commit includes a narrow confirmed-self invitation-lookup RPC migration, Android typed lookup/sign-in confirmation path, and `PendingInvitationRecoveryInstrumentedTest`.
+
+### Automated and repository evidence
+- Android CI [37799742270](https://github.com/timbone72-CC/field-photo-prep/actions/runs/37799742270): **SUCCESS** for source head above. Unit tests, debug APK build, production identity/fail-closed signer checks, test-signer verification, complete `connectedDebugAndroidTest` (including new instrumentation test), theme/rendering verification, and launch smoke succeeded. The workflow's deliberately failed unsigned production build is an **expected successful fail-closed test**, not an overall CI failure.
+- Artifact `field-photo-prep-internal-apk`, ID `11560810573`, from this CI run. **Not authorized for installation on the recipient's phone**: this branch inherits `main` internal versionCode `42` / `0.28.5-internal`, below the separately installed `0.28.6-internal` / versionCode `43`. Do not uninstall/reset/downgrade to bypass this; plan a monotonically higher approved candidate after reconciling open PR #95's version 44.
+- Governance [37799888320](https://github.com/timbone72-CC/field-photo-prep/actions/runs/37799888320): **SUCCESS**, after formatting PR's Level 3 merge approval as `PENDING`. Earlier formatting-only governance failure [37799743082](https://github.com/timbone72-CC/field-photo-prep/actions/runs/37799743082) is superseded by this passing rerun without altering runtime code.
+
+### Read-only production backend evidence
+Supabase original-FPP project `vtyiktvqhbgabawotkrj` inspected, **not changed**.
+- Current live migrations remain only `20260925012939`, `20260925013000`, `20260925195816`, `20260925195901`. The new `20261008161000` migration has **not** been applied.
+- Existing `public.fpp_accept_invitation`: SECURITY DEFINER, EXECUTE permitted for `authenticated`, not `anon`.
+- `public.fpp_find_my_pending_invitation` is **absent** on the live backend, as expected.
+- `fpp_invitations`, `fpp_memberships`, `fpp_organizations`: RLS enabled.
+- SQL was source-reviewed for exact `auth.uid()`/confirmed-email restriction, no-existing-membership fail-closed behavior, PENDING/non-expired/ACTIVE organization filtering, and ambiguous result refusal. This is a **source review**, not a passed hosted SQL isolation or deployment test.
+
+### Remaining gates and ordering
+1. In a safe disposable test environment, validate the new SQL function with Auth contexts: anonymous denial, other-email denial, unconfirmed-email denial, no invitation, expired/cancelled invitation, multiple pending invitations, and existing/revoked membership. Prove no membership mutation from the lookup alone. Check function grants and RLS after migration there. **Not yet done.**
+2. Reconcile PR #95's versionCode 44 before preparing an installable Internal version newer than the recipient's versionCode 43. Preserve production signer identity if a production build is selected. New installation/update is a separate approved release path.
+3. Before any live deployment, operator reviews the Level-3 reality-gate plan and authorizes the staged live backend change; then apply only the reviewed migration, inspect grants and run one disposable real-server/device invitation-acceptance test. The existing invitation/recipient account remains unchanged during fixture testing.
+4. Physical check on recipient's phone: correct Auth account → pending invite displayed → explicit Accept → validated MEMBER/ACTIVE, with Drive unbound until separately selected. Stop on wrong organization, any unexpected provider binding, duplicated membership, or permission mismatch.
+5. Obtain distinct explicit Level-3 merge/deployment approval after evidence. PR remains DRAFT, no merge. Auth passwords/tokens, photos, queue, company Drive, SAF bindings, and real invitation are not mutated by this checkpoint.
+
+No claim of backend compatibility, active new Membership, physical update success, or complete production readiness is made.
