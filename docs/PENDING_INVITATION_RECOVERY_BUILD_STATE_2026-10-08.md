@@ -126,3 +126,13 @@ The operator initiated the existing manual production signing workflow using `fi
 - **Scope proved:** existing signed regular-production app can complete the verified pending invitation / password-recovery membership flow against the live backend and open Home, with authoritative post-acceptance membership confirmation. No credential text or Auth tokens were collected.
 - **Not proved / unchanged:** client Google Drive consent, folder identity and company isolation, photos/queue or contractor-specific field workflow; these remain separate checks. No photo or Drive files were deliberately changed by this verification. Field Photo Prep Internal remains a separate package; it was not part of this test.
 - Governance: [PR #97](https://github.com/timbone72-CC/field-photo-prep/pull/97) stays **DRAFT and unmerged**. This documentation commit records a passed reality gate only; it does **not** grant Level-3 merge approval or authorize broader distribution/release. Review remaining repository governance and cross-PR workflow/version conflicts before seeking explicit merge approval.
+
+## 2026-10-08 explicit operator Level-3 merge approval — GRANTED
+
+After the successful physical recipient acceptance, live database confirmation (one ACCEPTED invitation, one ACTIVE MEMBER membership), and confirmed regular-app Home entry, the operator stated: **“approved. and be sure you document this. then check the repo to make sure its up to date”** in direct response to the proposed next checkpoint: **final governance review of PR #97 followed by explicit merge approval**.
+
+- This is **explicit Level-3 merge approval for PR #97 only**, conditional on passing the repository's applicable existing required checks and final diff/overlap review before merging.
+- It does not approve PR #95 (Work Order Edit/Clear & Reuse), PR #96 (workflow action pinning), other pending release lines, or new provider/Drive access.
+- Approval is recorded **before merge**, not as proof a merge has occurred. PR #97 remains the authoritative line until GitHub confirms the merge.
+- Pre-merge reconciliation must preserve the independently reviewed CI action pins owned by PR #96 when that future PR is integrated, and must not overwrite PR #95's separately governed v0.28.7-internal/code44 change.
+- Real client device verification and Supabase membership acceptance are now recorded above; no new photowork or Drive binding permissions are inferred.
