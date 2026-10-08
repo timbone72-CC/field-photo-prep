@@ -62,3 +62,12 @@ Supabase original-FPP project `vtyiktvqhbgabawotkrj` inspected, **not changed**.
 5. Obtain distinct explicit Level-3 merge/deployment approval after evidence. PR remains DRAFT, no merge. Auth passwords/tokens, photos, queue, company Drive, SAF bindings, and real invitation are not mutated by this checkpoint.
 
 No claim of backend compatibility, active new Membership, physical update success, or complete production readiness is made.
+
+## 2026-10-08 isolated test environment blocker
+
+- Operator approved a short-lived Supabase development branch at the quoted cost of $0.01344/hour.
+- `confirm_cost` acknowledged the quoted rate. `create_branch` returned `PaymentRequiredException: Branching is supported only on the Pro plan or above`.
+- Subsequent `list_branches` returned only the default `main` branch for the original FPP project; **no isolated development branch was created**.
+- No live project SQL was executed, no migration was applied, no invitation/membership/account record was changed, and no hourly testing-branch charge was initiated.
+- **STOP** hosted isolated-branch gate. Do not silently substitute transactional production-schema DDL, live recipient fixture, a second paid project, or a plan upgrade.
+- Recommended no-cost alternative, subject to operator approval and governance reconciliation: a one-off isolated PostgreSQL/Supabase-compatible test using GitHub CI service containers, with disposable fixtures and explicit exclusion of the original FPP project credentials. Confirm the approach can exercise the migration and Auth/JWT semantics before claiming parity. Retain the live hosted reality gate before any production activation.
