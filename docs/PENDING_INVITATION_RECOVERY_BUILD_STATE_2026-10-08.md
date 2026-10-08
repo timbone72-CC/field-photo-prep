@@ -100,3 +100,16 @@ After Supabase Pro-plan-only branching blocked the disposable hosted test, the o
 - Exact live schema rollback: revoke `EXECUTE` on `public.fpp_find_my_pending_invitation()` from `authenticated` if server exposure becomes unsafe; formal removal by source-controlled forward migration only after reviewing affected clients. No deletion of Auth users, invitations, memberships, Drive files, or local photos.
 - Earlier head `66a6f7f4` Android CI run `37832869269` FAILED an emulator touch-injection stage affecting unrelated Home tests; investigation showed window ownership errors. Until a succeeding final runtime-head complete Android run exists, do not claim this issue resolved or release an APK. Security SQL run `37832869591` passed.
 - This is a **staged additive hosted function change**, not an invitation acceptance nor a Level-3 PR merge. User has not yet confirmed real hosted callback and candidate install. Finish automated Android CI, existing photo protection checks, explicit production signer/update continuity, then live recipient acceptance on correct production app before claiming real completion.
+
+## 2026-10-08 signed production candidate — PASS / DISTRIBUTION STILL PENDING
+
+The operator initiated the existing manual production signing workflow using `fix/pending-invitation-after-password-recovery` and previous production versionCode `37`.
+
+- GitHub [Production Release Candidate run #37842908843](https://github.com/timbone72-CC/field-photo-prep/actions/runs/37842908843) completed **SUCCESS**.
+- Exact built source head: `a970c8162668b6ec54b5ed03f7d78ea4c2e58b48`. Android CI #37833717599, isolated SQL #37833717482, governance #37833955053 also succeeded for that source.
+- APK artifact: `field-photo-prep-production-candidate-v42`, Actions artifact ID `11577993806`, private artifact uploaded successfully, retention 14 days.
+- Verified package: `com.inandout.fieldphotoprep`; versionCode `42`, versionName `0.28.5`; callback `com.inandout.fieldphotoprep://auth-callback`; original-FPP Supabase project `vtyiktvqhbgabawotkrj`. The separately installed Internal app has package `com.inandout.fieldphotoprep.internal` and is not being replaced.
+- Verified production certificate SHA-256 `8ba1dc6ae4907274a7ddb16662a46a7bb52a0fca5dbeadeb478001052fd2a1c2`.
+- Verified APK SHA-256 `139e0e263367f31282f783e7d9a6cf960fc48937f63711c4ef9b6414f684fb52`.
+- **Not yet installed or physically tested**. Next step is operator-controlled artifact download and existing regular production app safe same-package, same-signer, higher-version update on the recipient's phone. Confirm local protected-work status first if any concern arises; do not uninstall or clear app data. Perform actual pending-invitation confirmation and post-acceptance authoritative Membership review. If anything fails, stop; do not delete or recreate the invited account.
+- Level-3 PR #97 remains DRAFT and merge approval remains PENDING. The live backend additive lookup is installed but no client-side acceptance has yet occurred.
