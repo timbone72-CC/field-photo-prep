@@ -23,6 +23,7 @@ public final class AuthActivity extends Activity {
         LOGIN,
         RECOVERY_REQUEST,
         PASSWORD_SETUP,
+        PENDING_INVITATION,
         CONNECTED
     }
 
@@ -44,6 +45,8 @@ public final class AuthActivity extends Activity {
     private Mode mode = Mode.LOGIN;
     private SupabaseAuthClient.AuthTokens pendingRecoveryTokens;
     private String pendingInvitationId;
+    private SupabaseAuthClient.AuthTokens pendingJoinTokens;
+    private SupabaseAuthClient.PendingInvitation pendingJoinInvitation;
     private boolean returnToMainAfterAuthentication;
 
     @Override
@@ -159,6 +162,8 @@ public final class AuthActivity extends Activity {
         mode = Mode.LOGIN;
         pendingRecoveryTokens = null;
         pendingInvitationId = null;
+        pendingJoinTokens = null;
+        pendingJoinInvitation = null;
         title.setText("Field Photo Prep Account");
         status.setText(message == null
                 ? "Sign in to your Field Photo Prep organization."
@@ -213,6 +218,60 @@ public final class AuthActivity extends Activity {
         primary.setOnClickListener(v -> setRecoveredPassword());
         secondary.setOnClickListener(v -> showLogin(null));
         setBusy(false);
+    }
+
+    private void showPendingInvitation(
+            SupabaseAuthClient.AuthTokens tokens,
+            SupabaseAuthClient.PendingInvitation invitation) {
+        mode = Mode.PENDING_INVITATION;
+        pendingJoinTokens = tokens;
+        pendingJoinInvitation = invitation;
+        title.setText("Finish Joining");
+        status.setText("A pending invitation was found for your verified account.\n\n"
+                + invitation.organizationName() + "\n"
+                + "Role: " + invitation.intendedRole()
+                + "\n\nTap Accept Invitation to join. Google Drive permission is separate.");
+        manageMembers.setVisibility(View.GONE);
+        email.setVisibility(View.GONE);
+        password.setVisibility(View.GONE);
+        confirmPassword.setVisibility(View.GONE);
+        primary.setText("Accept Invitation");
+        secondary.setText("Back to Sign In");
+        primary.setVisibility(View.VISIBLE);
+        secondary.setVisibility(View.VISIBLE);
+        primary.setOnClickListener(v -> acceptPendingInvitation());
+        secondary.setOnClickListener(v -> showLogin(null));
+        setBusy(false);
+    }
+
+    private void acceptPendingInvitation() {
+        SupabaseAuthClient.AuthTokens tokens = pendingJoinTokens;
+        SupabaseAuthClient.PendingInvitation invitation = pendingJoinInvitation;
+        if (mode != Mode.PENDING_INVITATION || tokens == null || invitation == null) {
+            showLogin("Sign in again to check your invitation.");
+            return;
+        }
+
+        setBusy(true);
+        status.setText("Accepting your invitation…");
+        executor.execute(() -> {
+            try {
+                authClient.acceptInvitation(tokens.accessToken(), invitation.invitationId());
+                AuthSessionState state = authClient.validateMembership(tokens);
+                replaceAuthenticatedSessionSafely(state);
+                runOnUiThread(() -> {
+                    pendingJoinTokens = null;
+                    pendingJoinInvitation = null;
+                    completeAuthenticatedEntry(state, "Invitation accepted and account verified.");
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    setBusy(false);
+                    status.setText("Could not finish joining: " + e.getMessage()
+                            + "\n\nNo field-work access has been granted.");
+                });
+            }
+        });
     }
 
     private String storedSessionMessage(AuthorizationDecision decision) {
@@ -296,11 +355,20 @@ public final class AuthActivity extends Activity {
                 SupabaseAuthClient.AuthTokens tokens = authClient.signInWithPassword(
                         emailValue,
                         passwordValue);
-                AuthSessionState state = authClient.validateMembership(tokens);
-                replaceAuthenticatedSessionSafely(state);
-                runOnUiThread(() -> completeAuthenticatedEntry(
-                        state,
-                        "Signed in successfully."));
+                try {
+                    AuthSessionState state = authClient.validateMembership(tokens);
+                    replaceAuthenticatedSessionSafely(state);
+                    runOnUiThread(() -> completeAuthenticatedEntry(
+                            state,
+                            "Signed in successfully."));
+                } catch (SupabaseAuthClient.NoActiveMembershipException missing) {
+                    SupabaseAuthClient.PendingInvitation invitation =
+                            authClient.findMyPendingInvitation(tokens.accessToken());
+                    if (invitation == null) {
+                        throw missing;
+                    }
+                    runOnUiThread(() -> showPendingInvitation(tokens, invitation));
+                }
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     setBusy(false);

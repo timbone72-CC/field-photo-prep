@@ -18,8 +18,31 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 final class SupabaseAuthClient {
+    static final class NoActiveMembershipException extends IOException {
+        NoActiveMembershipException() {
+            super("This account does not have an active Field Photo Prep membership.");
+        }
+    }
+
+    static final class PendingInvitation {
+        private final String invitationId;
+        private final String organizationName;
+        private final String intendedRole;
+
+        PendingInvitation(String invitationId, String organizationName, String intendedRole) {
+            this.invitationId = invitationId;
+            this.organizationName = organizationName;
+            this.intendedRole = intendedRole;
+        }
+
+        String invitationId() { return invitationId; }
+        String organizationName() { return organizationName; }
+        String intendedRole() { return intendedRole; }
+    }
+
     static final class AuthException extends IOException {
         private final int statusCode;
 
@@ -207,6 +230,48 @@ final class SupabaseAuthClient {
         return parseTokens(response);
     }
 
+    PendingInvitation findMyPendingInvitation(String accessToken) throws IOException {
+        JSONObject response = requestObject(
+                "POST",
+                "/rest/v1/rpc/fpp_find_my_pending_invitation",
+                new JSONObject(),
+                accessToken);
+        return parsePendingInvitation(response);
+    }
+
+    static PendingInvitation parsePendingInvitation(JSONObject response) throws AuthException {
+        if (response == null) {
+            throw new AuthException("Invitation lookup returned no response.");
+        }
+
+        String outcome = response.optString("outcome", "");
+        switch (outcome) {
+            case "NO_PENDING":
+                return null;
+            case "EMAIL_NOT_CONFIRMED":
+                throw new AuthException("Confirm your email before accepting an invitation.");
+            case "NOT_ELIGIBLE":
+                throw new AuthException("Account access requires Owner review.");
+            case "MULTIPLE_PENDING":
+                throw new AuthException("More than one invitation is pending. Ask the Owner for help.");
+            case "FOUND":
+                String id = response.optString("invitation_id", "").trim();
+                String name = response.optString("organization_name", "").trim();
+                String role = response.optString("intended_role", "").trim();
+                try {
+                    UUID.fromString(id);
+                } catch (IllegalArgumentException e) {
+                    throw new AuthException("Invitation lookup returned an invalid identity.");
+                }
+                if (name.isEmpty() || (!"MEMBER".equals(role) && !"OWNER".equals(role))) {
+                    throw new AuthException("Invitation lookup returned incomplete details.");
+                }
+                return new PendingInvitation(id, name, role);
+            default:
+                throw new AuthException("Invitation lookup returned an unknown result.");
+        }
+    }
+
     AuthTokens refreshSession(String refreshToken) throws IOException {
         JSONObject body = new JSONObject();
         try {
@@ -268,7 +333,7 @@ final class SupabaseAuthClient {
                 + "&status=eq.ACTIVE";
         JSONArray memberships = requestArray("GET", membershipPath, null, tokens.accessToken());
         if (memberships.length() == 0) {
-            throw new AuthException("This account does not have an active Field Photo Prep membership.");
+            throw new NoActiveMembershipException();
         }
         if (memberships.length() > 1) {
             throw new AuthException("This account has more than one active organization. Organization selection is not available yet.");
