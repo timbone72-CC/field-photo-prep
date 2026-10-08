@@ -10,7 +10,7 @@ on:
       - supabase/migrations/20260925013000_phase_12c_invitation_fk_indexes.sql
       - supabase/migrations/20260925195816_phase_12f_owner_member_admin.sql
       - supabase/migrations/20260925195901_phase_12f_rpc_grant_hardening.sql
-      - supabase/migrations/20261008161000_fpp_pending_invitation_recovery.sql
+      - supabase/migrations/20261008193859_fpp_pending_invitation_recovery.sql
 
 permissions:
   contents: read
@@ -57,7 +57,7 @@ jobs:
             supabase/migrations/20260925013000_phase_12c_invitation_fk_indexes.sql \
             supabase/migrations/20260925195816_phase_12f_owner_member_admin.sql \
             supabase/migrations/20260925195901_phase_12f_rpc_grant_hardening.sql \
-            supabase/migrations/20261008161000_fpp_pending_invitation_recovery.sql
+            supabase/migrations/20261008193859_fpp_pending_invitation_recovery.sql
           do
             psql -X -v ON_ERROR_STOP=1 -f "$migration"
           done
