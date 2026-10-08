@@ -71,3 +71,20 @@ No claim of backend compatibility, active new Membership, physical update succes
 - No live project SQL was executed, no migration was applied, no invitation/membership/account record was changed, and no hourly testing-branch charge was initiated.
 - **STOP** hosted isolated-branch gate. Do not silently substitute transactional production-schema DDL, live recipient fixture, a second paid project, or a plan upgrade.
 - Recommended no-cost alternative, subject to operator approval and governance reconciliation: a one-off isolated PostgreSQL/Supabase-compatible test using GitHub CI service containers, with disposable fixtures and explicit exclusion of the original FPP project credentials. Confirm the approach can exercise the migration and Auth/JWT semantics before claiming parity. Retain the live hosted reality gate before any production activation.
+
+## 2026-10-08 operator-approved isolated PostgreSQL contract test — PASS
+
+After Supabase Pro-plan-only branching blocked the disposable hosted test, the operator explicitly approved a no-new-Supabase-project GitHub Actions isolated PostgreSQL test. This is a source/SQL behavioral check, not a claim of Supabase Auth/JWT or hosted redirect parity.
+
+- Scope line: draft [PR #97](https://github.com/timbone72-CC/field-photo-prep/pull/97); separate from PR #95's work-order workflow and PR #96's workflow-pinning rollout.
+- Checked runtime SQL/client/test revision: `66a6f7f4df9311e6aafc2d5225bc71e4404db174`.
+- Workflow: `.github/workflows/fpp-invitation-recovery-sql.yml`, exclusively temporary GitHub CI PostgreSQL 17 service `fpp_recovery_test`. No original-FPP project URL, API tokens, or live data connections are used.
+- Bootstrap: `scripts/test-pending-invitation-recovery-bootstrap.sql` defines minimal disposable Auth user table, `auth.uid()` SQL claim accessor, and `anon`/`authenticated` roles. Exact checked-in four original FPP migrations plus the candidate recovery migration are applied to this database.
+- Assertions: `scripts/test-pending-invitation-recovery.sql` covers RLS/grant boundaries; anonymous and missing-subject denial; other-account isolation; unconfirmed email; multiple pending; revoked/existing Membership; cancelled, past-due, explicitly expired invitations; inactive Organization; positive own invitation; read-only lookup; explicit acceptance; idempotent repeat acceptance; exactly one ACTIVE Membership and one acceptance audit.
+- Isolated workflow [run 37832869591](https://github.com/timbone72-CC/field-photo-prep/actions/runs/37832869591): **SUCCESS**. Job logs report all 16 security/result assertions PASS and `PASS: isolated pending-invitation recovery SQL contract tests`; no failures.
+- PR #97 Governance Check [run 37832864859](https://github.com/timbone72-CC/field-photo-prep/actions/runs/37832864859): **SUCCESS** for same source revision.
+- Concurrent Android CI [run 37832869269](https://github.com/timbone72-CC/field-photo-prep/actions/runs/37832869269) is still under verification as of this record; do not claim this newer head complete until job finishes.
+
+**Evidence boundary:** PostgreSQL harness injects the `request.jwt.claim.sub` test variable and sets SQL roles. It reproduces SQL security function behavior, not Supabase Auth's cryptographic token verification, PostgREST gateway, Supabase hosted redirect allowlist, email-delivery behavior, or device binding. It does not authorize production deployment. Existing real recipient invitation remains unchanged.
+
+**Next gate:** Wait for same-runtime Android CI; review PR and local SQL behavior. Before live use, obtain explicit separate authorization for the Level-3 schema deployment and run hosted RLS/Auth and real disposable recipient acceptance checks, then establish a correctly signed, monotonically versioned installation path. Never uninstall/downgrade the working Internal package or alter live customer photos to force the gate.
