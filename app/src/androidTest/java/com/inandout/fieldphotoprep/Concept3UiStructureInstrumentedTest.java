@@ -51,9 +51,23 @@ public final class Concept3UiStructureInstrumentedTest {
         assertEquals(14f, dateTextSp, 0.6f); // Android rounds sp resources to device pixels.
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, workCreate.getLayoutParams().width);
         assertNotNull(work.findViewById(R.id.work_order_photos));
+        // The correction action must extend the Work Orders screen, not displace its
+        // established refresh, selection, photos, reuse, create or navigation controls.
+        assertNotNull(work.findViewById(R.id.work_order_back));
+        assertNotNull(work.findViewById(R.id.work_order_refresh));
+        assertNotNull(work.findViewById(R.id.work_order_list));
+        assertNotNull(work.findViewById(R.id.work_order_photos));
+        Button workEdit = work.findViewById(R.id.work_order_edit);
+        assertNotNull(workEdit);
+        assertEquals("Edit Work Order", workEdit.getText().toString());
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, workEdit.getLayoutParams().width);
+        assertEquals(dp(context, 48), workEdit.getLayoutParams().height);
         Button clearReuse = work.findViewById(R.id.work_order_clear_reuse);
         assertNotNull(clearReuse);
         assertEquals("Clear & Reuse", clearReuse.getText().toString());
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, clearReuse.getLayoutParams().width);
+        assertEquals(dp(context, 48), clearReuse.getLayoutParams().height);
+        assertEquals("Add Work Order", workCreate.getText().toString());
 
         View photos = inflater.inflate(R.layout.screen_photos, null, false);
         assertNotNull(photos.findViewById(R.id.photos_open_camera));
