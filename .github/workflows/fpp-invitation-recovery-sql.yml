@@ -1,0 +1,66 @@
+name: FPP Invitation Recovery SQL
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/fpp-invitation-recovery-sql.yml
+      - scripts/test-pending-invitation-recovery-bootstrap.sql
+      - scripts/test-pending-invitation-recovery.sql
+      - supabase/migrations/20260925012939_phase_12c_identity_foundation.sql
+      - supabase/migrations/20260925013000_phase_12c_invitation_fk_indexes.sql
+      - supabase/migrations/20260925195816_phase_12f_owner_member_admin.sql
+      - supabase/migrations/20260925195901_phase_12f_rpc_grant_hardening.sql
+      - supabase/migrations/20261008193859_fpp_pending_invitation_recovery.sql
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-sql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: fpp_recovery_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temporary-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fpp_recovery_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: fpp_recovery_test
+      PGUSER: postgres
+      PGPASSWORD: temporary-ci-only
+    steps:
+      - name: Checkout PR source only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Apply source-controlled migrations to disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/test-pending-invitation-recovery-bootstrap.sql
+          for migration in \
+            supabase/migrations/20260925012939_phase_12c_identity_foundation.sql \
+            supabase/migrations/20260925013000_phase_12c_invitation_fk_indexes.sql \
+            supabase/migrations/20260925195816_phase_12f_owner_member_admin.sql \
+            supabase/migrations/20260925195901_phase_12f_rpc_grant_hardening.sql \
+            supabase/migrations/20261008193859_fpp_pending_invitation_recovery.sql
+          do
+            psql -X -v ON_ERROR_STOP=1 -f "$migration"
+          done
+
+      - name: Verify isolated invitation security and explicit acceptance
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/test-pending-invitation-recovery.sql

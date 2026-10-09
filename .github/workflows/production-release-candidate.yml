@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       previous_production_version_code:
-        description: 'Highest production versionCode already installed/distributed (36 for first 12K baseline if none exists)'
+        description: 'Highest production versionCode already installed or distributed (use 37 for current original FPP production baseline)'
         required: true
-        default: '36'
+        default: '37'
 
 permissions:
   contents: read
@@ -66,8 +66,8 @@ jobs:
       - name: Verify production package, callback, client config, signer, and hash
         env:
           FPP_EXPECTED_PACKAGE: com.inandout.fieldphotoprep
-          FPP_EXPECTED_VERSION_CODE: '37'
-          FPP_EXPECTED_VERSION_NAME: 0.28.0
+          FPP_EXPECTED_VERSION_CODE: '42'
+          FPP_EXPECTED_VERSION_NAME: 0.28.5
           FPP_EXPECTED_AUTH_REDIRECT_SCHEME: com.inandout.fieldphotoprep
           FPP_EXPECTED_AUTH_REDIRECT_HOST: auth-callback
           FPP_EXPECTED_SUPABASE_URL: https://vtyiktvqhbgabawotkrj.supabase.co
@@ -82,7 +82,7 @@ jobs:
       - name: Upload private production candidate and evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: field-photo-prep-production-candidate-v37
+          name: field-photo-prep-production-candidate-v42
           path: |
             app/build/outputs/apk/release/app-release.apk
             release-evidence/release-evidence.txt
