@@ -3,6 +3,13 @@ package com.inandout.fieldphotoprep;
 import org.junit.Test;
 
 import java.util.UUID;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -235,6 +242,31 @@ public final class SharedCycleGateTest {
         gate.confirmUpload(phoneA, 1, photo);
         gate.setMode(phoneA, 1, SharedCycleGate.Mode.ONE);
         assertEquals(SharedCycleGate.Mode.ONE, gate.mode());
+    }
+
+    @Test
+    public void concurrentReservationsStayGloballyUnique() throws Exception {
+        SharedCycleGate gate = paired();
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        List<Future<Integer>> issued = new ArrayList<>();
+        try {
+            for (int i = 0; i < 100; i++) {
+                final UUID device = (i % 2 == 0) ? phoneA : phoneB;
+                final UUID photo = UUID.randomUUID();
+                issued.add(pool.submit(() -> gate.beginUpload(device, 1, photo).sequence));
+            }
+            Set<Integer> sequences = new HashSet<>();
+            for (Future<Integer> number : issued) {
+                sequences.add(number.get());
+            }
+            assertEquals(100, sequences.size());
+            for (int number = 1; number <= 100; number++) {
+                assertEquals(true, sequences.contains(number));
+            }
+            assertEquals(101, gate.nextSequence());
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     @Test
