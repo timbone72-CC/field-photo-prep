@@ -10,23 +10,30 @@ import android.widget.TextView;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
     private final LayoutInflater inflater;
     private final Map<String, Integer> protectedPhotoCountsByWorkOrderId;
+    private final Map<String, Integer> verifiedDrivePhotoCountsByWorkOrderId;
+    private final Set<String> unavailableDrivePhotoCounts;
     private String selectedId;
 
     WorkOrderListAdapter(Context context, List<DriveFolder> folders) {
-        this(context, folders, Collections.emptyMap());
+        this(context, folders, Collections.emptyMap(), Collections.emptyMap(), Collections.emptySet());
     }
 
     WorkOrderListAdapter(
             Context context,
             List<DriveFolder> folders,
-            Map<String, Integer> protectedPhotoCountsByWorkOrderId) {
+            Map<String, Integer> protectedPhotoCountsByWorkOrderId,
+            Map<String, Integer> verifiedDrivePhotoCountsByWorkOrderId,
+            Set<String> unavailableDrivePhotoCounts) {
         super(context, R.layout.row_work_order, folders);
         inflater = LayoutInflater.from(context);
         this.protectedPhotoCountsByWorkOrderId = protectedPhotoCountsByWorkOrderId;
+        this.verifiedDrivePhotoCountsByWorkOrderId = verifiedDrivePhotoCountsByWorkOrderId;
+        this.unavailableDrivePhotoCounts = unavailableDrivePhotoCounts;
     }
 
     void setSelectedId(String selectedId) {
@@ -44,11 +51,13 @@ final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
         TextView date = row.findViewById(R.id.work_order_row_date);
         TextView state = row.findViewById(R.id.work_order_row_state);
         TextView photoCount = row.findViewById(R.id.work_order_row_photo_count);
+        TextView driveCount = row.findViewById(R.id.work_order_row_drive_photo_count);
         if (folder == null) {
             title.setText("");
             date.setText("");
             state.setVisibility(View.GONE);
             photoCount.setVisibility(View.GONE);
+            driveCount.setText("In Drive: —");
             return row;
         }
         String name = PropertyDisplayName.readableFolderName(folder.name());
@@ -74,6 +83,10 @@ final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
         boolean selected = selectedId != null && selectedId.equals(folder.id());
         row.setBackgroundResource(selected ? R.drawable.bg_concept_selected : R.drawable.bg_concept_card);
         state.setVisibility(selected ? View.VISIBLE : View.GONE);
+
+        driveCount.setText(SharedDrivePhotoCountLabel.format(
+                verifiedDrivePhotoCountsByWorkOrderId.get(folder.id()),
+                unavailableDrivePhotoCounts.contains(folder.id())));
 
         int count = protectedPhotoCountsByWorkOrderId == null
                 ? 0
