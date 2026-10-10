@@ -53,11 +53,21 @@ Use only the sections affected by the change. This checklist is not a requiremen
 - [ ] No-match creation creates exactly one work-order folder under the selected address folder.
 - [ ] A work-order folder is never accidentally created at the workspace root or company-folder root.
 
+## Work-order correction
+
+- [ ] Edit Work Order is visible on the Work Orders screen, enabled for a selected writable folder.
+- [ ] Edit prefills the existing name/date; either or both can change without clearing photos.
+- [ ] Cancel leaves folder and selection unchanged; invalid name/date stays in the dialog.
+- [ ] Sibling name/date collision, changed source name, missing ID and unsettled provider block rename.
+- [ ] Save verifies the original folder ID and parent; photos, queued destinations and capture sequence remain unchanged.
+- [ ] Reopening the app shows the corrected folder name/date under the same identity.
+- [ ] Empty/error folder discovery has a visible explanation; no silent blank list.
+
 ## E. Work-order folder reuse
 
 - [ ] The operator can select an existing dated work order and start **Clear & Reuse** directly without retyping the work-order name.
 - [ ] **Clear & Reuse** asks for the new date after the old work order is selected.
-- [ ] The new reuse name keeps the exact selected work-order name and changes only to a later date.
+- [ ] The new reuse name keeps the exact selected work-order name and uses the same or a later date.
 - [ ] Ordinary **Add Work Order** remains non-destructive and does not silently route into Clear & Reuse.
 - [ ] Provider loading/stale/uncertain state is never treated as authority for photo removal or rename.
 - [ ] Confirmation shows the exact selected property/work order, Drive photo count, and new date.
@@ -205,3 +215,6 @@ For unrelated changes, confirm the change did not accidentally introduce or requ
 - OCR/AI processing;
 - a separate numeric work-order ID; or
 - additional folder nesting beyond workspace → company → address → dated work order → photos.
+### Same-date Clear & Reuse
+
+Clear & Reuse may explicitly clear the exact selected folder for its current date after the same deletion confirmation. A sibling collision blocks the operation without changing selection. It never silently selects another folder. Once remote photo absence and unchanged folder identity/name are verified, remove only the selected WO's confirmed uploaded history, keep all unrelated/protected records, and reset its next capture to 001. Failed retirement is an incomplete reuse, not success. Edit Work Order continues to keep photos and numbering.

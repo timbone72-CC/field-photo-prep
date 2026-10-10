@@ -45,6 +45,12 @@ As applicable, prove:
 
 The detailed boundaries for camera/preparation, upload/retry, and Drive/provider work are routed through the feature packs below.
 
+## Connected workflow coverage
+
+When actions share selection, identity, occurrence, queue or persisted state, test meaningful connected sequences rather than only individual controls. Select sequences from the affected requirements and field failure; include cancellation and reopen/restart where they materially change outcomes. For WO correction/reuse, cover correction → same-date Clear & Reuse confirmation → Photos/history and numbering → restart, plus sibling-collision refusal without switching selection. Use deterministic automated evidence for local state and the required real-provider gate for remote deletion claims.
+
+Tie assertions to the requirement/evidence table in the existing scope record. A test that only proves a button or dialog exists does not prove the action's data outcome. Add a focused regression for a confirmed field defect before calling its repair verified; if automation cannot prove the boundary, record that limitation and the required physical check.
+
 ## Feature rule packs
 
 | Surface | Required testing pack |

@@ -978,3 +978,7 @@ Keep out unless separately approved:
 - keep active work `IN PROGRESS`;
 - split phases when doing so reduces risk or clarifies ownership;
 - update this roadmap intentionally when evidence changes sequencing rather than allowing implementation to drift silently.
+
+## Current WO correction/reuse status — 2026-10-06
+
+Historical completion records above describe their recorded gates, not blanket proof of later action combinations. PR #95 / `docs/WORK_ORDER_EDIT_BUILD_STATE.md` owns the reopened correction/reuse scope. Candidate 0.28.7 has passed automated checks. Operator feedback is “so far, it does” work in the field; the exact remaining physical checks and merge approval stay pending. Do not promote that feedback to unspecified field passes. Workflow planning and closeout now require the coverage record defined in `CHANGE_CONTROL_CONTRACT.md`.

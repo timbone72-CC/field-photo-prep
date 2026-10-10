@@ -45,15 +45,13 @@ public final class WorkOrderFolderNameTest {
     }
 
     @Test
-    public void clearReuseRejectsSameEarlierOrMalformedDateTarget() {
-        assertReuseNameFailure(
-                "Cut Grass - 2026-09-20",
-                "2026-09-20",
-                "Choose a date after 2026-09-20 for Clear & Reuse.");
+    public void clearReuseRejectsEarlierOrMalformedDateTarget() {
+        assertEquals("Cut Grass - 2026-09-20", WorkOrderFolderName.reuseNameForDate(
+                "Cut Grass - 2026-09-20", "2026-09-20"));
         assertReuseNameFailure(
                 "Cut Grass - 2026-09-20",
                 "2026-09-19",
-                "Choose a date after 2026-09-20 for Clear & Reuse.");
+                "Choose a date on or after 2026-09-20 for Clear & Reuse.");
         assertReuseNameFailure(
                 "Cut Grass",
                 "2026-09-29",

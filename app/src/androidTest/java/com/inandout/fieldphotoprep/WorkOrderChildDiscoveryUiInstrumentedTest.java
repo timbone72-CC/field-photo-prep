@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.view.accessibility.AccessibilityNodeInfo;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -75,6 +76,97 @@ public final class WorkOrderChildDiscoveryUiInstrumentedTest {
         } finally {
             raw.edit().clear().commit();
         }
+    }
+
+    @Test
+    public void editDialogPrefillsExistingNameDateAndCancelPreservesSelection() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
+            scenario.onActivity(activity -> {
+                try {
+                    fieldSet(activity, "selectedAddress", new DriveFolder("address", "Test address"));
+                    fieldSet(activity, "selectedWorkOrder", new DriveFolder("wo", "GRASS CUT - 2026-09-29"));
+                    fieldSet(activity, "busy", false);
+                    call(activity, "showEditWorkOrderDialog");
+                } catch (Exception error) { throw new AssertionError(error); }
+            });
+            assertFalse(awaitText("GRASS CUT").isEmpty());
+            assertFalse(awaitText("Date: 2026-09-29").isEmpty());
+            assertTrue(awaitText("Cancel").get(0)
+                    .performAction(AccessibilityNodeInfo.ACTION_CLICK));
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            scenario.onActivity(activity -> {
+                try {
+                    DriveFolder selected = (DriveFolder) field(activity, "selectedWorkOrder");
+                    org.junit.Assert.assertEquals("wo", selected.id());
+                    org.junit.Assert.assertEquals("GRASS CUT - 2026-09-29", selected.name());
+                    assertTrue(activity.findViewById(R.id.work_order_edit) != null);
+                    fieldSet(activity, "workOrderEditInProgress", true);
+                    fieldSet(activity, "busy", true);
+                    call(activity, "setNotBusy");
+                    assertTrue("Auth revalidation must not unlock concurrent edits",
+                            (Boolean) field(activity, "busy"));
+                    fieldSet(activity, "workOrderEditInProgress", false);
+                } catch (Exception error) { throw new AssertionError(error); }
+            });
+        }
+    }
+
+    @Test
+    public void sameDateClearConfirmationShowsPhotoCountAndCancelKeepsSelectedWorkOrder() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            FirstRunAuthTestHelper.dismissRequiredGateIfPresent();
+            scenario.onActivity(activity -> {
+                try {
+                    DriveFolder address = new DriveFolder("test-address", "Disposable address");
+                    DriveFolder work = new DriveFolder("test-wo", "GRASS CUT - 2026-10-06");
+                    call(activity, "openAddress", new Class<?>[]{DriveFolder.class}, address);
+                    fieldSet(activity, "selectedWorkOrder", work);
+                    fieldSet(activity, "busy", false);
+                    DriveClient.ChildSnapshot snapshot = new DriveClient.ChildSnapshot(
+                            java.util.Arrays.asList("photo-a", "photo-b"),
+                            java.util.Arrays.asList("photo-a", "photo-b"), 0);
+                    call(activity, "showClearReuseConfirmation", new Class<?>[]{
+                            android.net.Uri.class, String.class, String.class, String.class,
+                            String.class, java.time.LocalDate.class, DriveClient.ChildSnapshot.class},
+                            android.net.Uri.parse("content://fixture/tree/test"), address.id(),
+                            work.id(), work.name(), work.name(), java.time.LocalDate.of(2026, 10, 6), snapshot);
+                } catch (Exception error) { throw new AssertionError(error); }
+            });
+            assertFalse(awaitText("Photos to remove from Drive: 2").isEmpty());
+            assertFalse(awaitText("New date: 2026-10-06").isEmpty());
+            assertTrue(awaitText("Cancel").get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK));
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            scenario.onActivity(activity -> {
+                try {
+                    org.junit.Assert.assertEquals("test-wo", ((DriveFolder) field(activity, "selectedWorkOrder")).id());
+                    fieldSet(activity, "workOrderReuseInProgress", true);
+                    fieldSet(activity, "busy", true);
+                    call(activity, "setNotBusy");
+                    assertTrue((Boolean) field(activity, "busy"));
+                    fieldSet(activity, "workOrderReuseInProgress", false);
+                } catch (Exception error) { throw new AssertionError(error); }
+            });
+        }
+    }
+
+    private static List<AccessibilityNodeInfo> awaitText(String text) throws Exception {
+        for (int attempt = 0; attempt < 80; attempt++) {
+            AccessibilityNodeInfo root = InstrumentationRegistry.getInstrumentation()
+                    .getUiAutomation().getRootInActiveWindow();
+            if (root != null) {
+                List<AccessibilityNodeInfo> found = root.findAccessibilityNodeInfosByText(text);
+                if (!found.isEmpty()) { return found; }
+            }
+            Thread.sleep(25L);
+        }
+        throw new AssertionError("Missing dialog control: " + text);
+    }
+
+    private static void fieldSet(Object owner, String name, Object value) throws Exception {
+        Field field = owner.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(owner, value);
     }
 
     private static Object field(Object owner, String name) throws Exception {

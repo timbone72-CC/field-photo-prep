@@ -128,6 +128,15 @@ In addition to the Level 2 record, state:
 
 Implementation stops when required structural assumptions remain unverified.
 
+### Requirement and evidence coverage
+
+For Level 2/3 work, keep a compact table in the existing impact/build-state record; do not create a second tracking system. For each affected approved requirement, include:
+
+| Requirement and source section/revision | Owning implementation | Verification and exact evidence | Status/remaining gap |
+| --- | --- | --- | --- |
+
+Populate implementation and verification plans before building; replace planned evidence with actual results at handoff. Explicitly identify relevant workflow omissions/restrictions found during planning. Every required row must be proved or remain pending/failed; a passing CI run alone does not establish uncovered requirements. Not-applicable decisions need a reason. Evidence may cover multiple rows and valid prior evidence may be reused under `TESTING_CONTRACT.md`.
+
 ## Protected ownership boundaries
 
 The exact code modules may evolve, but responsibilities must remain explicit:
