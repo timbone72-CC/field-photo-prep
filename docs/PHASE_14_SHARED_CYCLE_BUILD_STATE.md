@@ -11,7 +11,7 @@ Build a safe, small two-phone shared-work-order cycle controller while keeping c
 
 **Affected contracts:** `PROJECT_PROFILE.md`, `CONTRACT.md`, `INTEGRATION_CONTRACT.md`, `docs/IDENTITY_MODEL_V1.md`: add exact, minimal operator-approved backend exception; earlier identity-only language still applies outside the exception.
 
-**Staged code:** `SharedCycleGate.java` is an **inactive in-memory reference policy**, not connected to Android or actual Supabase. `SharedCycleGateTest.java` proves the policy logic with two-device and concurrent-reservation tests. **The read-only `In Drive: N` work-order count is implemented on this branch** via `MainActivity.refreshReadOnlyDrivePhotoCounts`, `DriveClient.listDirectChildren` (existing direct MIME enumeration), and the existing Work Orders row/adapter with a separate `SharedDrivePhotoCountLabel`. Counts are not authority for uploads/cleanup. No new mode selector, shared destructive guard or remote-write code path is active.
+**Staged code:** `app/src/test/java/com/inandout/fieldphotoprep/SharedCycleGate.java` is a **JVM-test-only reference policy**; it is intentionally excluded from the shipped Android APK and is not connected to real Supabase. `SharedCycleGateTest.java` proves the policy logic with two-device and concurrent-reservation tests. **The read-only `In Drive: N` work-order count is implemented on this branch** via `MainActivity.refreshReadOnlyDrivePhotoCounts`, `DriveClient.listDirectChildren` (existing direct MIME enumeration), and the existing Work Orders row/adapter with a separate `SharedDrivePhotoCountLabel`. Counts are not authority for uploads/cleanup. No new mode selector, shared destructive guard or remote-write code path is active.
 
 **Staged backend:** `supabase/proposals/phase14_coordination_sealed_foundation.sql` defines a sealed original-FPP-only schema with opaque job/cycle IDs, participant IDs and photo UUID→sequence, plus serialized reservation/confirmation/uncertain RPC drafts. **It is not in `supabase/migrations/`, not applied to production, and grants NO client execution on its RPCs or direct table access.** No pairing, destructive RPC, or recovery API is enabled; a schema draft is not a completed synchronized service.
 
@@ -40,7 +40,7 @@ FPP backend project (read-only verified 2026-10-09 local): `vtyiktvqhbgabawotkrj
 
 ## Important limitations, errors to avoid and recovery
 
-- **The reference Java gate does not coordinate Android devices**: it is an executable contract/unit-test model, not a shared in-process Android singleton to be used for actual authority. Never wire it as if it were the server.
+- **The **JVM-test-only** reference Java gate does not coordinate Android devices**: it is an executable contract/unit-test model, not a shared in-process Android singleton to be used for actual authority. Never wire it as if it were the server.
 - **The SQL is a sealed proposal**: no client grants, no work-order enrollment RPC, no safe shared destructive completion, no provider attestation, no migration. No live backend parity claim.
 - A Supabase DB transaction cannot revoke an Android SAF `DocumentsContract.deleteDocument` already in flight. Holding a DB fence and waiting for all in-flight operations to settle **without lease expiry** is mandatory; crash or unknown remote result stays `RECOVERY_BLOCKED` until provably safe recovery. Manual Drive edits and old unguarded APKs remain outside fully enforceable app guarantees; Two-mode enrollment must require two updated compatible phones.
 - On same-device offline capture, old immutable destination and local protected bytes stay safe. Do not mark new generation just because a screen restarted or a provider cache looks empty.
@@ -64,3 +64,9 @@ FPP backend project (read-only verified 2026-10-09 local): `vtyiktvqhbgabawotkrj
 - Refresh occurs after listing work orders and on returning to Work Orders from Photos. A previously successful exact-folder Clear & Reuse reports Drive zero from its already-verifying fresh provider snapshot. UI test checks 152 Drive photos versus 4 local photos and recycled row error/unknown/zero state.
 - **No physical phone claim yet.** Stage-1 Android CI, emulator/regression and exact-head governance are required before any candidate install. Actual provider latency/availability and both-phone count parity need later disposable reality evidence. Do not mark a whole-job cross-device photo gallery complete.
 - Photo-cycle model now requires both participants to acknowledge locally settled work before lead Finish, in addition to Clear; an in-flight upload blocks One/Two mode transition. Reference model tests include 45 old + 10 new photos, stale actor refusal and simulated concurrent numbering. This is pure Java proof only, not live server/client.
+
+## Lean runtime boundary verification
+
+The Java shared-cycle model was moved under `app/src/test/` to prevent unreferenced policy code from shipping inside the production/internal APK. Only the bounded read-only Drive photo count adapter/label and async per-work-order discovery are compiled into Android at this checkpoint. All other two-device mutation/numbering logic remains **test reference + sealed Supabase proposal** pending the actual provider and backend gates. The move leaves already-proven single-device Clear & Reuse and the existing upload coordinator unchanged.
+
+**Final revision test gate:** Record the exact final PR head, Android CI and governance outcome only after those finish. Do not promote pending checks to PASS or mark this draft PR merged.
