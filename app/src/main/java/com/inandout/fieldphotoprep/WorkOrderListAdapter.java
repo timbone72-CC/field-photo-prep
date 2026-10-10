@@ -26,6 +26,14 @@ final class WorkOrderListAdapter extends ArrayAdapter<DriveFolder> {
     WorkOrderListAdapter(
             Context context,
             List<DriveFolder> folders,
+            Map<String, Integer> protectedPhotoCountsByWorkOrderId) {
+        this(context, folders, protectedPhotoCountsByWorkOrderId,
+                Collections.emptyMap(), Collections.emptySet());
+    }
+
+    WorkOrderListAdapter(
+            Context context,
+            List<DriveFolder> folders,
             Map<String, Integer> protectedPhotoCountsByWorkOrderId,
             Map<String, Integer> verifiedDrivePhotoCountsByWorkOrderId,
             Set<String> unavailableDrivePhotoCounts) {
