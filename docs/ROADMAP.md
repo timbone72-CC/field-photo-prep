@@ -979,6 +979,12 @@ Keep out unless separately approved:
 - split phases when doing so reduces risk or clarifies ownership;
 - update this roadmap intentionally when evidence changes sequencing rather than allowing implementation to drift silently.
 
-## Current WO correction/reuse status — 2026-10-06
+## Current WO correction/reuse status — 2026-10-10
 
-Historical completion records above describe their recorded gates, not blanket proof of later action combinations. PR #95 / `docs/WORK_ORDER_EDIT_BUILD_STATE.md` owns the reopened correction/reuse scope. Candidate 0.28.7 has passed automated checks. Operator feedback is “so far, it does” work in the field; the exact remaining physical checks and merge approval stay pending. Do not promote that feedback to unspecified field passes. Workflow planning and closeout now require the coverage record defined in `CHANGE_CONTROL_CONTRACT.md`.
+**CLOSED / MERGED:** PR #95 (Edit Work Order and same-date Clear & Reuse repair) merged into governed `main` on 2026-10-10 UTC at `b1dbf009c9240b3d70b95629baf049d7e1d4c3bd`. The operator's 0.28.7-internal same-date Clear & Reuse verification was accepted, and the independently verified disposable Google Drive Edit Work Order test preserved the exact folder ID, parent and photo ID across name correction and app restart. Final exact-head Android CI and governance passed; the existing record is `docs/WORK_ORDER_EDIT_BUILD_STATE.md`. This is **single-device scope** and does not claim to solve future concurrent two-device clearing.
+
+## Proposed Phase 14 — Two-phone job-cycle coordination (DESIGN ONLY)
+
+The operator discussed one/two-photographer mode per work order, actual Google Drive photo counts visible on both phones, optional first-uploader or chosen lead, consistent cross-device client numbering 001..., and prevention of stale-device Clear & Reuse deleting new-cycle photos. Design proposal: `docs/PHASE_14_TWO_PHONE_JOB_CYCLE_PLAN.md`.
+
+**Not approved for runtime implementation.** The plan deliberately records the required future Level-3 contract exceptions, cross-device identity and concurrency feasibility checks, safety/rollback boundaries, and two-physical-phone acceptance tests. PR #95 remains completed and is not reopened; Field Work Hub remains a separate app. Phase 14 has no implementation PR or deployed behavior.
