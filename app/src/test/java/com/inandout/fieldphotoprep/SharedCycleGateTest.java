@@ -183,6 +183,13 @@ public final class SharedCycleGateTest {
         SharedCycleGate gate = paired();
         uploaded(gate, phoneA);
         assertThrows(IllegalStateException.class, () -> gate.finishPhotoWork(phoneB, 1));
+        gate.requestFinishPhotoWork(phoneA, 1);
+        assertThrows(IllegalStateException.class, () -> gate.finishPhotoWork(phoneA, 1));
+        gate.acknowledgeSafeToFinish(phoneA, 1, true);
+        assertThrows(IllegalStateException.class, () -> gate.finishPhotoWork(phoneA, 1));
+        assertThrows(IllegalStateException.class,
+                () -> gate.acknowledgeSafeToFinish(phoneB, 1, false));
+        gate.acknowledgeSafeToFinish(phoneB, 1, true);
         gate.finishPhotoWork(phoneA, 1);
         assertEquals(SharedCycleGate.Phase.FINISHED, gate.phase());
         assertEquals(1, gate.generation());
@@ -190,6 +197,44 @@ public final class SharedCycleGateTest {
                 () -> gate.beginUpload(phoneA, 1, UUID.randomUUID()));
         gate.requestClear(phoneA, 1); // Deliberate later reuse is still a separate action.
         assertEquals(SharedCycleGate.Phase.QUIESCING, gate.phase());
+    }
+
+    @Test
+    public void fortyFiveUploadsThenTenNewPhotosCannotBeClearedByStalePhone() {
+        SharedCycleGate gate = paired();
+        for (int i = 0; i < 45; i++) {
+            UUID device = i % 2 == 0 ? phoneA : phoneB;
+            UUID photo = UUID.randomUUID();
+            assertEquals(i + 1, gate.beginUpload(device, 1, photo).sequence);
+            gate.confirmUpload(device, 1, photo);
+        }
+        assertEquals(46, gate.nextSequence());
+        gate.requestClear(phoneA, 1);
+        gate.acknowledgeSafeToClear(phoneA, 1, true);
+        gate.acknowledgeSafeToClear(phoneB, 1, true);
+        UUID clear = gate.beginClear(phoneA, 1);
+        gate.finishClear(phoneA, 1, clear, true);
+        for (int i = 0; i < 10; i++) {
+            UUID photo = UUID.randomUUID();
+            assertEquals(i + 1, gate.beginUpload(phoneA, 2, photo).sequence);
+            gate.confirmUpload(phoneA, 2, photo);
+        }
+        assertEquals(11, gate.nextSequence());
+        assertThrows(IllegalStateException.class, () -> gate.requestClear(phoneB, 1));
+        assertEquals(2, gate.generation());
+        assertEquals(SharedCycleGate.Phase.OPEN, gate.phase());
+    }
+
+    @Test
+    public void cannotSwitchPhotographerCountWithInFlightPhoto() {
+        SharedCycleGate gate = paired();
+        UUID photo = UUID.randomUUID();
+        gate.beginUpload(phoneA, 1, photo);
+        assertThrows(IllegalStateException.class,
+                () -> gate.setMode(phoneA, 1, SharedCycleGate.Mode.ONE));
+        gate.confirmUpload(phoneA, 1, photo);
+        gate.setMode(phoneA, 1, SharedCycleGate.Mode.ONE);
+        assertEquals(SharedCycleGate.Mode.ONE, gate.mode());
     }
 
     @Test
