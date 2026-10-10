@@ -16,7 +16,7 @@ import java.util.UUID;
  */
 final class SharedCycleGate {
     enum Mode { ONE, TWO }
-    enum Phase { OPEN, QUIESCING, CLEARING, FINISHED, RECOVERY_BLOCKED }
+    enum Phase { OPEN, QUIESCING, CLEARING, FINISHING, FINISHED, RECOVERY_BLOCKED }
     enum UploadState { IN_FLIGHT, UNCERTAIN, CONFIRMED }
 
     static final class Reservation {
@@ -62,6 +62,9 @@ final class SharedCycleGate {
     synchronized void setMode(UUID deviceId, long expectedGeneration, Mode requestedMode) {
         requireParticipant(deviceId, expectedGeneration);
         requirePhase(Phase.OPEN);
+        if (hasUnsettledUpload()) {
+            throw new IllegalStateException("Changing photographers waits for uploads to settle.");
+        }
         mode = Objects.requireNonNull(requestedMode, "mode");
         // Enrollment, durable generation and existing photo reservations are never removed.
     }
@@ -191,13 +194,35 @@ final class SharedCycleGate {
         phase = Phase.RECOVERY_BLOCKED;  // Never auto-unlock on a timeout.
     }
 
-    synchronized void finishPhotoWork(UUID deviceId, long expectedGeneration) {
+    synchronized void requestFinishPhotoWork(UUID deviceId, long expectedGeneration) {
         requireLead(deviceId, expectedGeneration);
         requirePhase(Phase.OPEN);
         if (hasUnsettledUpload()) {
             throw new IllegalStateException("Cannot finish with unresolved uploads.");
         }
+        phase = Phase.FINISHING;
+        clearAcknowledgements.clear();
+    }
+
+    synchronized void acknowledgeSafeToFinish(UUID deviceId, long expectedGeneration,
+                                              boolean localQueueSettled) {
+        requireParticipant(deviceId, expectedGeneration);
+        requirePhase(Phase.FINISHING);
+        if (!localQueueSettled) {
+            throw new IllegalStateException("Protected local photos block finishing.");
+        }
+        clearAcknowledgements.add(deviceId);
+    }
+
+    synchronized void finishPhotoWork(UUID deviceId, long expectedGeneration) {
+        requireLead(deviceId, expectedGeneration);
+        requirePhase(Phase.FINISHING);
+        if (hasUnsettledUpload() || participants.isEmpty()
+                || !clearAcknowledgements.containsAll(participants)) {
+            throw new IllegalStateException("Both phones must acknowledge settled work.");
+        }
         phase = Phase.FINISHED; // No Drive deletion: Clear & Reuse remains separate.
+        clearAcknowledgements.clear();
     }
 
     synchronized long generation() { return generation; }
