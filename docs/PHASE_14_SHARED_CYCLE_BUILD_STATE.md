@@ -11,7 +11,7 @@ Build a safe, small two-phone shared-work-order cycle controller while keeping c
 
 **Affected contracts:** `PROJECT_PROFILE.md`, `CONTRACT.md`, `INTEGRATION_CONTRACT.md`, `docs/IDENTITY_MODEL_V1.md`: add exact, minimal operator-approved backend exception; earlier identity-only language still applies outside the exception.
 
-**Staged code:** `SharedCycleGate.java` is an **inactive in-memory reference policy**, not connected to Android or actual Supabase. `SharedCycleGateTest.java` proves the policy logic with deterministic and fault-edge tests. There is no new UI button and no remote-write code path changed.
+**Staged code:** `SharedCycleGate.java` is an **inactive in-memory reference policy**, not connected to Android or actual Supabase. `SharedCycleGateTest.java` proves the policy logic with two-device and concurrent-reservation tests. **The read-only `In Drive: N` work-order count is implemented on this branch** via `MainActivity.refreshReadOnlyDrivePhotoCounts`, `DriveClient.listDirectChildren` (existing direct MIME enumeration), and the existing Work Orders row/adapter with a separate `SharedDrivePhotoCountLabel`. Counts are not authority for uploads/cleanup. No new mode selector, shared destructive guard or remote-write code path is active.
 
 **Staged backend:** `supabase/proposals/phase14_coordination_sealed_foundation.sql` defines a sealed original-FPP-only schema with opaque job/cycle IDs, participant IDs and photo UUID→sequence, plus serialized reservation/confirmation/uncertain RPC drafts. **It is not in `supabase/migrations/`, not applied to production, and grants NO client execution on its RPCs or direct table access.** No pairing, destructive RPC, or recovery API is enabled; a schema draft is not a completed synchronized service.
 
@@ -25,6 +25,7 @@ FPP backend project (read-only verified 2026-10-09 local): `vtyiktvqhbgabawotkrj
 
 | Approved requirement and source | Owning implementation | Evidence | Current status |
 | --- | --- | --- | --- |
+| Shared visible per-work-order Google Drive photo total (§2) | `MainActivity`/read-only DriveClient, Work Orders adapter/row and `SharedDrivePhotoCountLabel` | Pure Java label tests; instrumented work-order row test for local 4 vs verified remote 152; actual two-phone SAF count still pending | Implemented on branch; automated and physical proof PENDING |
 | 1/2 mode per selected work order; One default; no displaced actions (Phase14 plan §2) | Future Work Orders UI + persistent shared coordinator | Source plan approved, not active UI | PENDING implementation and two-phone UI proof |
 | Same actual Drive folder on two independent SAF grants (Phase14 §3; Integration boundary) | Future disposable pairing protocol | Source-only feasible challenge design, not real device | **STOP GATE** — unverified |
 | Two phones numbered 001... without collisions (§5) | Inactive `SharedCycleGate`, sealed SQL proposal | Pure Java tests for shared seq and duplicate UUID; SQL not executed | Policy coverage staged; transactional/backend and Drive behavior PENDING |
@@ -55,3 +56,11 @@ FPP backend project (read-only verified 2026-10-09 local): `vtyiktvqhbgabawotkrj
 5. Full CI + smallest necessary two-physical-phone disposable Google Drive gate. Existing passed PR95 single-phone evidence reused; no gratuitous repeats. Explicit Level-3 **pre-merge approval** before merging or publishing APK.
 
 **No claim of completion of Phase14 or real shared two-phone protection is made at this point.**
+
+## Stage 1 expanded read-only UI status
+
+- Existing Work Orders date/name/selection and local protected photo count remain. A second quiet text line reports **In Drive: N** from the selected phone's own fresh direct-children enumeration. The photo's MIME type is classified by the existing `DriveClient`; image bytes are **never** fetched. An unknown result displays **In Drive: —**, and a provider failure displays **In Drive: unavailable**. No client upload or delete authorization reads this display cache.
+- A dedicated background read executor keeps slow provider enumeration off the Work Orders actions' existing single-thread write queue. A generation token plus selected property/work-order validation discards stale responses after a refresh/address switch. The read worker is shut down on Activity destruction.
+- Refresh occurs after listing work orders and on returning to Work Orders from Photos. A previously successful exact-folder Clear & Reuse reports Drive zero from its already-verifying fresh provider snapshot. UI test checks 152 Drive photos versus 4 local photos and recycled row error/unknown/zero state.
+- **No physical phone claim yet.** Stage-1 Android CI, emulator/regression and exact-head governance are required before any candidate install. Actual provider latency/availability and both-phone count parity need later disposable reality evidence. Do not mark a whole-job cross-device photo gallery complete.
+- Photo-cycle model now requires both participants to acknowledge locally settled work before lead Finish, in addition to Clear; an in-flight upload blocks One/Two mode transition. Reference model tests include 45 old + 10 new photos, stale actor refusal and simulated concurrent numbering. This is pure Java proof only, not live server/client.
