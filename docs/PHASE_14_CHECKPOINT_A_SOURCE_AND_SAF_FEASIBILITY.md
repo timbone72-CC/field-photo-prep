@@ -1,6 +1,6 @@
 # Phase 14 — Checkpoint A: Source Audit, Identity/Fencing Feasibility, and Implementation Gate
 
-**Status:** CHECKPOINT A SOURCE AUDIT COMPLETE; ARCHITECTURE DECISION REQUIRED BEFORE LEVEL-3 RUNTIME WORK.  
+**Status:** CHECKPOINT A SOURCE AUDIT COMPLETE; FPP-ONLY COORDINATION EXCEPTION APPROVED BY OPERATOR; CROSS-PHONE DRIVE/SAF FEASIBILITY STILL OPEN.  
 **Source audited:** governed `main` `bce15843eaac975abae31f7312f7505bfc6ce68f` after documentation-only PR #99.  
 **Owning design:** `docs/PHASE_14_TWO_PHONE_JOB_CYCLE_PLAN.md` (read this first).  
 **Authoritative checkpoint branch:** `phase14/checkpoint-a-identity-and-fencing`.  
@@ -102,3 +102,16 @@ Required cross-device logical protocol, to be assessed against actual provider b
 **Source audit result:** One implementation line per owned code path is feasible; the existing classes are suitable extension points. **The cross-device SAF pairing feasibility and safe distributed write fencing remain unproven assumptions.** No Phase14 runtime work should proceed until those preflight architecture questions and the narrow identity-backend exception have explicit product approval. There is no safe one-line toggle-only implementation that achieves the operator's protection goal.
 
 **Exact next checkpoint:** decide whether to authorize the narrow FPP-only Supabase coordination ledger as a contract exception. Then take the smallest *disposable* Android/Drive pairing and operation-fencing reality proof on both phones; **stop and revise** if temporary marker visibility or deferred SAF operations make guarantees impossible. No repeat of PR95's already-passed single-phone tests.
+
+
+## 8. Operator decision — Approved FPP-only coordination ledger (2026-10-09 local)
+
+**Operator approval:** On 2026-10-09 local, the operator explicitly responded **"yes. i approve"** to the bounded question: "Do you approve that limited expansion of Supabase for two-phone coordination?" **APPROVED** for using the **existing original-FPP Supabase backend** for only the minimum shared coordination state, not for client-photo cloud storage, a full work-order/address database, or any Field Work Hub integration.
+
+**Clarification, confirmed in the same exchange:** The planned **Photographers: One / Two** selection is **per individual work order**, not per property, company, or entire app. A Grass Cut may be set to Two while a Winterization at the same address remains One. One remains default for unmanaged work orders; switching a previously managed work order back to One must not remove generation/fencing safeguards. Existing UI controls must remain accessible. This requirement is already part of the Phase14 product plan and is reaffirmed here.
+
+**Authorization scope:** This is a product/architecture decision allowing the narrowly scoped Level-3 contract amendment and future implementation design to proceed; **it is not evidence of a deployed or tested runtime feature, permission for live Supabase migration, or Level-3 pre-merge approval**. Explicit migration/runtime release and pre-merge gates remain applicable under `CHANGE_CONTROL_CONTRACT.md`. Contract text must identify the narrow exception before schema/API/Android implementation. Existing account/membership tables and FWH remain unchanged.
+
+**Technical gates NOT yet passed:** (1) definitive matching of independent device SAF folder bindings with the *same actual remote* work order without guessing by name or exposing unsafe client-visible metadata; (2) proof that coordinator fencing + SAF operation recovery prevents late/stale deletes or uploads crossing a new cycle. Code must not implement an unsafe fallback if those cannot be proven.
+
+**Next authorized engineering work:** Design and test narrowly scoped no-customer-data coordinator/fencing logic off-device; prepare explicit amended contract and secure API/schema proposal on the one authoritative Phase14 implementation line. The actual cross-phone real-Drive pairing reality gate waits for a disposable, operator-identified test folder and appropriate approval of any visible probe content. Reuse existing PR95 evidence; do not reopen or repeat its passed checks.

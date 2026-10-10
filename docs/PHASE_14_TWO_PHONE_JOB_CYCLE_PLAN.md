@@ -1,6 +1,6 @@
 # Proposed Phase 14 — Two-Phone Work-Order Coordination & Photo Safety
 
-**Status:** DESIGN RECORDED — NOT AUTHORIZED FOR RUNTIME IMPLEMENTATION OR MERGE OF A LEVEL-3 BUILD.  
+**Status:** DESIGN RECORDED; narrow FPP-only Supabase coordination exception explicitly approved 2026-10-09 local; NOT IMPLEMENTED, NOT AUTHORIZED FOR LIVE MIGRATION OR LEVEL-3 RUNTIME MERGE.  
 **Project:** Original Field Photo Prep (FPP), NOT Field Work Hub (FWH).  
 **Working design line:** `docs/two-user-job-safety-plan-20261009`.  
 **Baseline:** PR #95 merged into `main` at `b1dbf009c9240b3d70b95629baf049d7e1d4c3bd` (2026-10-10 UTC); operator tested 0.28.7-internal. PR #96 is unrelated Actions hardening.  
