@@ -221,11 +221,21 @@ public final class MainActivity extends Activity {
             rebuildHomePropertyFolders();
         }
         if (screen == Screen.WORK_ORDERS && selectedAddress != null
-                && !workOrderFolders.isEmpty() && driveBindingGuard.current().isUsable()) {
-            Uri selectedTree = folderPrefs.getMasterTreeUri();
+                && !workOrderFolders.isEmpty()) {
+            Uri selectedTree = driveBindingGuard.current().isUsable()
+                    ? folderPrefs.getMasterTreeUri() : null;
             if (selectedTree != null) {
                 refreshReadOnlyDrivePhotoCounts(
                         selectedTree, selectedAddress.id(), workOrderFolders);
+            } else {
+                // Never display a cached count as freshly verified after permission loss.
+                ++drivePhotoCountGeneration;
+                verifiedDrivePhotoCountByWorkOrderId.clear();
+                unavailableDrivePhotoCountIds.clear();
+                for (DriveFolder folder : workOrderFolders) {
+                    unavailableDrivePhotoCountIds.add(folder.id());
+                }
+                notifyFolderAdapters();
             }
         }
 
