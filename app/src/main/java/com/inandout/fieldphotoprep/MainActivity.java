@@ -220,6 +220,14 @@ public final class MainActivity extends Activity {
         if (!discoveredPropertyFolders.isEmpty()) {
             rebuildHomePropertyFolders();
         }
+        if (screen == Screen.WORK_ORDERS && selectedAddress != null
+                && !workOrderFolders.isEmpty() && driveBindingGuard.current().isUsable()) {
+            Uri selectedTree = folderPrefs.getMasterTreeUri();
+            if (selectedTree != null) {
+                refreshReadOnlyDrivePhotoCounts(
+                        selectedTree, selectedAddress.id(), workOrderFolders);
+            }
+        }
 
         if (pendingStatusConnectDrive) {
             pendingStatusConnectDrive = false;
@@ -2447,6 +2455,10 @@ private void buildLegacyWorkOrderUi() {
                         }
                         workOrderFolders.clear();
                         workOrderFolders.addAll(afterRename);
+                        // This zero is independently verified by the just-completed
+                        // exact-folder SAF read, not inferred from this phone's queue.
+                        verifiedDrivePhotoCountByWorkOrderId.put(candidateId, 0);
+                        unavailableDrivePhotoCountIds.remove(candidateId);
                         notifyFolderAdapters();
                         selectWorkOrder(
                                 verified,
