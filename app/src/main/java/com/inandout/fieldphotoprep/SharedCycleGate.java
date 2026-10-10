@@ -71,7 +71,7 @@ final class SharedCycleGate {
         requireParticipant(deviceId, expectedGeneration);
         requirePhase(Phase.OPEN);
         if (!participants.contains(require(preferredDevice)) || lead != null
-                || !reservations.isEmpty()) {
+                || hasAnyReservationInCurrentGeneration()) {
             throw new IllegalStateException(
                     "Choose a registered first uploader before the first reservation.");
         }
@@ -207,6 +207,15 @@ final class SharedCycleGate {
     synchronized Phase phase() { return phase; }
     synchronized Mode mode() { return mode; }
     synchronized int participantCount() { return participants.size(); }
+
+    private boolean hasAnyReservationInCurrentGeneration() {
+        for (Reservation reservation : reservations.values()) {
+            if (reservation.generation == generation) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private boolean hasUnsettledUpload() {
         for (Reservation r : reservations.values()) {
