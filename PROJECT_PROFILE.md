@@ -78,3 +78,12 @@ Google Drive customer/work content is operational data, not source-controlled co
 - current approved phase/design records: scope-specific behavior
 
 Use `RULE_INDEX.md` to load only what applies.
+
+
+## Phase 14 approved narrow coordination exception (design authority, not deployment)
+
+The operator explicitly approved a **minimal shared two-phone work-cycle coordination ledger in the original FPP Supabase project** on 2026-10-09 local. This is an intentionally bounded exception to the earlier **identity-only** Supabase rule; it does not authorize a general job database, photo storage, addresses/client-company mirrors, Drive/SAF provider identities, cloud image access, or Field Work Hub integration.
+
+Permitted metadata only after the Level-3 design and migration gates: opaque shared work-order link, generation/cycle UUID, enrolled FPP member/device IDs, One/Two mode per individual work order, lead/handoff state, durable coordination/fencing state, UUID→shared-sequence reservation/acknowledgement, and minimum recovery/audit metadata. Google Drive remains authoritative for the actual folder, child file identities and photo contents. Each device's SAF document IDs remain local-only and non-portable.
+
+**Unproven stop gates:** prove that both devices bind to the exact same actual Drive folder without guessed names or unsafe client-visible permanent markers; prove that a delayed/crashed SAF delete cannot run after opening a new cycle. Schema publication, Android integration and any destructive shared operation are blocked pending these gates, relevant tests, and explicit Level-3 pre-merge approval. Unmanaged One-person work orders continue under existing behavior; switching an enrolled work order back to One never removes coordination safety.

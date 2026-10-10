@@ -431,3 +431,12 @@ Still deferred:
 - any later Google/social sign-in option.
 
 Those remaining choices must be recorded before implementation reaches them.
+
+
+## Approved Phase 14 exception to identity-only backend policy (not deployed)
+
+As approved by the operator on 2026-10-09 local, **original FPP's existing Supabase project only** may additionally hold the minimum *opaque shared two-phone coordination state* (per-work-order linking token, cycle/generation, device/member participation, One/Two selection, lead, fencing, recovery status, photo UUID-to-shared-number and minimal audit). This is a **specific Phase 14 amendment**, not a reinterpretation of the original Identity v1 model, which remains the historical Phase 12 auth baseline.
+
+This exception **does not** create a general backend work-order/photo database or allow address strings, work-order names, client-company structure, Google Drive/SAF provider folder/file IDs, photos, thumbnails, or cross-project Field Work Hub data. Original FPP Auth/Organization membership still governs permissions, and Android SAF continues independently to authorize each device's real Drive selection and operations.
+
+**Not applied yet:** no Supabase coordination tables/RPC/migration deployed, Android code enabled or two-device Drive pairing verified by this design approval. The later managed-cycle protocol must prove exact shared folder binding and durable old-delete vs new-upload fencing, then pass Level-3 gates and explicit operator merge authorization. A phone lacking coordinator connectivity cannot perform *managed* Drive mutations while offline; its protected original captures remain local/recoverable.
