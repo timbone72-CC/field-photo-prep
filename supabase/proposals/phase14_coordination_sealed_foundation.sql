@@ -13,7 +13,7 @@ create table private.fpp_coord_jobs (
     generation bigint not null default 1 check (generation > 0),
     mode text not null default 'ONE' check (mode in ('ONE', 'TWO')),
     phase text not null default 'OPEN'
-        check (phase in ('OPEN', 'QUIESCING', 'CLEARING', 'FINISHED', 'RECOVERY_BLOCKED')),
+        check (phase in ('OPEN', 'QUIESCING', 'CLEARING', 'FINISHING', 'FINISHED', 'RECOVERY_BLOCKED')),
     next_sequence bigint not null default 1 check (next_sequence > 0),
     lead_device_id uuid null,
     preferred_first_device_id uuid null,
