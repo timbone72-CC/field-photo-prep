@@ -81,6 +81,7 @@ public final class SharedCycleGateTest {
                 () -> gate.acknowledgeSafeToClear(phoneB, 1, false));
         gate.acknowledgeSafeToClear(phoneB, 1, true);
         assertEquals(1L, gate.generation());
+        gate.beginClear(phoneA, 1);
         assertEquals(SharedCycleGate.Phase.CLEARING, gate.phase());
     }
 
