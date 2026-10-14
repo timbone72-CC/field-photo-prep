@@ -17,4 +17,8 @@
     <color name="home_error_container">#4A1F1C</color>
     <color name="home_warning">#FFB870</color>
     <color name="home_warning_container">#4A2B10</color>
+    <!-- Home-only two-tone company selector; existing status/action colors remain unchanged. -->
+    <color name="home_company_gradient_start">#173A2B</color>
+    <color name="home_company_gradient_end">#214B36</color>
+    <color name="home_company_refresh_surface">#245942</color>
 </resources>
