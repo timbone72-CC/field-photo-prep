@@ -1,7 +1,7 @@
 # Field Photo Prep — Two-Tone Visual Refinement Blueprint
 
 Date: 2026-10-14  
-Status: **DESIGN/IMPLEMENTATION PLAN — NO RUNTIME CHANGE; visual sign-off and implementation evidence pending**  
+Status: **HOME VISUAL REFERENCE APPROVED; HOME-ONLY LEVEL 2 IMPLEMENTATION STAGED ON DRAFT PR #103; AUTOMATED AND SAMSUNG ACCEPTANCE PENDING**  
 Project: original **Field Photo Prep** Android app (FPP), not Field Work Hub (FWH).  
 Plan authority: operator's 2026-10-14 current-app screenshot and conversation (prioritize **company selector**, then **Properties heading**; prefers two-tone green; wants matching underlying pages; no invented functionality).  
 Governed planning base: `main` **1772db779576f8e42f7bc73b6c4b7b3a61c794ce**.  
@@ -121,3 +121,20 @@ Do not split these into endless speculative micro-PRs. The first genuine stop is
 ## Governance sources
 
 `AGENTS.md`; `GOVERNANCE.md`; `PROJECT_PROFILE.md`; `RULE_INDEX.md`; `CHANGE_CONTROL_CONTRACT.md`; `CONTRACT.md`; `TESTING_CONTRACT.md`; `REGRESSION_CHECKLIST.md`; `docs/PHASE_9_UI_MAKEOVER_RESET_PLAN_2026-09-12.md`; `docs/CONCEPT_3_NON_CAMERA_UI_IMPLEMENTATION_RECORD_2026-09-12.md`; `docs/PHASE_10E_GUIDED_NEXT_ACTION_2026-09-17.md`; `docs/PHASE_13_HOME_ADDRESS_LIFECYCLE_BUILD_STATE.md`; `docs/PHASE_14_TWO_PHONE_JOB_CYCLE_PLAN.md`; open PR #102 authoritative Phase 14 build state.
+
+## 8. Home implementation checkpoint — 2026-10-14
+
+The operator approved the illustrated **Home** reference as the starting implementation target: compact two-tone forest green selector, real company/Drive state, separate refresh, property count on a second line beside the existing New Address button. This authorizes a **bounded Level 2 Home-only implementation** under the existing authoritative design PR **#103**; it is **not** an approval for Phase 14 changes, a multi-screen overhaul, or final visual/merge acceptance.
+
+Implementation files currently in PR #103:
+- `app/src/main/res/layout/screen_home_properties.xml` — adjusts only existing company card and Properties heading arrangement; preserves all control IDs/click handlers.
+- `app/src/main/res/drawable/bg_home_company_two_tone.xml` — Home-only gradient card background.
+- `app/src/main/res/drawable/bg_home_company_refresh.xml` — Home-only refreshing action's toned/ripple background.
+- `app/src/main/res/values/colors.xml`, `app/src/main/res/values-night/colors.xml` — separate light/dark Home company surface tokens; no edits to existing status or action colors.
+- `app/src/androidTest/java/com/inandout/fieldphotoprep/Concept3UiStructureInstrumentedTest.java` — scoped structure/controls assertions supporting a content-height company card.
+
+**Protected:** all previously existing Home action IDs, company switch/change Drive/refresh/connect, search/address create/review, status and bottom nav, camera, upload, provider IDs, queue, photo protection, deletion, Work Orders, Phase 14 PR #102. No `MainActivity` or backend changes.
+
+**Implementation-read surfaces:** existing company/status and count values; no new state writes. **Implementation-write surfaces:** only XML resources and tests above. Rollback to `main` **1772db779576f8e42f7bc73b6c4b7b3a61c794ce** for this isolated UI branch (do not revert unrelated PR #102).
+
+**Tests/evidence still pending:** complete Android CI on final runtime head and rendered dark/light/1.3-font screenshot comparison; Samsung visual and touch review after a verified internal build. This record is not a PASS and not merge approval. **Next stop is the real rendered Home proof and operator visual acceptance.**
