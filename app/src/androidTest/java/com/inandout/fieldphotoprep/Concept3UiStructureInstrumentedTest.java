@@ -36,7 +36,21 @@ public final class Concept3UiStructureInstrumentedTest {
         View home = inflater.inflate(R.layout.screen_home_properties, null, false);
         assertNotNull(home.findViewById(R.id.home_property_list));
         assertNotNull(home.findViewById(R.id.home_new_address_button));
-        assertEquals(dp(context, 48), home.findViewById(R.id.drive_status_strip).getLayoutParams().height);
+        // The company strip may grow with larger accessibility text, never shrink below a tap target.
+        View companyStrip = home.findViewById(R.id.drive_status_strip);
+        assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT, companyStrip.getLayoutParams().height);
+        assertTrue(((android.widget.LinearLayout) companyStrip).getMinimumHeight() >= dp(context, 48));
+        assertNotNull(home.findViewById(R.id.home_company_click_target));
+        assertNotNull(home.findViewById(R.id.home_refresh_button));
+        assertEquals(dp(context, 48), home.findViewById(R.id.home_refresh_button).getLayoutParams().height);
+        assertNotNull(home.findViewById(R.id.home_connect_button));
+
+        // The property count sits below the title, not squeezed between it and New Address.
+        TextView propertyCount = home.findViewById(R.id.home_property_count);
+        assertEquals(1, propertyCount.getMaxLines());
+        assertEquals(android.widget.LinearLayout.VERTICAL,
+                ((android.widget.LinearLayout) propertyCount.getParent()).getOrientation());
+        assertNotNull(home.findViewById(R.id.home_property_search));
 
         View work = inflater.inflate(R.layout.screen_work_orders, null, false);
         assertNotNull(work.findViewById(R.id.work_order_list));
