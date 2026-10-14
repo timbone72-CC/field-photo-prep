@@ -224,3 +224,12 @@ Explicit **Edit Work Order** authorizes correcting the selected existing folder'
 ### Same-date Clear & Reuse
 
 Clear & Reuse may explicitly clear the exact selected folder for its current date after the same deletion confirmation. A sibling collision blocks the operation without changing selection. It never silently selects another folder. Once remote photo absence and unchanged folder identity/name are verified, remove only the selected WO's confirmed uploaded history, keep all unrelated/protected records, and reset its next capture to 001. Failed retirement is an incomplete reuse, not success. Edit Work Order continues to keep photos and numbering.
+
+
+## Phase 14 coordinated two-phone work orders — approved architecture, disabled until proven
+
+The existing per-device Android SAF Drive binding, selected remote folder identity, and photo/document authority remain unchanged. For a work order explicitly enrolled as a managed shared job, a **separate original-FPP Supabase coordination control** may track only its opaque shared link, generation, lead, participating phones, and durable upload/clear/recovery permissions. No Supabase photo bytes, Google OAuth, cross-device copying of SAF IDs, client-folder indexing, or Field Work Hub backend is allowed.
+
+A managed work-order mutation must hold a fresh authorized generation-bound permit **before** remote file creation, deletion, move or rename. Existing local checks/confirmation/fresh provider reads also remain mandatory. Coordinated Clear & Reuse must quiesce both devices, prove no unconfirmed in-flight work, delete only authorized old-cycle photos, verify provider result, and advance cycle only after operation settle. Archive/Delete Address must acquire compatible protection for all managed child work orders **before any photo removal**. Interrupted/uncertain SAF mutations **remain blocked** until verified-safe recovery; no automatic timeout may release new-cycle writes. An old unguarded client cannot be assumed safe: explicit compatible two-phone enrollment is required.
+
+**Reality gate before enabling:** independently prove two devices' *actual shared Drive folder identity* using a disposable fixture and an acceptable, nonpersistent pairing method; prove an in-flight/delayed SAF operation cannot later affect a new-cycle photo. Provider enumeration twice is not a distributed lock. If the gate fails, do not enable managed destructive workflows or claim two-phone safety. This exception is designed but **not yet connected or deployed**.

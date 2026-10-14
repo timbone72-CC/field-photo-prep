@@ -40,8 +40,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -61,6 +63,9 @@ public final class MainActivity extends Activity {
     }
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    // Read-only Drive counts must never queue behind a destructive Work Orders action.
+    private final ExecutorService drivePhotoCountExecutor = Executors.newSingleThreadExecutor();
+    private volatile long drivePhotoCountGeneration;
     private DriveClient driveClient;
     private AuthorizationActionGuard authorizationGuard;
     private OrganizationDriveBindingGuard driveBindingGuard;
@@ -73,6 +78,8 @@ public final class MainActivity extends Activity {
     private final Map<String, PropertyLifecycleStore.Snapshot> propertyLifecycleByAddressId =
             new HashMap<>();
     private final Map<String, Integer> protectedPhotoCountByWorkOrderId = new HashMap<>();
+    private final Map<String, Integer> verifiedDrivePhotoCountByWorkOrderId = new HashMap<>();
+    private final Set<String> unavailableDrivePhotoCountIds = new HashSet<>();
 
     private FolderPrefs folderPrefs;
     private PropertyLifecycleStore propertyLifecycleStore;
@@ -213,6 +220,24 @@ public final class MainActivity extends Activity {
         if (!discoveredPropertyFolders.isEmpty()) {
             rebuildHomePropertyFolders();
         }
+        if (screen == Screen.WORK_ORDERS && selectedAddress != null
+                && !workOrderFolders.isEmpty()) {
+            Uri selectedTree = driveBindingGuard.current().isUsable()
+                    ? folderPrefs.getMasterTreeUri() : null;
+            if (selectedTree != null) {
+                refreshReadOnlyDrivePhotoCounts(
+                        selectedTree, selectedAddress.id(), workOrderFolders);
+            } else {
+                // Never display a cached count as freshly verified after permission loss.
+                ++drivePhotoCountGeneration;
+                verifiedDrivePhotoCountByWorkOrderId.clear();
+                unavailableDrivePhotoCountIds.clear();
+                for (DriveFolder folder : workOrderFolders) {
+                    unavailableDrivePhotoCountIds.add(folder.id());
+                }
+                notifyFolderAdapters();
+            }
+        }
 
         if (pendingStatusConnectDrive) {
             pendingStatusConnectDrive = false;
@@ -293,6 +318,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         executor.shutdownNow();
+        drivePhotoCountExecutor.shutdownNow();
         super.onDestroy();
     }
 
@@ -951,7 +977,9 @@ private void buildLegacyWorkOrderUi() {
     workOrderAdapter = new WorkOrderListAdapter(
             this,
             workOrderFolders,
-            protectedPhotoCountByWorkOrderId);
+            protectedPhotoCountByWorkOrderId,
+            verifiedDrivePhotoCountByWorkOrderId,
+            unavailableDrivePhotoCountIds);
     workOrderList.setAdapter(workOrderAdapter);
     workOrderList.setOnItemClickListener((parent, view, position, id) -> {
         if (busy || position < 0 || position >= workOrderFolders.size()) {
@@ -1833,6 +1861,7 @@ private void buildLegacyWorkOrderUi() {
                     workOrderFolders.clear();
                     workOrderFolders.addAll(folders);
                     reconcileSelectedWorkOrder(folders);
+                    refreshReadOnlyDrivePhotoCounts(treeUri, addressId, folders);
                     notifyFolderAdapters();
                     setStatusText(folders.size() + " work order" + (folders.size() == 1 ? "" : "s") + " available");
                     if (folders.isEmpty()) {
@@ -1847,6 +1876,58 @@ private void buildLegacyWorkOrderUi() {
                     }
                     createBlockedUntilRefresh = true;
                     showError("Could not read work-order folders", error);
+                });
+            }
+        });
+    }
+
+    /**
+     * Reports the shared remote photo total using each phone's own authorized SAF tree.
+     * This is display-only; NEVER an authorization source for Clear & Reuse or uploads.
+     * "Unknown" and provider failure are not silently rendered as zero.
+     */
+    private void refreshReadOnlyDrivePhotoCounts(
+            Uri treeUri, String addressId, List<DriveFolder> folders) {
+        final long readGeneration = ++drivePhotoCountGeneration;
+        verifiedDrivePhotoCountByWorkOrderId.clear();
+        unavailableDrivePhotoCountIds.clear();
+        if (workOrderAdapter != null) {
+            workOrderAdapter.notifyDataSetChanged();
+        }
+
+        final List<DriveFolder> snapshot = new ArrayList<>(folders);
+        drivePhotoCountExecutor.execute(() -> {
+            for (DriveFolder workOrder : snapshot) {
+                if (drivePhotoCountGeneration != readGeneration) {
+                    return; // A different refresh/address superseded this list.
+                }
+                Integer verifiedCount = null;
+                boolean unavailable = false;
+                try {
+                    verifiedCount = driveClient.listDirectChildren(
+                            getContentResolver(), treeUri, workOrder.id()).photoCount();
+                } catch (Exception error) {
+                    unavailable = true; // No invented zero or user-visible false "empty".
+                }
+                final Integer count = verifiedCount;
+                final boolean countUnavailable = unavailable;
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()
+                            || drivePhotoCountGeneration != readGeneration
+                            || !isStillOnAddress(addressId)
+                            || DriveClient.findById(workOrderFolders, workOrder.id()) == null) {
+                        return;
+                    }
+                    if (count != null && count >= 0) {
+                        verifiedDrivePhotoCountByWorkOrderId.put(workOrder.id(), count);
+                        unavailableDrivePhotoCountIds.remove(workOrder.id());
+                    } else if (countUnavailable) {
+                        verifiedDrivePhotoCountByWorkOrderId.remove(workOrder.id());
+                        unavailableDrivePhotoCountIds.add(workOrder.id());
+                    }
+                    if (workOrderAdapter != null) {
+                        workOrderAdapter.notifyDataSetChanged();
+                    }
                 });
             }
         });
@@ -2384,6 +2465,10 @@ private void buildLegacyWorkOrderUi() {
                         }
                         workOrderFolders.clear();
                         workOrderFolders.addAll(afterRename);
+                        // This zero is independently verified by the just-completed
+                        // exact-folder SAF read, not inferred from this phone's queue.
+                        verifiedDrivePhotoCountByWorkOrderId.put(candidateId, 0);
+                        unavailableDrivePhotoCountIds.remove(candidateId);
                         notifyFolderAdapters();
                         selectWorkOrder(
                                 verified,

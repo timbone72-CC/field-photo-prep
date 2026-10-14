@@ -45,6 +45,16 @@
             android:layout_marginTop="2dp"
             android:textColor="@color/home_text_secondary"
             android:textSize="12sp" />
+        <TextView
+            android:id="@+id/work_order_row_drive_photo_count"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="In Drive: —"
+            android:textColor="@color/home_text_secondary"
+            android:textSize="11sp" />
     </LinearLayout>
     <TextView
         android:id="@+id/work_order_row_photo_count"
