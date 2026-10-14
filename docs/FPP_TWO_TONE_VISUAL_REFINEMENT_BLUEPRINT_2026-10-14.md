@@ -1,7 +1,7 @@
 # Field Photo Prep — Two-Tone Visual Refinement Blueprint
 
 Date: 2026-10-14  
-Status: **HOME VISUAL REFERENCE APPROVED; HOME-ONLY LEVEL 2 IMPLEMENTATION STAGED ON DRAFT PR #103; AUTOMATED AND SAMSUNG ACCEPTANCE PENDING**  
+Status: **HOME IMPLEMENTATION — AUTOMATED PASS / SAMSUNG HOME ACCEPTED ('Works' 2026-10-14); PR #103 GOVERNANCE/CLOSEOUT PENDING**  
 Project: original **Field Photo Prep** Android app (FPP), not Field Work Hub (FWH).  
 Plan authority: operator's 2026-10-14 current-app screenshot and conversation (prioritize **company selector**, then **Properties heading**; prefers two-tone green; wants matching underlying pages; no invented functionality).  
 Governed planning base: `main` **1772db779576f8e42f7bc73b6c4b7b3a61c794ce**.  
@@ -138,3 +138,23 @@ Implementation files currently in PR #103:
 **Implementation-read surfaces:** existing company/status and count values; no new state writes. **Implementation-write surfaces:** only XML resources and tests above. Rollback to `main` **1772db779576f8e42f7bc73b6c4b7b3a61c794ce** for this isolated UI branch (do not revert unrelated PR #102).
 
 **Tests/evidence still pending:** complete Android CI on final runtime head and rendered dark/light/1.3-font screenshot comparison; Samsung visual and touch review after a verified internal build. This record is not a PASS and not merge approval. **Next stop is the real rendered Home proof and operator visual acceptance.**
+
+## 9. Home acceptance and governance reconciliation — 2026-10-14
+
+**Operator confirmation:** After installing the PR #103 internal test APK and checking the new Home design, the operator replied **"Works"**. Accept that as the **Samsung Home visual / direct-use gate PASS** for the two-tone company selector and Properties heading fix; no additional screenshot or redundant confirmation is required. The statement does **not** claim every unrelated Drive operation, archive, camera, Work Orders, Photos, or Phase 14 scenario was re-exercised.
+
+**Automated evidence:** Android CI for PR #103 exact runtime head `23484c99054ae25b9e43037eb749af16daaa107b`, run [38652673535](https://github.com/timbone72-CC/field-photo-prep/actions/runs/38652673535), completed **SUCCESS**. Unit tests, internal build/signing, Android instrumentation, internal launch and rendered evidence checks passed. Rendered artifacts: `concept-3-rendered-verification` and `field-photo-prep-internal-apk`. Code ownership/diff remained limited to existing Home XML, two Home drawables, two color resources and one scoped instrumentation assertion. Protected behavior and Phase 14 overlap remain unchanged.
+
+**Governance failure finding:** Separate `Governance Check` runs 38652671387 / 38652674546 failed **only because the original PR body omitted 11 required governance metadata fields**. The body is being corrected without any governance rule changes or application/runtime source edits. Until that check passes, PR #103 remains unmerged.
+
+**Next verification:** governance rerun on the corrected PR metadata; confirm required checks for the documentation-only closeout commit and no source drift. After successful checks, close out Level 2 on the authoritative PR; operator's "Works" is sufficient physical acceptance and does not need to be asked again.
+
+### Closeout requirement / evidence coverage
+
+| Requirement | Implementation owner | Evidence | Status |
+| --- | --- | --- | --- |
+| Two-tone existing company card, readable real selection/state | Home XML + company drawable + new light/night tokens | Android rendered CI SUCCESS; operator "Works" on internal APK | PASS |
+| Properties count under heading, New Address preserved | Home XML | Android tests and actual operator Home use "Works" | PASS |
+| Existing clickable Home controls remain wired and visually available | Existing MainActivity IDs, Home XML, structure test | Focused structural assertions and full automated CI | PASS (affected Home scope only) |
+| Protected Drive/queue/camera/other screens unchanged by this PR | Scoped diff review | No affected domain source files in PR | PASS (code/diff evidence; not new provider field tests) |
+| Governance and merge | PR metadata + CI | Check pending correction | PENDING |
