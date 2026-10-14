@@ -36,12 +36,15 @@
         <LinearLayout
             android:id="@+id/drive_status_strip"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="@drawable/bg_concept_soft_green"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:background="@drawable/bg_home_company_two_tone"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="12dp"
-            android:paddingEnd="8dp">
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
             <View
                 android:id="@+id/drive_status_dot"
                 android:layout_width="8dp"
@@ -51,7 +54,8 @@
             <LinearLayout
                 android:id="@+id/home_company_click_target"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
                 android:layout_weight="1"
                 android:clickable="true"
                 android:contentDescription="Current company. Tap to choose company."
@@ -73,7 +77,7 @@
                         android:maxLines="1"
                         android:text="Google Drive"
                         android:textColor="@color/home_text_primary"
-                        android:textSize="13sp"
+                        android:textSize="15sp"
                         android:textStyle="normal"
                         android:fontFamily="sans-serif-medium" />
                     <TextView
@@ -96,7 +100,7 @@
                     android:maxLines="1"
                     android:text="Not connected"
                     android:textColor="@color/home_text_secondary"
-                    android:textSize="11sp" />
+                    android:textSize="12sp" />
             </LinearLayout>
             <ProgressBar
                 android:id="@+id/home_progress"
@@ -109,7 +113,7 @@
                 android:id="@+id/home_refresh_button"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/bg_home_company_refresh"
                 android:contentDescription="Refresh properties"
                 android:padding="12dp"
                 android:src="@drawable/ic_home_refresh_24"
@@ -138,14 +142,16 @@
             android:visibility="gone" />
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
+            android:minHeight="60dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
                 android:layout_weight="1"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:gravity="center_vertical">
                 <TextView
                     android:layout_width="wrap_content"
@@ -154,18 +160,16 @@
                     android:textColor="@color/home_text_primary"
                     android:textSize="15sp"
                     android:textStyle="normal"
-                    android:fontFamily="sans-serif-medium"
-                    android:layout_marginEnd="6dp" />
+                    android:fontFamily="sans-serif-medium" />
                 <TextView
                     android:id="@+id/home_property_count"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="0dp"
+                    android:layout_marginTop="2dp"
                     android:text="0 properties"
                     android:textColor="@color/home_text_secondary"
-                    android:textSize="11sp"
-                    android:layout_weight="1"
-                    android:maxLines="2"
+                    android:textSize="12sp"
+                    android:maxLines="1"
                     android:ellipsize="end" />
             </LinearLayout>
             <Button
