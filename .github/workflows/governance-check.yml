@@ -185,6 +185,33 @@ jobs:
                   "Signing-keystore changes require Level 3 governance."
               )
 
+          # Compare the PR's own declared affected surfaces with obvious file owners.
+          # Keep existing Level 3 draft PRs compatible; this is not semantic approval.
+          declared_surfaces = (values.get("Affected surfaces") or "").casefold()
+          guarded_surfaces = (
+              ("app/", "FPP Android app", ("app", "android", "mobile", "camera", "capture", "photo", "home", "ui", "saf", "work order", "workorder", "java", "kotlin")),
+              ("supabase/", "FPP Supabase", ("supabase", "sql", "database", "auth", "rls", "rpc", "edge", "server", "identity")),
+              (".github/workflows/", "GitHub Actions", ("github actions", "ci", "workflow", "pipeline", "governance")),
+          )
+          for prefix, label, aliases in guarded_surfaces:
+              if any(path.startswith(prefix) for path in changed_files) and not any(
+                  re.search(r"\b" + re.escape(alias) + r"\b", declared_surfaces)
+                  for alias in aliases
+              ):
+                  errors.append(
+                      f"{label} changed under {prefix!r}, but the existing "
+                      "'Affected surfaces' field does not declare that owner."
+                  )
+
+          verification = (values.get("Verification boundary") or "").strip().casefold()
+          if re.match(r"^(?:docs?|documentation|markdown)[ -]only\b", verification) and any(
+              not path.endswith(".md") for path in changed_files
+          ):
+              errors.append(
+                  "Documentation-only verification is claimed, but non-Markdown "
+                  "files changed. Reconcile scope and checks before proceeding."
+              )
+
           if errors:
               print("Governance check FAILED:")
               for error in errors:
